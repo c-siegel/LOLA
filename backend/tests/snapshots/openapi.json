@@ -1,6 +1,69 @@
 {
   "components": {
     "schemas": {
+      "AdminPageOut": {
+        "properties": {
+          "footerOrder": {
+            "title": "Footerorder",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "isPublished": {
+            "title": "Ispublished",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "landing",
+              "imprint",
+              "privacy",
+              "custom"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lastChange": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastChangeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "showInFooter": {
+            "title": "Showinfooter",
+            "type": "boolean"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "translations": {
+            "items": {
+              "$ref": "#/components/schemas/AdminTranslationOut"
+            },
+            "title": "Translations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "slug",
+          "isPublished",
+          "showInFooter",
+          "footerOrder",
+          "translations",
+          "lastChange"
+        ],
+        "title": "AdminPageOut",
+        "type": "object"
+      },
       "AdminPasswordReset": {
         "properties": {
           "newPassword": {
@@ -12,6 +75,47 @@
           "newPassword"
         ],
         "title": "AdminPasswordReset",
+        "type": "object"
+      },
+      "AdminTranslationOut": {
+        "properties": {
+          "contentMd": {
+            "title": "Contentmd",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "locale": {
+            "enum": [
+              "de",
+              "en"
+            ],
+            "title": "Locale",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "contentMd",
+          "fields",
+          "updatedAt",
+          "locale"
+        ],
+        "title": "AdminTranslationOut",
         "type": "object"
       },
       "AdminUserCreate": {
@@ -419,6 +523,24 @@
           "provider"
         ],
         "title": "ApiKeyUpdate",
+        "type": "object"
+      },
+      "AuthorOut": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ],
+        "title": "AuthorOut",
         "type": "object"
       },
       "AvatarModelOut": {
@@ -1155,6 +1277,27 @@
         "title": "EvaluationStatusOut",
         "type": "object"
       },
+      "FooterPageOut": {
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "titles": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Titles",
+            "type": "object"
+          }
+        },
+        "required": [
+          "slug",
+          "titles"
+        ],
+        "title": "FooterPageOut",
+        "type": "object"
+      },
       "ForgotPasswordRequest": {
         "properties": {
           "email": {
@@ -1722,6 +1865,31 @@
         "title": "KnowledgeStatusOut",
         "type": "object"
       },
+      "LastChangeOut": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "at",
+          "author"
+        ],
+        "title": "LastChangeOut",
+        "type": "object"
+      },
       "LatencyOut": {
         "properties": {
           "p50": {
@@ -1922,6 +2090,88 @@
           "count"
         ],
         "title": "MetricSummaryOut",
+        "type": "object"
+      },
+      "PageCreate": {
+        "properties": {
+          "footerOrder": {
+            "default": 0,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Footerorder",
+            "type": "integer"
+          },
+          "isPublished": {
+            "default": false,
+            "title": "Ispublished",
+            "type": "boolean"
+          },
+          "showInFooter": {
+            "default": true,
+            "title": "Showinfooter",
+            "type": "boolean"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "PageCreate",
+        "type": "object"
+      },
+      "PageUpdate": {
+        "properties": {
+          "footerOrder": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Footerorder"
+          },
+          "isPublished": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ispublished"
+          },
+          "showInFooter": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Showinfooter"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          }
+        },
+        "title": "PageUpdate",
         "type": "object"
       },
       "PasswordChange": {
@@ -3535,6 +3785,38 @@
         "title": "PublicChecklistOut",
         "type": "object"
       },
+      "PublicPageOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "landing",
+              "imprint",
+              "privacy",
+              "custom"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "translations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PublicTranslationOut"
+            },
+            "title": "Translations",
+            "type": "object"
+          }
+        },
+        "required": [
+          "slug",
+          "kind",
+          "translations"
+        ],
+        "title": "PublicPageOut",
+        "type": "object"
+      },
       "PublicProjectOut": {
         "properties": {
           "avatarBackgroundUrl": {
@@ -3791,6 +4073,38 @@
         "title": "PublicSiteSettingsOut",
         "type": "object"
       },
+      "PublicTranslationOut": {
+        "properties": {
+          "contentMd": {
+            "title": "Contentmd",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "contentMd",
+          "fields",
+          "updatedAt"
+        ],
+        "title": "PublicTranslationOut",
+        "type": "object"
+      },
       "RegisterRequest": {
         "properties": {
           "email": {
@@ -3844,6 +4158,63 @@
           "newPassword"
         ],
         "title": "ResetPasswordRequest",
+        "type": "object"
+      },
+      "RevisionOut": {
+        "properties": {
+          "action": {
+            "enum": [
+              "created",
+              "content_saved",
+              "content_reset",
+              "settings_changed"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "enum": [
+                  "de",
+                  "en"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "locale",
+          "createdAt",
+          "author"
+        ],
+        "title": "RevisionOut",
         "type": "object"
       },
       "RunConfigOut": {
@@ -5653,6 +6024,31 @@
         "title": "TranscriptionOut",
         "type": "object"
       },
+      "TranslationUpdate": {
+        "properties": {
+          "contentMd": {
+            "default": "",
+            "maxLength": 100000,
+            "title": "Contentmd",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "TranslationUpdate",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "avatarUrl": {
@@ -5816,6 +6212,319 @@
     }
   },
   "paths": {
+    "/api/v1/admin/pages": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminPageOut"
+                  },
+                  "title": "Response List Pages Api V1 Admin Pages Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/pages/{page_id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        }
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        }
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/pages/{page_id}/history": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RevisionOut"
+                  },
+                  "title": "Response Get History Api V1 Admin Pages  Page Id  History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/pages/{page_id}/translations/{locale}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "locale",
+            "required": true,
+            "schema": {
+              "enum": [
+                "de",
+                "en"
+              ],
+              "title": "Locale",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "title": "Page Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "locale",
+            "required": true,
+            "schema": {
+              "enum": [
+                "de",
+                "en"
+              ],
+              "title": "Locale",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
     "/api/v1/admin/settings": {
       "get": {
         "responses": {
@@ -8102,6 +8811,63 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/api/v1/pages": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FooterPageOut"
+                  },
+                  "title": "Response List Footer Pages Api V1 Pages Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/v1/pages/{slug}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPageOut"
                 }
               }
             },

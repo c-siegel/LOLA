@@ -31,6 +31,7 @@ from app.features.media.models import AvatarModel, BackgroundImage, VoiceClip
 from app.core.config import settings
 from app.features.evaluation import cleanup as evaluation_cleanup
 from app.features.knowledge import service as knowledge
+from app.features.pages import service as pages
 from app.features.projects.models import Project
 from app.features.pronunciation.models import PronunciationEntry
 from app.features.users.models import User
@@ -82,6 +83,8 @@ def delete_user_account(session: Session, user: User) -> None:
     # user id that no longer exists.
     session.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
     session.execute(delete(PronunciationEntry).where(PronunciationEntry.user_id == user.id))
+    # An admin's edits to the public pages stay in the page history, just no longer under their name.
+    pages.forget_author(session, user.id)
 
     unlink_quietly(user.avatar_path)
     session.delete(user)
