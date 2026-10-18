@@ -25,7 +25,7 @@
     "analytics": "Analytics",
     "apiDashboard": "API dashboard",
     "profile": "Profile settings",
-    "adminUsers": "Users",
+    "adminUsers": "Accounts",
     "adminSettings": "Site settings",
     "groups": { "create": "Create", "insights": "Insights", "setup": "Setup", "admin": "Admin" },
     "dashboardFallback": "Dashboard",
