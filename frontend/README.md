@@ -49,9 +49,11 @@ See the [root README](../README.md) for how this fits into the rest of the app, 
 | `/dashboard/profile` | `Dashboard/Profile` | Account settings: picture, password, logout-everywhere, account deletion |
 | `/dashboard/change-password-required` | `Dashboard/ForcePasswordChange` | Forced password reset (e.g. after an admin-issued reset) |
 | `/dashboard/admin`, `/dashboard/admin/settings` | `Dashboard/Admin` | Admin-only: manage other users, site-wide settings (e.g. registration on/off) |
+| `/dashboard/admin/pages`, `/dashboard/admin/pages/:id` | `Dashboard/Admin/Pages` | Admin-only: edit the landing page texts, imprint and privacy policy per language, create pages such as an accessibility statement, and see who changed what when |
 | `/c/:projectSlug` | `PublicChat` | The public chat page visitors use — no login required. Shows a loading screen until the on-device speech recognition model is ready (or has failed, in which case voice input uses the server) |
 | `/stt-test` | `SttTest` | Unlinked device test for on-device speech recognition: load time, live-text latency, re-decode times (see [docs/stt-device-test.md](../docs/stt-device-test.md)) |
-| `/impressum`, `/datenschutz`, `/credits` | `Imprint`, `Privacy`, `Credits` | Legal/attribution pages (German URLs, matching German legal terminology) |
+| `/impressum`, `/datenschutz`, `/credits` | `Imprint`, `Privacy`, `Credits` | Legal/attribution pages (German URLs, matching German legal terminology). Imprint and privacy show an admin's Markdown when there is one (visitor's language, then English), otherwise the built-in template — see `lib/pages.ts` |
+| `/p/:slug` | `CustomPage` | Pages an admin created, e.g. an accessibility statement; published ones can be linked in the site footer |
 
 ## Debugging
 

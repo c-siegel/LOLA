@@ -10,6 +10,7 @@ import {
   Timer,
   ScrollText,
   BarChart3,
+  FileText,
   KeyRound,
   Languages,
   Settings2,
@@ -113,6 +114,12 @@ const NAV_ITEMS = {
     icon: SlidersHorizontal,
     isActive: (p) => p.startsWith("/dashboard/admin/settings"),
   },
+  adminPages: {
+    labelKey: "nav.adminPages",
+    href: "/dashboard/admin/pages",
+    icon: FileText,
+    isActive: (p) => p.startsWith("/dashboard/admin/pages"),
+  },
 } satisfies Record<string, NavConfigItem>;
 
 interface NavGroup {
@@ -199,7 +206,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       items: [NAV_ITEMS.analytics, ...(knowledgeAvailable && evaluationAvailable ? [NAV_ITEMS.evaluation] : []), NAV_ITEMS.latencyLab, NAV_ITEMS.motionPrompt],
     },
     { id: "setup", labelKey: "nav.groups.setup", items: [NAV_ITEMS.apiDashboard, NAV_ITEMS.profile] },
-    ...(user?.isAdmin ? [{ id: "admin", labelKey: "nav.groups.admin", items: [NAV_ITEMS.admin, NAV_ITEMS.adminSettings] }] : []),
+    ...(user?.isAdmin ? [{ id: "admin", labelKey: "nav.groups.admin", items: [NAV_ITEMS.admin, NAV_ITEMS.adminSettings, NAV_ITEMS.adminPages] }] : []),
   ];
   const activeItem = navGroups.flatMap((group) => group.items).find((item) => item.isActive(location.pathname));
   const activeLabel = activeItem ? t(activeItem.labelKey) : t("nav.dashboardFallback");

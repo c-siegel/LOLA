@@ -251,7 +251,8 @@ python -m uvicorn app.main:app --reload
   your user once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 </details>
 
-To get your first admin account (dashboard access to manage other accounts, site settings, ...),
+To get your first admin account (dashboard access to manage other accounts, site settings, the
+public pages' texts — imprint, privacy policy, landing page, accessibility statement — ...),
 either set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env` and run
 `python -m app.cli.bootstrap_admin` from `backend/` (same idempotent step Deploy B runs
 automatically on every container start), or promote an existing account by hand in the database.
