@@ -8,10 +8,10 @@ How to use:
 """
 
 import re
-from datetime import datetime
-from typing import Literal
+from datetime import datetime, timezone
+from typing import Annotated, Literal
 
-from pydantic import Field, field_validator
+from pydantic import AfterValidator, Field, field_validator
 
 from app.core.error_codes import ErrorCode
 from app.core.schema import CamelModel
@@ -29,6 +29,16 @@ MAX_SLUG_CHARS = 80
 _SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
+def _as_utc(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+# SQLite hands the stored UTC times back without a zone, and a browser reads a zone-less ISO
+# string as local time — the history would be off by the visitor's UTC offset. Marked as UTC here,
+# they're sent with a "Z".
+UtcDatetime = Annotated[datetime, AfterValidator(_as_utc)]
+
+
 def _check_slug(value: str | None) -> str | None:
     if value is None:
         return value
@@ -42,7 +52,7 @@ class PublicTranslationOut(CamelModel):
     title: str
     content_md: str
     fields: dict[str, str]
-    updated_at: datetime
+    updated_at: UtcDatetime
 
 
 class PublicPageOut(CamelModel):
@@ -66,7 +76,7 @@ class AuthorOut(CamelModel):
 
 
 class LastChangeOut(CamelModel):
-    at: datetime
+    at: UtcDatetime
     # None when the account that made the change has since been deleted.
     author: AuthorOut | None
 
@@ -90,7 +100,7 @@ class RevisionOut(CamelModel):
     id: str
     action: RevisionAction
     locale: Locale | None
-    created_at: datetime
+    created_at: UtcDatetime
     author: AuthorOut | None
 
 

@@ -163,6 +163,9 @@ def test_history_records_who_changed_what(client, engine):
         ("content_saved", "de"),
     ]
     assert history[0]["author"] == {"name": "Ada", "email": "admin@example.com"}
+    # Sent as UTC: a zone-less timestamp would be read as local time by the browser.
+    assert history[0]["createdAt"].endswith("Z")
+    assert _page(client, "privacy")["lastChange"]["at"].endswith("Z")
     assert _page(client, "privacy")["lastChange"]["author"]["name"] == "Ada"
 
 
