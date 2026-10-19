@@ -74,7 +74,7 @@ def test_year(n: int, expected: str) -> None:
     [
         # The sentences Pocket TTS garbled in the phase 0 test (docs/pocket-tts-plan.md).
         ("Am 3. Oktober 1990 wurde Deutschland wiedervereinigt.", "Am dritten Oktober neunzehnhundertneunzig wurde Deutschland wiedervereinigt."),
-        ("Das kostet 12,50 € – also etwa 13 Euro.", "Das kostet zwölf Euro fünfzig – also etwa dreizehn Euro."),
+        ("Das kostet 12,50 € – also etwa 13 Euro.", "Das kostet zwölf Euro fünfzig, also etwa dreizehn Euro."),
         (
             "Bitte lies S. 47 bis 52, z. B. den Abschnitt über die Weimarer Republik.",
             "Bitte lies Seite siebenundvierzig bis zweiundfünfzig, zum Beispiel den Abschnitt über die Weimarer Republik.",

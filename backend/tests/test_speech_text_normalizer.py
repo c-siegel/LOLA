@@ -87,9 +87,13 @@ def test_strips_markdown(text: str, expected: str) -> None:
     [
         ("Das Ergebnis — ein Erfolg — war klar.", "de", "Das Ergebnis, ein Erfolg, war klar."),
         ("5 - 3 = 2", "de", "5 - 3 = 2"),
-        # En dash is left alone — see _despeak_em_dash's docstring comment: it's normally a range
-        # ("10 to 20"), and rewriting it to a comma would silently turn that into a list.
+        # An unspaced en dash is a range ("10 to 20") and stays — a comma would turn it into a list.
         ("Von 10–20 Minuten.", "de", "Von 10–20 Minuten."),
+        ("Die Strecke Berlin–Hamburg.", "de", "Die Strecke Berlin–Hamburg."),
+        # Spaced between words it's an aside (Pocket TTS stopped speaking there), but between two
+        # numbers still a range.
+        ("Das kostet 12 Euro – also etwa 13 Euro.", "de", "Das kostet 12 Euro, also etwa 13 Euro."),
+        ("Von 10 – 20 Minuten.", "de", "Von 10 – 20 Minuten."),
     ],
 )
 def test_despeaks_em_dash_without_touching_minus(text: str, language: str, expected: str) -> None:

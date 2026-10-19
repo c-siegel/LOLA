@@ -110,16 +110,23 @@ def _strip_math_delimiters(text: str) -> str:
 # line". Replacing it with a comma before the text ever reaches the TTS engine sidesteps that
 # entirely, and never touches a real minus since that's a different character.
 #
-# Deliberately NOT handled the same way: the en dash ("–", U+2013). It's visually similar but
-# means something different — an LLM normally uses it for a range ("10–20 Minuten" = "10 to 20
-# minutes"), not a parenthetical aside, so rewriting it to a comma would silently turn a range into
-# a list ("10, 20 minutes"). Left alone rather than risk that more misleading mistake.
+# The en dash ("–", U+2013) is ambiguous. Unspaced it's a range ("10–20 Minuten" = "10 to 20
+# minutes") and stays — rewriting it to a comma would silently turn a range into a list ("10, 20
+# minutes"); the verbalizer reads ranges as "bis". Spaced between words, though, it's the German
+# Gedankenstrich ("Das kostet 12 Euro – also etwa 13"), the same aside an em dash marks in English,
+# and some engines stop speaking there: Pocket TTS dropped everything after it. So a spaced en dash
+# becomes a comma too — unless digits stand on both sides ("10 – 20" is still a range).
 _EM_DASH_AS_PAUSE = re.compile(r"\s*—\s*")
+_SPACED_EN_DASH = re.compile(r"(?<=(?P<before>\S))\s+–\s+(?=(?P<after>\S))")
 
 
 def _despeak_em_dash(text: str) -> str:
-    """Replaces a prose em dash with a comma, so it reads as a pause instead of "minus"."""
-    return _EM_DASH_AS_PAUSE.sub(", ", text)
+    """Replaces a prose em dash or spaced en dash with a comma, so it reads as a pause instead of
+    "minus" (or as the end of the text)."""
+    text = _EM_DASH_AS_PAUSE.sub(", ", text)
+    return _SPACED_EN_DASH.sub(
+        lambda m: m.group(0) if m.group("before").isdigit() and m.group("after").isdigit() else ", ", text
+    )
 
 
 # A TTS engine reads "CO2"/"CO_2" (the two common ways to write the CO2 molecule; the underscore is
