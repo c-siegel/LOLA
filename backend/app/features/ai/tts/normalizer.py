@@ -7,8 +7,10 @@ em dash, and chemical formulas like CO2 all look right in the chat but are misre
 "**wichtig**" comes out as "star star wichtig star star", "1,23" as "one twenty-three" instead of
 "one comma two three", "\\cdot" spelled out letter by letter instead of said as "times", an em dash
 ("—", used for a parenthetical aside) read as "minus", the same as a real formula's minus sign, and
-"CO2" read as one made-up word instead of "C O two". This module only changes the copy of the text
-handed to the TTS engine; the reply stored and displayed in the chat keeps its original formatting.
+"CO2" read as one made-up word instead of "C O two". German numbers, dates, prices and
+abbreviations are also written out as words (verbalizer.py, switchable via settings.tts_verbalizer).
+This module only changes the copy of the text handed to the TTS engine; the reply stored and
+displayed in the chat keeps its original formatting.
 
 How to use:
     from app.features.ai.tts.normalizer import normalize_for_speech
@@ -19,8 +21,11 @@ How to use:
 """
 
 import re
+from collections.abc import Collection
 
+from app.core.config import settings
 from app.features.ai.tts.pronunciation import PronunciationMatcher
+from app.features.ai.tts.verbalizer import verbalize
 
 _DEFAULT_LANGUAGE = "de"
 
@@ -185,13 +190,17 @@ def normalize_for_speech(
     language: str,
     pronunciation: PronunciationMatcher | None = None,
     applied: list | None = None,
+    verbalizer_rules: Collection[str] | None = None,
 ) -> str:
     """Rewrites Markdown, decimal numbers, and math symbols in `text` into a form a TTS engine
-    reads correctly.
+    reads correctly, and writes numbers, dates, prices and abbreviations out as words.
 
     `pronunciation` is the teacher's own word list (see pronunciation.py); `applied`, if given,
-    collects the rules from it that matched (for the dashboard's test box).
+    collects the rules from it that matched (for the dashboard's test box). `verbalizer_rules`
+    picks the verbalizer.py rules to apply; None means settings.tts_verbalizer_rules.
     """
+    if verbalizer_rules is None:
+        verbalizer_rules = settings.tts_verbalizer_rules
     result = _strip_markdown(text)
     result = _strip_math_delimiters(result)
     # The teacher's rules run after the Markdown/math delimiters are gone (so "**pH**" still
@@ -202,7 +211,10 @@ def normalize_for_speech(
         result = pronunciation.apply(result, applied)
     result = _despeak_em_dash(result)
     result = _spell_out_co2(result, language)
+    # Prices, dates and units need the raw "12,50 €" before the decimal rule splits it up; the
+    # plain number rule needs the symbol rules to have seen the digits first (see verbalizer.py).
+    result = verbalize(result, language, "before_symbols", verbalizer_rules)
     result = _spell_out_decimal_digits(result, language)
     for pattern, replacement in _SYMBOL_RULES.get(language, _SYMBOL_RULES[_DEFAULT_LANGUAGE]):
         result = pattern.sub(replacement, result)
-    return result
+    return verbalize(result, language, "after_symbols", verbalizer_rules)

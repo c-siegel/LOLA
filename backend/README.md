@@ -214,6 +214,14 @@ whitespace), `{number}` stands for a number and is carried over into the spoken 
 apply in one longest-first pass, and they run after Markdown is stripped and before the built-in
 decimal/symbol rules (`app/features/ai/tts/normalizer.py`). At most 500 terms per language.
 
+After the teacher's list, German text also goes through the verbalizer
+(`app/features/ai/tts/verbalizer.py`), which writes numbers, dates, times, prices, units and common
+abbreviations out as words for every TTS engine — "Am 3. Oktober 1990" becomes "Am dritten Oktober
+neunzehnhundertneunzig". `TTS_VERBALIZER` switches it: `all` (default), `none`, or a comma-separated
+list of rules (`abbreviations`, `dates`, `times`, `ranges`, `currency`, `units`, `ordinals`,
+`powers`, `numbers`); an unknown name stops the app at startup. A teacher's term wins over the
+verbalizer because it runs first, and the test box shows the result of both.
+
 | Endpoint | Auth | Description |
 |---|---|---|
 | `GET /pronunciation/entries?language=` | Login required | List the current user's terms (optionally for one language). |

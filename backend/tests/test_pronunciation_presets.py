@@ -42,7 +42,7 @@ def test_every_pack_loads_and_has_unique_terms():
 )
 def test_physics_pack_reads_typical_sentences(language: str, text: str, expected: str):
     matcher = compile_rules(presets.get_pack("physics", language).entries)
-    assert normalize_for_speech(text, language, matcher) == expected
+    assert normalize_for_speech(text, language, matcher, verbalizer_rules=()) == expected
 
 
 def test_list_presets(client, teacher):

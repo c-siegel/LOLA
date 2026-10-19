@@ -2,6 +2,9 @@ import pytest
 
 from app.features.ai.tts.normalizer import normalize_for_speech
 
+# These test the built-in rules on their own, so the verbalizer (numbers as words, see
+# test_speech_verbalizer.py) is switched off here and digits stay digits.
+
 
 @pytest.mark.parametrize(
     ("text", "language", "expected"),
@@ -12,7 +15,7 @@ from app.features.ai.tts.normalizer import normalize_for_speech
     ],
 )
 def test_spells_out_decimal_digits(text: str, language: str, expected: str) -> None:
-    assert normalize_for_speech(text, language) == expected
+    assert normalize_for_speech(text, language, verbalizer_rules=()) == expected
 
 
 @pytest.mark.parametrize(
@@ -38,7 +41,7 @@ def test_spells_out_decimal_digits(text: str, language: str, expected: str) -> N
     ],
 )
 def test_rewrites_math_symbols(text: str, language: str, expected: str) -> None:
-    assert normalize_for_speech(text, language) == expected
+    assert normalize_for_speech(text, language, verbalizer_rules=()) == expected
 
 
 @pytest.mark.parametrize(
@@ -53,7 +56,7 @@ def test_rewrites_math_symbols(text: str, language: str, expected: str) -> None:
     ],
 )
 def test_leaves_unrelated_text_untouched(text: str) -> None:
-    assert normalize_for_speech(text, "de") == text
+    assert normalize_for_speech(text, "de", verbalizer_rules=()) == text
 
 
 @pytest.mark.parametrize(
@@ -76,7 +79,7 @@ def test_leaves_unrelated_text_untouched(text: str) -> None:
     ],
 )
 def test_strips_markdown(text: str, expected: str) -> None:
-    assert normalize_for_speech(text, "de") == expected
+    assert normalize_for_speech(text, "de", verbalizer_rules=()) == expected
 
 
 @pytest.mark.parametrize(
@@ -90,7 +93,7 @@ def test_strips_markdown(text: str, expected: str) -> None:
     ],
 )
 def test_despeaks_em_dash_without_touching_minus(text: str, language: str, expected: str) -> None:
-    assert normalize_for_speech(text, language) == expected
+    assert normalize_for_speech(text, language, verbalizer_rules=()) == expected
 
 
 @pytest.mark.parametrize(
@@ -103,7 +106,7 @@ def test_despeaks_em_dash_without_touching_minus(text: str, language: str, expec
     ],
 )
 def test_strips_math_delimiters(text: str, language: str, expected: str) -> None:
-    assert normalize_for_speech(text, language) == expected
+    assert normalize_for_speech(text, language, verbalizer_rules=()) == expected
 
 
 @pytest.mark.parametrize(
@@ -119,4 +122,4 @@ def test_strips_math_delimiters(text: str, language: str, expected: str) -> None
     ],
 )
 def test_spells_out_co2(text: str, language: str, expected: str) -> None:
-    assert normalize_for_speech(text, language) == expected
+    assert normalize_for_speech(text, language, verbalizer_rules=()) == expected
