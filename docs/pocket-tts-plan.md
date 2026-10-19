@@ -185,9 +185,64 @@ both passed through `normalize_for_speech`, so "3" vs "drei" is no error. RAM is
 - **The current weights are clearly better than April's** (A 6.2 % vs B 11.2 %). April garbles long
   number words — exactly what the verbalizer produces ("zweitausendvierundzwanzig" → "2000 wie rund
   20") — and the quoted "Eichhörnchen" sentence runs on in every April variant but not in A.
-- **Decision for phase 4:** export the current 6-layer German weights ourselves (main int8,
-  flow/decoder fp32, single-file ONNX), ~173 MB without encoder. No community export is good
-  enough: they're all April weights.
+- ~~Decision for phase 4: export the current weights ourselves — no community export is good
+  enough, they're all April weights.~~ Wrong: that only covered the three exports linked from model
+  cards. See the market check below.
+
+### Market check (2026-10-19): community exports of current weights, and other TTS models
+
+**All 189 Pocket TTS derivatives on Hugging Face** (base model + name search) were fingerprinted by
+tokenizer hash. Three ship German built from weights newer than April:
+
+| Repo (pinned rev) | German weights | Precision | German files | Notes |
+|---|---|---|---|---|
+| [Alias-Alias/pocket-3-3-0-tts-onnx](https://huggingface.co/Alias-Alias/pocket-3-3-0-tts-onnx) | Sept 24 (`pocket-tts-without-voice-cloning@4e1e0a3`, = pocket-tts 3.3.0) | all int8 | 178 MB incl. 8 voice states (52 MB) | validated vs PyTorch **and in ONNX Runtime Web/WASM** (`validation.json`), checksums, provenance; own bundle schema 3; no encoder; exporter offered to Kyutai (issue #345), not public |
+| [Lauro00000/k6-onnx-int8](https://huggingface.co/Lauro00000/k6-onnx-int8) (`b79d4c1`) | **Oct 1** (`pocket-tts@3e82814`, = current `main`) | all int8, fp16 KV cache | 126 MB (+39 MB fp32 encoder) | "internal build artifact, files may move"; KevinAHM-style schema 2; built with the public [lookbe/pocket-tts-onnx-export](https://github.com/lookbe/pocket-tts-onnx-export) (MIT, active) |
+| [justdataplz/pocket-tts-web](https://huggingface.co/justdataplz/pocket-tts-web) | not documented | int8, 400-row fp16 cache | ~116 MB | in production on two websites; browser loop not published |
+
+Kyutai retrained German again on **2026-10-01** (`pocket-tts@3e82814`); `pocket-tts` 3.3.0 on PyPI
+still pins the Sept 24 weights, so the server test (A) didn't run the newest model either.
+
+The browser loop of [KevinAHM/pocket-tts-web](https://huggingface.co/spaces/KevinAHM/pocket-tts-web)
+(`inference-worker.js`, `onnx-streaming.js`, SentencePiece in JS, audio worklet) is **Apache-2.0**
+(`CODE-LICENSE`) and runs the same schema-2 bundles as Lauro's export — a starting point for our
+runtime instead of writing it from scratch.
+
+**Benchmark, same setup as above** (alba cloned from Kyutai's public `alba-mackenna/casual.wav`):
+
+| Variant | WER | Clips with errors | Model files | Peak RAM | First audio | RTF |
+|---|---|---|---|---|---|---|
+| F: MOSS-TTS-Nano-100M, official ONNX fp32 | 9.2 % | 11/24 | 762 MB | 3779 MB | – | **1.12** |
+| G: Lauro, Oct weights, all int8 | 9.2 % | 10/24 | **126 MB** | 1236 MB | 163 ms | **0.22** |
+
+- **G** is as good as A/C on 10 of 12 sentences (some cleaner — A clips "Bastille", "Mitochondrien").
+  Its errors are systematic: it stops at a spaced en dash ("… zwölf Euro fünfzig – also etwa dreizehn
+  Euro" loses the second half, both seeds) and garbles "Eichhörnchen". The dash is fixable in
+  `normalize_for_speech` (a spaced en dash between words is an aside → comma; digit ranges are
+  already the verbalizer's). Fastest and smallest variant; int8 for flow net and decoder shows no
+  measurable harm here.
+- **F (MOSS)** is slower than real time on this CPU, four to six times the files, adds words that
+  aren't in the text ("wurde Deutschland wieder verehrt. Nein, nicht."). Not an alternative.
+
+**Other TTS models checked** (German, small enough for a browser, permissive licence incl. weights):
+
+| Model | Why not |
+|---|---|
+| MOSS-TTS-Nano-100M (Apache-2.0, 20 languages, cloning) | measured above: slower than real time, 762 MB fp32 (community int8 ~240 MB, untested) |
+| Supertonic 3 (99M, 31 languages, browser runtime) | weights OpenRAIL-M (use restrictions, not on our allowlist); repo archived 2026-09; open weights have fixed voices only |
+| NeuTTS-Nano-German | NeuTTS Open License (paid above $5M revenue), gated, GGUF only |
+| Kokoro-82M German fine-tunes (kikiri, crane-local-ai) | single fixed voices, no cloning; German G2P usually via espeak-ng (GPL) |
+| Qwen3-TTS 0.6B (Apache-2.0, German, cloning) | ~2 GB as int8 ONNX — server-only, not browser |
+| Chatterbox Multilingual V3 (MIT, 0.5B, German, cloning) | 0.5B, ~0.8 GB even as q4 ONNX — server-only |
+| Piper | engine now GPL-3.0 (piper1-gpl), espeak-ng G2P, no cloning |
+| Kitten TTS | English only |
+| Voxtral TTS, XTTS-v2, F5-TTS, Fish S2, IndexTTS-2.5, OmniVoice | non-commercial weights |
+
+**Decision for phase 4 (revised):** no new model beats Pocket TTS for this use. Start from Lauro's
+October export (pin `b79d4c1`, mirror the German files with checksums like
+`scripts/fetch-stt-model.sh` does for Parakeet, since the repo says files may move) and
+KevinAHM's Apache-2.0 browser loop. Being able to rebuild the export ourselves with the lookbe
+exporter (MIT) covers the next weight update; a fully own export is no longer the first step.
 
 ## Phase 1: sidecar (`local-tts/`)
 
