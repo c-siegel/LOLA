@@ -154,6 +154,40 @@ before making it the German default; until then use an allowlist of CC0/CC-BY vo
   (MIT) is the English-only upstream version, but it exports, quantizes (`quantize_dynamic`, MatMul
   only) and validates against PyTorch, and takes `--config`. That makes option B much cheaper:
   adapt that script to `german.yaml` (6 layers) at the current revision and the `tokenizer.json`.
+- **Checked 2026-10-19: [prasadvittaldev/pocket-tts-german-onnx-int4](https://huggingface.co/prasadvittaldev/pocket-tts-german-onnx-int4)**
+  (rev `e11ec07`, 106 MB, CC-BY-4.0): KevinAHM's April export re-quantized (same tokenizer hash
+  `389079b9`, same state manifests) — main model int4 (MatMulNBits), flow net and Mimi decoder int8,
+  Mimi encoder int8 included. No WER published, browser runtime not open source. Useful notes:
+  ONNX Runtime Web can't load external `.onnx.data` files (export single-file); a precomputed voice
+  state's `step` must equal its cache length or the voice is ignored.
+
+### Precision benchmark (2026-10-19)
+
+Same 12 sentences after the verbalizer, preset voice `alba`, temperature 0.3 (Kyutai's default; the
+ONNX runner defaults to 0.7), 2 seeds = 24 clips per variant, ONNX Runtime 1.31 CPU / PyTorch, 4
+threads, Ryzen 5 5625U. WER from a faster-whisper medium round trip with reference and transcript
+both passed through `normalize_for_speech`, so "3" vs "drei" is no error. RAM is the Python process
+(runtime overhead included) — compare variants, don't read it as browser memory.
+
+| Variant | WER | Clips with errors | Model files | Peak RAM | First audio | RTF |
+|---|---|---|---|---|---|---|
+| A: PyTorch, Sept weights, fp32 (server) | **6.2 %** | 9/24 | – | 1039 MB | 301 ms | 0.45 |
+| B: ONNX, April, all fp32 | 11.2 % | 13/24 | 400 MB | 853 MB | 180 ms | 0.46 |
+| C: ONNX, April, main int8 + flow/decoder fp32 | 7.5 % | 8/24 | 173 MB | 631 MB | 147 ms | **0.36** |
+| D: prasad pack (main int4, flow/decoder int8) | 23.3 % | 15/24 | 90 MB | 568 MB | 158 ms | 0.45 |
+| E: main int4 + flow/decoder fp32 | 27.1 % | 14/24 | 138 MB | 597 MB | 190 ms | 0.45 |
+
+- **int4 breaks the main model**, independent of the flow/decoder precision (D and E are equally
+  bad): it misses the end of sentences (clips up to 11.7 s instead of ~4.5 s), babbles ("Pelöööö…",
+  "100,000,000,000,…"), drops words. Not usable.
+- **int8 for the main model costs nothing measurable** (C ≈ B, within the noise of 24 clips) and is
+  the fastest variant. This confirms the plan's precision mix.
+- **The current weights are clearly better than April's** (A 6.2 % vs B 11.2 %). April garbles long
+  number words — exactly what the verbalizer produces ("zweitausendvierundzwanzig" → "2000 wie rund
+  20") — and the quoted "Eichhörnchen" sentence runs on in every April variant but not in A.
+- **Decision for phase 4:** export the current 6-layer German weights ourselves (main int8,
+  flow/decoder fp32, single-file ONNX), ~173 MB without encoder. No community export is good
+  enough: they're all April weights.
 
 ## Phase 1: sidecar (`local-tts/`)
 
