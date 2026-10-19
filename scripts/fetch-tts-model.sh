@@ -5,8 +5,9 @@
 #
 # Why this export: it's built from Kyutai's German weights of 2026-10-01 (the newest), and in our
 # benchmark it was the fastest and smallest variant at server-level intelligibility. Its repo
-# describes itself as an internal build artifact whose files may move, so the revision and every
-# checksum are pinned here: a moved or changed file fails the download instead of installing
+# describes itself as an internal build artifact whose files may move, so the files come from the
+# project's own unmodified mirror first, with the original as fallback, both pinned to a commit and
+# every file to its checksum: a moved or changed file fails the download instead of installing
 # something else, and a server that has the files keeps them.
 #
 # Why gzip: unlike Parakeet's ternary weights, int8 weights only shrink by about a quarter
@@ -30,12 +31,17 @@ set -eu
 umask 022
 
 TARGET_ROOT="${1:-$(dirname "$0")/../models}"
-# Bump VERSION together with REVISION — the version is part of every URL, and Caddy and the
+# Bump VERSION whenever the checksums change — the version is part of every URL, and Caddy and the
 # browser's Cache API both keep a file under the same URL indefinitely.
 VERSION="v1"
+REPO_PATH="onnx/german_2026-10"
+# Tried in order, each pinned to a commit; the checksums below make both deliver the same bytes.
+# First the project's own unmodified mirror (it won't move), then the original export.
+MIRROR_REPO="c-siegel/pocket-tts-en-de-onnx-int8"
+MIRROR_REVISION="53784174f63e20cc1e9290253df770cbfcc8a142"
 REPO="Lauro00000/k6-onnx-int8"
 REVISION="b79d4c1fa3898a98e43fb6f5412d3dd4cb5cc904"
-REPO_PATH="onnx/german_2026-10"
+SOURCES="$MIRROR_REPO@$MIRROR_REVISION $REPO@$REVISION"
 TARGET="$TARGET_ROOT/pocket-tts-de/$VERSION"
 
 # file name, sha256
@@ -64,14 +70,22 @@ echo "$FILES" | while read -r name sha; do
   if [ -f "$file" ] && hash_ok "$file" "$sha"; then
     echo "ok        $name"
   else
-    echo "download  $name"
-    curl -fsSL --retry 3 -o "$file.part" "https://huggingface.co/$REPO/resolve/$REVISION/$REPO_PATH/$name"
-    if ! hash_ok "$file.part" "$sha"; then
+    installed=""
+    for source in $SOURCES; do
+      echo "download  $name  (${source%@*})"
+      if curl -fsSL --retry 3 -o "$file.part" "https://huggingface.co/${source%@*}/resolve/${source#*@}/$REPO_PATH/$name" \
+        && hash_ok "$file.part" "$sha"; then
+        mv "$file.part" "$file"
+        installed=1
+        break
+      fi
       rm -f "$file.part"
-      echo "Checksum mismatch for $name — refusing to install it." >&2
+      echo "          unavailable or checksum mismatch, trying the next source" >&2
+    done
+    if [ -z "$installed" ]; then
+      echo "No source delivered $name with the expected checksum — refusing to install it." >&2
       exit 1
     fi
-    mv "$file.part" "$file"
     rm -f "$file.gz"
   fi
   # Checked by decompressing, not just by existence (see fetch-stt-model.sh).
@@ -95,6 +109,7 @@ These model files are **© Kyutai Labs**, licensed under
   https://huggingface.co/kyutai/pocket-tts (revision 3e82814a68665eec246ff649b14c71331f955c06).
 - **Changes:** converted to ONNX and quantized to int8 (dynamic, per channel) by Lauro00000 with
   lookbe/pocket-tts-onnx-export (MIT) — https://huggingface.co/$REPO/tree/$REVISION/$REPO_PATH.
+  Unmodified mirror: https://huggingface.co/$MIRROR_REPO/tree/$MIRROR_REVISION/$REPO_PATH.
   LOLA distributes these files unchanged; the voice-cloning encoder is not included.
 - **No warranty:** the licensor offers the material as-is (CC BY 4.0, section 5).
 
@@ -109,6 +124,7 @@ cat > "$TARGET/manifest.json.part" <<EOF
 {
   "version": "$VERSION",
   "source": "https://huggingface.co/$REPO/tree/$REVISION/$REPO_PATH",
+  "mirror": "https://huggingface.co/$MIRROR_REPO/tree/$MIRROR_REVISION/$REPO_PATH",
   "license": "CC-BY-4.0",
   "notice": "NOTICE.md",
   "sampleRate": 24000,
