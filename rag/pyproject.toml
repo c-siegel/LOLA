@@ -12,6 +12,11 @@ dependencies = [
     # removes supported models between minors, and a knowledge base can only be queried with the
     # exact model it was built with (see app/embedding.py).
     "fastembed>=0.9,<0.10",
+    # Imported directly by OnnxTextModel (app/embedding.py) for models fastembed can't load —
+    # all three already come in through fastembed, listed here so that doesn't stay implicit.
+    "onnxruntime>=1.17,<2",
+    "tokenizers>=0.15,<1",
+    "huggingface_hub>=0.20,<2",
     # Pre-1.0: the vec0 virtual-table syntax used in app/store.py (partition keys, "k = ?") may
     # still change in a minor release.
     "sqlite-vec>=0.1.9,<0.2",
