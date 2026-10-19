@@ -56,6 +56,95 @@ quality is unverified for both engines.
    others mirror), note the German bundle's file sizes, pick a permissively licensed JS SentencePiece
    tokenizer (fallback: port unigram encoding; `tokenizer.model` is 59 KB).
 
+### Phase 0 results (2026-10-19)
+
+Measured with `pocket-tts` 3.3.0, `sopro` 2.2.0, torch 2.14.1+cpu on an AMD Ryzen 5 5625U laptop
+(6 cores / 12 threads, Windows). Scripts and audio stayed local; the numbers are from 12 German
+test sentences (greetings, school content, dates, prices, abbreviations, numbers).
+
+**1. Speed and quality (both cloning the same 10 s German reference clip, full precision)**
+
+| | Pocket TTS | sopro |
+|---|---|---|
+| RTF (lower = faster) | **0.54** (2 threads) | 0.87 (6 threads) |
+| Preparing the voice | 1.8 s | 0.3 s |
+| Time to first audio (streaming) | 280 ms | – (sidecar doesn't stream) |
+| Mean WER, faster-whisper medium round trip, raw text | 33.2 % | 8.8 % |
+| Same, numbers/abbreviations spelled out (7 sentences) | ≈ 0 % | ≈ 0 % |
+
+- Pocket's RTF stays at ~0.45–0.52 for 1, 2 and 4 threads — more cores don't help a single
+  request, they only help concurrency. The advertised "6× real time" doesn't hold on this CPU
+  (≈2× here).
+- **Pocket can't read digits, symbols or abbreviations.** Plain sentences are fine (0 %), but
+  "1990", "12,50 €", "S. 47", "3²", "84 Mio." come out as nonsense ("Das kostet dinn Spaß…").
+  Spelled out by hand, all seven problem sentences are recognised correctly, on par with sopro.
+  LOLA's `normalize_for_speech` doesn't help today: it handles Markdown, decimals, symbols and
+  CO2, but leaves integers, years, "€" and abbreviations untouched.
+- So Pocket needs a German verbalizer (numbers, ordinals/dates, years, currency, units, common
+  abbreviations) in `backend/app/features/ai/tts/normalizer.py`. sopro would profit too (it also
+  stumbled over "S.", "u. a." and "3²"). Watch the licence: `num2words` is LGPL and not allowed —
+  write it ourselves (German number words are a small, well-defined grammar).
+- WER is an intelligibility proxy, not a quality verdict — the listening test stays with a human.
+
+**2. Licences of the Python dependencies:** all permissive. The only gate failure is `pocket-tts`
+itself: MIT licence file, but no licence metadata — needs a `REVIEWED` entry like `tiktoken` if
+`local-tts/` ever gets the gate.
+
+**3. Gating — confirmed.** `kyutai/pocket-tts` is gated (`auto`), `kyutai/pocket-tts-without-voice-cloning`
+is not (CC-BY-4.0). Without a token, `load_model()` falls back to the ungated weights, preset voices
+work, and cloning raises a `ValueError` (map it to a clear sidecar error).
+
+**4. Preset voices — not all usable.** German model presets by source licence (from
+`kyutai/tts-voices`):
+
+| Licence | Voices |
+|---|---|
+| CC0 | marius, javert, bill_boerst, peter_yearsley, stuart_bell, caro_davy, estelle, giovanni, lola |
+| CC-BY-4.0 | alba, anna, vera, fantine, charles, paul, eponine, azelma, george, mary, jane, michael, eve, daan |
+| **Non-commercial — must be blocked** | **cosette** (Expresso), **jean** (EARS) |
+| Undocumented | **juergen**, rafael |
+
+`juergen` is the only native German preset, and its source licence is undocumented — ask Kyutai
+before making it the German default; until then use an allowlist of CC0/CC-BY voices.
+
+**5. Server pitfalls found**
+- `import pocket_tts` calls `torch.set_num_threads(1)` process-wide — in a shared sidecar it would
+  slow sopro down. Set threads explicitly per engine.
+- `pocket-tts` opens its YAML configs without an encoding: crashes on Windows unless Python runs in
+  UTF-8 mode (`PYTHONUTF8=1` / `-X utf8`). Irrelevant for the Linux image, relevant for local dev.
+
+**6. Browser — the plan's basis is gone**
+- The ONNX export (`KevinAHM/pocket-tts-onnx`, rev `58a6d00`, April 2026) is built from **older
+  German weights and an older tokenizer** than the server uses (weights and tokenizer changed by
+  September; `languages/german/model.safetensors` hash differs). Browser and server would compare
+  different models.
+- Its export code (`github.com/KevinAHM/pocket-tts-onnx-export`) and `wasm-pocket-tts` both return
+  404 now; sherpa-onnx only has an English Pocket model from January 2026.
+- Sizes of the April German bundle with the planned precision mix: `flow_lm_main` int8 76 MB,
+  `flow_lm_flow` 39 MB, `mimi_decoder` 42 MB, `text_conditioner` 16 MB, `mimi_encoder` 40 MB —
+  ~213 MB with cloning, ~173 MB without.
+- Tokenizer: current weights ship a `tokenizer.json`, readable by `@huggingface/tokenizers`
+  (Apache-2.0, ~360 KB, maintained) — no SentencePiece port needed.
+
+### What phase 0 changes in this plan
+
+- **New phase 1a, before the sidecar:** German verbalizer in `normalize_for_speech`. Without it
+  Pocket is unusable for school content. It changes what every TTS engine receives (cloud ones
+  too), so it's a behaviour change for the public chat — either accept that (all engines profit) or
+  apply it only to local engines. Needs its own tests per rule.
+- **Phase 1:** set torch threads per engine; allowlist preset voices (CC0/CC-BY only; `cosette` and
+  `jean` never selectable); default German voice from the allowlist until `juergen` is cleared.
+- **Phase 4 (browser) needs a decision**, the April ONNX export is the wrong model:
+  - **A. Measure with the April export anyway.** Same architecture and size as the current model,
+    so latency, memory and download numbers on iPads are valid — quality numbers are not. Its
+    tokenizer is SentencePiece; convert it once to `tokenizer.json` and use `@huggingface/tokenizers`.
+    Cheapest way to learn whether on-device Pocket is feasible at all.
+  - **B. Export the current weights to ONNX ourselves** (`torch.onnx.export` of the flow LM, flow
+    net, Mimi encoder/decoder with explicit streaming state; int8 via
+    `onnxruntime.quantization`). Matches the server exactly, but it's a project of its own with no
+    upstream code left to follow.
+  - **C. Defer the browser part** until Kyutai ships official browser support.
+
 ## Phase 1: sidecar (`local-tts/`)
 
 - Split `app/synthesis.py` into `app/engines/sopro.py` and `app/engines/pocket.py` behind one small
