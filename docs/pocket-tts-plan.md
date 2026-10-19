@@ -244,6 +244,23 @@ October export (pin `b79d4c1`, mirror the German files with checksums like
 KevinAHM's Apache-2.0 browser loop. Being able to rebuild the export ourselves with the lookbe
 exporter (MIT) covers the next weight update; a fully own export is no longer the first step.
 
+**Done 2026-10-19:**
+- `scripts/fetch-tts-model.sh` downloads Lauro's German files (`b79d4c1`, sha256-pinned, no
+  encoder) to `models/pocket-tts-de/v1/` with gzip copies (93 MB per device), a `manifest.json`
+  and the CC BY 4.0 `NOTICE.md`. Committing the files or baking them into the Docker image would
+  be allowed by CC BY 4.0 (with that notice travelling along), but AGENTS.md forbids committing
+  `models/`, the 77 MB file is close to GitHub's 100 MB limit, and every image and release would
+  grow by 126 MB — so they're downloaded like the Parakeet files. The gated repo's access terms
+  bind whoever accepted them, not downstream users (CC BY forbids added restrictions); the encoder,
+  the part the gate protects, isn't redistributed.
+- `normalize_for_speech` turns a spaced en dash between words into a comma. Re-tested: Lauro's
+  model now speaks "… zwölf Euro fünfzig, also etwa dreizehn Euro." completely (2/2 seeds; before,
+  it stopped at the dash every time).
+
+**Next:** preset voice state for the October weights (from Kyutai's ungated repo, a CC-BY or CC0
+voice), then the browser engine in the Latency Lab on KevinAHM's loop, a Credits entry once it's
+used, and an optional mirror of the files in our own Hugging Face repo (needs the maintainer's account).
+
 ## Phase 1: sidecar (`local-tts/`)
 
 - Split `app/synthesis.py` into `app/engines/sopro.py` and `app/engines/pocket.py` behind one small

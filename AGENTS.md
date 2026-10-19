@@ -160,5 +160,8 @@ Project skills live in `.claude/skills/`:
   and must not import `app.config` — it gets no environment and only sees the file's bytes.
 - On-device STT model files come from `scripts/fetch-stt-model.sh` (writes `./models`, ~380 MB,
   git-ignored). Without them the browser falls back to server-side STT.
+- On-device TTS model files (Pocket TTS, German) come from `scripts/fetch-tts-model.sh` (~126 MB,
+  git-ignored, CC BY 4.0). Pinned to a community export whose repo may move files — keep the
+  checksums; don't commit the files or bake them into an image without the `NOTICE.md` it writes.
 - The settings module validates `JWT_SECRET` / `API_KEY_ENCRYPTION_SECRET` at import time; the app
   refuses to start with placeholder values.
