@@ -128,10 +128,10 @@ before making it the German default; until then use an allowlist of CC0/CC-BY vo
 
 ### What phase 0 changes in this plan
 
-- **New phase 1a, before the sidecar:** German verbalizer in `normalize_for_speech`. Without it
-  Pocket is unusable for school content. It changes what every TTS engine receives (cloud ones
-  too), so it's a behaviour change for the public chat — either accept that (all engines profit) or
-  apply it only to local engines. Needs its own tests per rule.
+- **New phase 1a, before the sidecar — done:** German verbalizer
+  (`backend/app/features/ai/tts/verbalizer.py`), applied to every TTS engine, cloud ones included
+  (decided 2026-10-19). Each rule is switchable through `TTS_VERBALIZER` (`all` / `none` / a list
+  of rule names); tests in `backend/tests/test_speech_verbalizer.py`.
 - **Phase 1:** set torch threads per engine; allowlist preset voices (CC0/CC-BY only; `cosette` and
   `jean` never selectable); default German voice from the allowlist until `juergen` is cleared.
 - **Phase 4 (browser) needs a decision**, the April ONNX export is the wrong model:
@@ -144,6 +144,16 @@ before making it the German default; until then use an allowlist of CC0/CC-BY vo
     `onnxruntime.quantization`). Matches the server exactly, but it's a project of its own with no
     upstream code left to follow.
   - **C. Defer the browser part** until Kyutai ships official browser support.
+- **Checked 2026-10-19: [stephvax/pocket-tts-onnx](https://huggingface.co/stephvax/pocket-tts-onnx)**
+  (rev `aace8dc`, October 2026, CC-BY-4.0) is a better export than KevinAHM's (reported 1.4× faster,
+  294 vs 723 ms to first audio, 330 MB less memory, fp16 KV cache, same WER) — but **not newer for
+  German**: its `german_24l/tokenizer.model` is byte-identical to Kyutai's April revision
+  (`d29db79`), and German exists only as the 24-layer variant, with a 303 MB int8 main model
+  (~440 MB per bundle, four times the layers). Its language-aware exporter isn't published; the
+  public `export_onnx.py` in [VolgaGerm/PocketTTS.cpp](https://github.com/VolgaGerm/PocketTTS.cpp)
+  (MIT) is the English-only upstream version, but it exports, quantizes (`quantize_dynamic`, MatMul
+  only) and validates against PyTorch, and takes `--config`. That makes option B much cheaper:
+  adapt that script to `german.yaml` (6 layers) at the current revision and the `tokenizer.json`.
 
 ## Phase 1: sidecar (`local-tts/`)
 
