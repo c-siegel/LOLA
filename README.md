@@ -272,8 +272,9 @@ scripts/fetch-stt-model.sh   # writes ./models, which the Vite dev server serves
 Without them, voice input still works — the browser fails to load the model and falls back to
 transcribing on the server.
 
-**4. On-device speech output model** (optional, ~126 MB, latency test page only for now): Kyutai's
-Pocket TTS (German, int8 ONNX, CC BY 4.0 — attribution in the `NOTICE.md` written next to the files).
+**4. On-device speech output model** (optional, ~132 MB, latency test page only for now): Kyutai's
+Pocket TTS (German, int8 ONNX) with the preset voice "alba", CC BY 4.0 — attribution in the
+`NOTICE.md` written next to the files.
 ```bash
 scripts/fetch-tts-model.sh   # writes ./models/pocket-tts-de, also served at /models/
 ```

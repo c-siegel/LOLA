@@ -44,6 +44,16 @@ REVISION="b79d4c1fa3898a98e43fb6f5412d3dd4cb5cc904"
 SOURCES="$MIRROR_REPO@$MIRROR_REVISION $REPO@$REVISION"
 TARGET="$TARGET_ROOT/pocket-tts-de/$VERSION"
 
+# The preset voice: Kyutai's own "alba" state for the German model, from the ungated repository.
+# It fits the export above because everything that generates speech (flow LM, flow net, Mimi
+# decoder) is bit-identical in Kyutai's gated and ungated October weights — only the voice encoder
+# differs (zeroed in the ungated one). Shipped as Kyutai publishes it; the browser converts it to
+# the export's state layout (see "voices" in manifest.json and docs/pocket-tts-plan.md).
+VOICE_REPO="kyutai/pocket-tts-without-voice-cloning"
+VOICE_REVISION="ab248779e0718743c013e20b2d812ace7c8f4bf7"
+VOICE_NAME="alba"
+VOICE_SHA="e34da39d613abe74a8a255426c816738372f085a83604c0c441845d7ae6c8192"
+
 # file name, sha256
 FILES="
 bundle.json e023602bfe54b7129ed30f8afba5998a6966476da016f872357aa82f544400d4
@@ -62,19 +72,19 @@ for tool in curl sha256sum gzip; do
   command -v "$tool" >/dev/null || { echo "Missing required tool: $tool" >&2; exit 1; }
 done
 
-mkdir -p "$TARGET"
-
-echo "$FILES" | while read -r name sha; do
-  [ -n "$name" ] || continue
+# install <path under $TARGET> <sha256> <url>... — the first URL that delivers the expected bytes
+# wins; then a gzipped copy is made for Caddy.
+install() {
+  name="$1"; sha="$2"; shift 2
   file="$TARGET/$name"
+  mkdir -p "$(dirname "$file")"
   if [ -f "$file" ] && hash_ok "$file" "$sha"; then
     echo "ok        $name"
   else
     installed=""
-    for source in $SOURCES; do
-      echo "download  $name  (${source%@*})"
-      if curl -fsSL --retry 3 -o "$file.part" "https://huggingface.co/${source%@*}/resolve/${source#*@}/$REPO_PATH/$name" \
-        && hash_ok "$file.part" "$sha"; then
+    for url in "$@"; do
+      echo "download  $name  ($(echo "$url" | cut -d / -f 4-5))"
+      if curl -fsSL --retry 3 -o "$file.part" "$url" && hash_ok "$file.part" "$sha"; then
         mv "$file.part" "$file"
         installed=1
         break
@@ -94,7 +104,22 @@ echo "$FILES" | while read -r name sha; do
     gzip -9 -c "$file" > "$file.gz.part"
     mv "$file.gz.part" "$file.gz"
   fi
+}
+
+mkdir -p "$TARGET"
+
+echo "$FILES" | while read -r name sha; do
+  [ -n "$name" ] || continue
+  urls=""
+  for source in $SOURCES; do
+    urls="$urls https://huggingface.co/${source%@*}/resolve/${source#*@}/$REPO_PATH/$name"
+  done
+  # shellcheck disable=SC2086
+  install "$name" "$sha" $urls
 done
+
+install "voices/$VOICE_NAME.safetensors" "$VOICE_SHA" \
+  "https://huggingface.co/$VOICE_REPO/resolve/$VOICE_REVISION/languages/german/embeddings/$VOICE_NAME.safetensors"
 
 # CC BY 4.0, section 3(a): creator and copyright notice, licence, source link, and what was
 # changed. Kept next to the files so it travels with every copy of them.
@@ -110,7 +135,13 @@ These model files are **© Kyutai Labs**, licensed under
 - **Changes:** converted to ONNX and quantized to int8 (dynamic, per channel) by Lauro00000 with
   lookbe/pocket-tts-onnx-export (MIT) — https://huggingface.co/$REPO/tree/$REVISION/$REPO_PATH.
   Unmodified mirror: https://huggingface.co/$MIRROR_REPO/tree/$MIRROR_REVISION/$REPO_PATH.
-  LOLA distributes these files unchanged; the voice-cloning encoder is not included.
+  LOLA distributes these files unchanged; the voice-cloning encoder is not included. The graphs'
+  weights are bit-identical to Kyutai's ungated release
+  (https://huggingface.co/$VOICE_REPO, revision $VOICE_REVISION).
+- **Voice \`voices/$VOICE_NAME.safetensors\`:** Kyutai's predefined German voice state "$VOICE_NAME",
+  unchanged, from https://huggingface.co/$VOICE_REPO/tree/$VOICE_REVISION/languages/german/embeddings
+  (CC BY 4.0). Recorded by **Alba MacKenna**, released under CC BY 4.0
+  (https://huggingface.co/kyutai/tts-voices, folder alba-mackenna).
 - **No warranty:** the licensor offers the material as-is (CC BY 4.0, section 5).
 
 Kyutai asks that the model is not used to imitate or clone anyone's voice without their explicit
@@ -136,6 +167,14 @@ cat > "$TARGET/manifest.json.part" <<EOF
     "flowLmMain": { "path": "flow_lm_main_int8.onnx", "bytes": $(size flow_lm_main_int8.onnx) },
     "flowLmFlow": { "path": "flow_lm_flow_int8.onnx", "bytes": $(size flow_lm_flow_int8.onnx) },
     "mimiDecoder": { "path": "mimi_decoder_int8.onnx", "bytes": $(size mimi_decoder_int8.onnx) }
+  },
+  "voices": {
+    "$VOICE_NAME": {
+      "path": "voices/$VOICE_NAME.safetensors",
+      "bytes": $(size "voices/$VOICE_NAME.safetensors"),
+      "credit": "Alba MacKenna (CC BY 4.0)",
+      "format": "kyutai: per layer <layer>/cache float32 [2,1,T,16,64] (keys, values) and <layer>/offset = T; the export wants <layer>/cache_k and cache_v as float16 [1,capacity,16,64] with rows past T zero, and step = T"
+    }
   }
 }
 EOF
@@ -146,4 +185,4 @@ mv "$TARGET/manifest.json.part" "$TARGET/manifest.json"
 chmod -R a+rX "$TARGET_ROOT" 2>/dev/null || echo "Warning: could not make $TARGET_ROOT world-readable — the web server may answer 403." >&2
 
 echo "Done: $TARGET"
-echo "Transfer size per device (gzip): $(cat "$TARGET"/*.gz | wc -c | awk '{printf "%.0f MB", $1 / 1000000}')"
+echo "Transfer size per device (gzip): $(cat "$TARGET"/*.gz "$TARGET"/voices/*.gz | wc -c | awk '{printf "%.0f MB", $1 / 1000000}')"

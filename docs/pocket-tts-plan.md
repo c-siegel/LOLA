@@ -257,9 +257,35 @@ exporter (MIT) covers the next weight update; a fully own export is no longer th
   model now speaks "… zwölf Euro fünfzig, also etwa dreizehn Euro." completely (2/2 seeds; before,
   it stopped at the dash every time).
 
-**Next:** preset voice state for the October weights (from Kyutai's ungated repo, a CC-BY or CC0
-voice), then the browser engine in the Latency Lab on KevinAHM's loop, a Credits entry once it's
-used, and an optional mirror of the files in our own Hugging Face repo (needs the maintainer's account).
+- The maintainer mirrored the German and English bundles unchanged to
+  [c-siegel/pocket-tts-en-de-onnx-int8](https://huggingface.co/c-siegel/pocket-tts-en-de-onnx-int8)
+  (`5378417`); all German files verified against the pinned checksums. The script tries the
+  mirror first, Lauro's repo second (fallback tested).
+
+**Done 2026-10-19 — preset voice "alba":**
+- Kyutai's gated and ungated October German weights differ only in the voice encoder (42 tensors,
+  zeroed in the ungated release); flow LM, flow net and Mimi decoder are bit-identical. So
+  Kyutai's official, ungated voice states fit Lauro's export — and the files we ship are
+  bit-identical to the ungated release, which settles the gate question for them.
+- `fetch-tts-model.sh` downloads `languages/german/embeddings/alba.safetensors` unchanged from
+  `kyutai/pocket-tts-without-voice-cloning@ab24877` (sha256-pinned, 6.2 MB) into `voices/`, and
+  credits Alba MacKenna (CC BY 4.0) in `NOTICE.md`. Transfer size per device now 99 MB.
+- Conversion to the export's state layout (to be done in the browser, see `manifest.json`):
+  per layer split Kyutai's `cache` float32 `[2,1,T,16,64]` into `cache_k` / `cache_v` float16
+  `[1,capacity,16,64]` (rows past T zero) and set `step = offset = T` (T = 127 for alba).
+- Verified with the benchmark setup (Python reference conversion, same 12 sentences after the
+  verbalizer and the dash fix, 2 seeds):
+
+  | Variant | WER | Clips with errors | Model files | Peak RAM | First audio |
+  |---|---|---|---|---|---|
+  | H2: Lauro export + official alba | **5.0 %** | 8/24 | 126 MB + 6 MB voice | 482 MB | 92–156 ms |
+  | (A: server, PyTorch, Sept weights, alba) | 6.2 % | 9/24 | – | 1039 MB | 301 ms |
+
+  The best variant so far. Remaining errors: "Eichhörnchen", "Bitte lies" run together, one
+  "wiedervereinigt" split by Whisper. RTF ~0.25 when the machine is idle.
+
+**Next:** the browser engine in the Latency Lab on KevinAHM's Apache-2.0 loop (load the files from
+`manifest.json`, convert the voice as above, stream audio), plus the Credits entry once it's used.
 
 ## Phase 1: sidecar (`local-tts/`)
 
