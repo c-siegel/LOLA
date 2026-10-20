@@ -19,9 +19,10 @@ RUN pip install --no-cache-dir .
 #   docker build --build-arg PRELOAD_EMBEDDING_MODEL=jinaai/jina-embeddings-v2-base-de ...
 # and set RAG_MODEL_CACHE_DIR=/opt/rag-model-cache. By default the model downloads into the data
 # volume on first use instead (like the speech recognition model), keeping the image small.
+# The token only satisfies the settings check on import; nothing runs with it.
 ARG PRELOAD_EMBEDDING_MODEL=""
 RUN if [ -n "$PRELOAD_EMBEDDING_MODEL" ]; then \
-      python -c "from fastembed import TextEmbedding; TextEmbedding('$PRELOAD_EMBEDDING_MODEL', cache_dir='/opt/rag-model-cache')"; \
+      RAG_SERVICE_TOKEN=build-time-preload python -c "from app.embedding import preload_local_model; preload_local_model('$PRELOAD_EMBEDDING_MODEL', '/opt/rag-model-cache')"; \
     fi
 
 RUN groupadd --gid 568 rag && useradd --create-home --uid 568 --gid 568 rag
