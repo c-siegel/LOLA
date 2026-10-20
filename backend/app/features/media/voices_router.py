@@ -29,7 +29,7 @@ from app.features.media.schemas import VoiceClipOut, VoicePreviewIn
 from app.features.media.voice_audio import normalize_voice_clip
 from app.features.pronunciation.service import rules_for
 from app.features.users.models import User
-from app.storage.files import immutable_file_response
+from app.storage.files import immutable_file_response, read_upload
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +75,7 @@ def upload_voice_clip(
     name = name.strip()[:_MAX_NAME_LENGTH]
     if not name:
         raise HTTPException(status_code=400, detail=ErrorCode.VOICE_CLIP_NAME_REQUIRED)
-    content = file.file.read(_MAX_UPLOAD_BYTES + 1)
-    if len(content) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=400, detail=ErrorCode.VOICE_CLIP_TOO_LARGE)
+    content = read_upload(file, _MAX_UPLOAD_BYTES, ErrorCode.VOICE_CLIP_TOO_LARGE)
     wav, duration = normalize_voice_clip(content)
     return _to_out(media.create_voice_clip(session, current_user.id, name, wav, duration))
 

@@ -22,7 +22,7 @@ from app.features.media.models import AvatarModel
 from app.features.media.schemas import AvatarModelOut
 from app.features.projects.models import Project
 from app.features.users.models import User
-from app.storage.files import immutable_file_response, is_glb, sniff_image
+from app.storage.files import immutable_file_response, is_glb, read_upload, sniff_image
 
 router = APIRouter(prefix="/avatars", tags=["avatar-library"])
 
@@ -47,7 +47,7 @@ def list_avatar_models(current_user: User = Depends(get_current_user), session: 
 
 
 @router.post("", response_model=AvatarModelOut)
-async def upload_avatar_model(
+def upload_avatar_model(
     file: UploadFile,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
@@ -56,9 +56,7 @@ async def upload_avatar_model(
     if not file.filename or not file.filename.lower().endswith(".glb"):
         raise HTTPException(status_code=400, detail=ErrorCode.AVATAR_FILE_INVALID_TYPE)
 
-    content = await file.read(_MAX_UPLOAD_BYTES + 1)
-    if len(content) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=400, detail=ErrorCode.AVATAR_FILE_TOO_LARGE)
+    content = read_upload(file, _MAX_UPLOAD_BYTES, ErrorCode.AVATAR_FILE_TOO_LARGE)
     if not is_glb(content):
         raise HTTPException(status_code=400, detail=ErrorCode.AVATAR_FILE_INVALID_CONTENT)
 
@@ -73,27 +71,16 @@ def get_avatar_file(
     current_user: User | None = Depends(get_current_user_optional),
 ):
     """Serve an avatar's .glb file — to its owner, or anonymously if used in a published project."""
-    # Like get_owned_project (deps.py): returns 404 instead of 403 for foreign/inaccessible
-    # avatars, to prevent IDOR (Insecure Direct Object Reference) enumeration. Two legitimate
-    # access paths: the owning user (avatar library / preview in the configurator, Screen 1e) —
-    # or anonymous access, if the avatar is actually used in a published project (public chat,
-    # Screen 1i, needs the avatar visible to students, see PublicChat/index.tsx). Unpublished or
-    # someone else's avatars stay inaccessible to everyone else.
-    avatar = media.get_avatar(session, avatar_id)
-    if avatar is None:
-        raise HTTPException(status_code=404, detail=ErrorCode.AVATAR_NOT_FOUND)
-
-    is_owner = current_user is not None and avatar.user_id == current_user.id
-    if not is_owner and not media.is_used_by_published_project(
-        session, Project.avatar_model_id, avatar_id, avatar.user_id
-    ):
-        raise HTTPException(status_code=404, detail=ErrorCode.AVATAR_NOT_FOUND)
-
+    # The owner sees it in the library and the configurator preview; the public chat needs it
+    # visible to students (see PublicChat/index.tsx).
+    avatar = media.get_viewable(
+        session, AvatarModel, avatar_id, current_user, Project.avatar_model_id, ErrorCode.AVATAR_NOT_FOUND
+    )
     return immutable_file_response(avatar.file_path, "model/gltf-binary", filename=f"{avatar.name}.glb")
 
 
 @router.post("/{avatar_id}/thumbnail", response_model=AvatarModelOut)
-async def set_avatar_thumbnail(
+def set_avatar_thumbnail(
     avatar_id: str,
     file: UploadFile,
     current_user: User = Depends(get_current_user),
@@ -106,9 +93,7 @@ async def set_avatar_thumbnail(
     # avatar library is a user-only context).
     avatar = get_owned(session, AvatarModel, avatar_id, current_user.id, ErrorCode.AVATAR_NOT_FOUND)
 
-    content = await file.read(_MAX_THUMBNAIL_BYTES + 1)
-    if len(content) > _MAX_THUMBNAIL_BYTES:
-        raise HTTPException(status_code=400, detail=ErrorCode.AVATAR_THUMBNAIL_TOO_LARGE)
+    content = read_upload(file, _MAX_THUMBNAIL_BYTES, ErrorCode.AVATAR_THUMBNAIL_TOO_LARGE)
     if sniff_image(content, {"png"}) is None:
         raise HTTPException(status_code=400, detail=ErrorCode.AVATAR_THUMBNAIL_INVALID)
 

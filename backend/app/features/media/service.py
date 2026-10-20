@@ -15,6 +15,7 @@ from pathlib import Path
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.core.errors import DomainError
 from app.core.ownership import find_owned
 from app.features.ai.tts.local import VoiceReference, forget_voice
 from app.features.media.models import AvatarModel, BackgroundImage, VoiceClip
@@ -38,15 +39,34 @@ def is_used_by_published_project(session: Session, column, item_id: str, owner_i
     return session.exec(query).first() is not None
 
 
+def get_viewable(
+    session: Session,
+    model: type[AvatarModel | BackgroundImage],
+    item_id: str,
+    user: User | None,
+    column,
+    error_code: str,
+) -> AvatarModel | BackgroundImage:
+    """An avatar or background for its file route: to its owner, or to anyone (students in the
+    public chat) once a published project of the owner uses it in `column`.
+
+    Everything else is a 404, as if it didn't exist (IDOR defense, see core/ownership.py). Voice
+    clips deliberately don't go through here — they are never served publicly.
+    """
+    item = session.get(model, item_id)
+    if item is not None and (
+        (user is not None and item.user_id == user.id)
+        or is_used_by_published_project(session, column, item_id, item.user_id)
+    ):
+        return item
+    raise DomainError(error_code, status_code=404)
+
+
 # ==================== AVATARS ====================
 
 
 def list_avatars(session: Session, user_id: str) -> list[AvatarModel]:
     return list(session.exec(select(AvatarModel).where(AvatarModel.user_id == user_id)).all())
-
-
-def get_avatar(session: Session, avatar_id: str) -> AvatarModel | None:
-    return session.get(AvatarModel, avatar_id)
 
 
 def create_avatar(session: Session, user_id: str, name: str, content: bytes) -> AvatarModel:
@@ -90,10 +110,6 @@ def delete_avatar(session: Session, avatar: AvatarModel) -> None:
 
 def list_backgrounds(session: Session, user_id: str) -> list[BackgroundImage]:
     return list(session.exec(select(BackgroundImage).where(BackgroundImage.user_id == user_id)).all())
-
-
-def get_background(session: Session, background_id: str) -> BackgroundImage | None:
-    return session.get(BackgroundImage, background_id)
 
 
 def create_background(session: Session, user_id: str, name: str, content: bytes, extension: str) -> BackgroundImage:
