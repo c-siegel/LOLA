@@ -68,6 +68,22 @@ LOCAL_MODELS: dict[str, LocalModelSpec] = {
     ),
     # Many languages, but truncates at 128 tokens (~500 characters) — hence the small chunks.
     "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": LocalModelSpec(768, "Apache-2.0", 450, 80),
+    # Google's EmbeddingGemma 2 (Apache-2.0) in the onnx-community export: 100+ languages, 8192
+    # tokens, ~314 MB. q8, because q4/q4f16 drift too far from fp32 for stored vectors and the
+    # card warns about fp16 activations. Prefixes are the model's own retrieval prompts.
+    "onnx-community/embeddinggemma-2-ONNX": LocalModelSpec(
+        768,
+        "Apache-2.0",
+        1400,
+        200,
+        query_prefix="task: search result | query: ",
+        passage_prefix="title: none | text: ",
+        onnx=OnnxSource(
+            revision="daa72c51243991dfcaf9f9137d2c573d8f7790c0",
+            graph="onnx/model_quantized.onnx",
+            sidecars=("onnx/model_quantized.onnx_data",),
+        ),
+    ),
 }
 
 # Chunk size for API models: every current provider model accepts far more than this.

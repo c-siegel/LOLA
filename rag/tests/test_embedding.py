@@ -100,3 +100,47 @@ def test_download_fetches_only_the_pinned_listed_files(monkeypatch):
         ("org/model", "onnx/model_quantized.onnx_data", "a" * 40, "/cache"),
         ("org/model", "tokenizer.json", "a" * 40, "/cache"),
     ]
+
+
+GEMMA = "onnx-community/embeddinggemma-2-ONNX"
+
+
+def test_embeddinggemma_is_pinned_to_the_q8_text_graph_only():
+    source = embedding.LOCAL_MODELS[GEMMA].onnx
+
+    assert source is not None
+    assert len(source.revision) == 40 and int(source.revision, 16) >= 0
+    assert source.graph == "onnx/model_quantized.onnx"
+    assert source.sidecars == ("onnx/model_quantized.onnx_data",)
+    # Never the vision/audio encoders, which the text embedding doesn't need.
+    assert not any("encoder" in f for f in (source.graph, *source.sidecars))
+
+
+def test_embeddinggemma_can_be_configured(monkeypatch):
+    from app.config import settings
+    from app.schemas import EmbeddingConfig
+
+    monkeypatch.setattr(settings, "rag_local_embedding_model", GEMMA)
+
+    spec = embedding.local_model_spec()
+
+    assert (spec.dimensions, spec.licence) == (768, "Apache-2.0")
+    assert embedding.chunk_size_for(EmbeddingConfig(mode="local", model=GEMMA)) == (1400, 200)
+
+
+def test_embeddinggemma_texts_get_its_retrieval_prefixes():
+    class RecordingModel:
+        def __init__(self):
+            self.texts = []
+
+        def embed(self, texts, batch_size=16):
+            self.texts.extend(texts)
+            return [[1.0, 0.0] for _ in texts]
+
+    model = RecordingModel()
+    embedder = embedding.LocalEmbedder(GEMMA, embedding.LOCAL_MODELS[GEMMA], model)
+
+    embedder.embed_passages(["Die Zelle"])
+    embedder.embed_query("Was ist eine Zelle?")
+
+    assert model.texts == ["title: none | text: Die Zelle", "task: search result | query: Was ist eine Zelle?"]
