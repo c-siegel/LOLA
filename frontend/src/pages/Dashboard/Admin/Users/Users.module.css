@@ -14,27 +14,11 @@
 }
 
 .table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
+  composes: dataTable from "../../../../styles/dashboard.module.css";
 }
 
 .table th {
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
-  color: var(--text-tertiary);
-  font-weight: 500;
-  border-bottom: 1px solid var(--border-default);
   white-space: nowrap;
-}
-
-.table td {
-  padding: var(--space-3);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.table tbody tr:last-child td {
-  border-bottom: none;
 }
 
 .actions {

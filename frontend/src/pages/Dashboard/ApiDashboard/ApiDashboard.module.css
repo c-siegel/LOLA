@@ -20,9 +20,7 @@
 }
 
 .table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
+  composes: dataTable from "../../../styles/dashboard.module.css";
 }
 
 /* Name (1) and key (4) carry the variable content; type, model, date, status and the actions only
@@ -45,23 +43,6 @@
 .table td:nth-child(6),
 .table td:last-child {
   white-space: nowrap;
-}
-
-.table th {
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
-  color: var(--text-tertiary);
-  font-weight: 500;
-  border-bottom: 1px solid var(--border-default);
-}
-
-.table td {
-  padding: var(--space-3);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.table tbody tr:last-child td {
-  border-bottom: none;
 }
 
 .actions {
@@ -137,9 +118,7 @@
 }
 
 .hint {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--text-tertiary);
+  composes: hint from "../../../styles/dashboard.module.css";
 }
 
 /* Endpoint addresses can get arbitrarily long — truncate in the table instead of bloating the
