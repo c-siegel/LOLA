@@ -36,6 +36,7 @@ _BLOCKED_API_BASE_HOSTNAMES = {
     "tts-local",
     "docling",
     "stt-model",
+    "tts-model",
 }
 # AWS IMDSv2's IPv6 alias lives in fd00::/8 (unique-local), which ipaddress's `is_link_local`
 # doesn't cover, so it's blocked by exact match alongside the well-known v4 metadata IP.
