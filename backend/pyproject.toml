@@ -27,6 +27,9 @@ dependencies = [
     "numpy>=1.24",
     "anyio>=4.0",
     "pyyaml>=6.0",
+    # Text normalization for TTS (features/ai/tts/normalizer.py). Capped at the minor version:
+    # before 1.0 a minor release may change the spoken output, a patch release never does.
+    "normt2s>=0.4.1,<0.5",
 ]
 
 [project.optional-dependencies]

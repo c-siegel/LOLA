@@ -212,8 +212,10 @@ It applies to everything their projects speak in that language — chat replies 
 streamed), the start audio and voice-clip previews — but never changes the displayed text. Rules
 are plain text, not regular expressions: a term matches literally (a space matches any
 whitespace), `{number}` stands for a number and is carried over into the spoken form, all rules
-apply in one longest-first pass, and they run after Markdown is stripped and before the built-in
-decimal/symbol rules (`app/features/ai/tts/normalizer.py`). At most 500 terms per language.
+apply in one longest-first pass, and they run after Markdown is stripped and before numbers,
+units and math become words. That built-in normalization is done by
+[normt2s](https://github.com/c-siegel/normt2s), configured in `app/features/ai/tts/normalizer.py`;
+the output of a rule is not normalized again. At most 500 terms per language.
 
 | Endpoint | Auth | Description |
 |---|---|---|

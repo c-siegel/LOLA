@@ -129,6 +129,10 @@ class PronunciationMatcher:
     def __bool__(self) -> bool:
         return self._pattern is not None
 
+    @property
+    def rules(self) -> tuple[PronunciationRule, ...]:
+        return tuple(self._rules)
+
     def apply(self, text: str, applied: list[PronunciationRule] | None = None) -> str:
         """Rewrite `text`; appends every rule that matched to `applied`, if given."""
         if self._pattern is None:

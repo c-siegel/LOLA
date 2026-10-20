@@ -103,10 +103,10 @@ def test_runs_after_markdown_and_before_the_builtin_rules() -> None:
             PronunciationRule("{number} m/s", "{number} Meter pro Sekunde"),
         )
     )
-    # Bold is stripped before the teacher's term can match; the decimal rule still spells out the
-    # number the template carried over, and the built-in "/" rule never sees "m/s".
+    # Bold is stripped before the teacher's term can match, and the number the template carried
+    # over is still read as a number.
     assert (
-        normalize_for_speech("**pH** bei 1,5 m/s", "de", matcher) == "p H bei 1 Komma 5 Meter pro Sekunde"
+        normalize_for_speech("**pH** bei 1,5 m/s", "de", matcher) == "p H bei eins Komma fünf Meter pro Sekunde"
     )
 
 
