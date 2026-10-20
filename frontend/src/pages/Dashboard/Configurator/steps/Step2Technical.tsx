@@ -12,6 +12,7 @@ import {
   keyDisplayName,
   modelLabel,
   useBrowserSttStatus,
+  useBrowserTtsStatus,
   useLocalTtsStatus,
   useProviders,
   useServerSttStatus,
@@ -84,6 +85,9 @@ export function Step2Technical({ draft, onChange }: StepProps) {
       onChange({ ttsVoiceClipId: null, ttsVoice: value.slice(LOCAL_VOICE_PREFIX.length) });
     }
   }
+  const browserTtsStatus = useBrowserTtsStatus().data;
+  const browserTtsAvailable = browserTtsStatus?.available ?? false;
+  const browserTtsSpeaksLanguage = browserTtsStatus?.language === draft.spokenLanguage;
   const browserSttStatusQuery = useBrowserSttStatus();
   const browserSttAvailable = browserSttStatusQuery.data?.available ?? false;
   const specs = providersQuery.data ?? [];
@@ -296,6 +300,18 @@ export function Step2Technical({ draft, onChange }: StepProps) {
                   )}
                 </>
               )}
+            </>
+          )}
+          {browserTtsAvailable && (
+            <>
+              <ToggleWithInfo
+                title={t("configurator.step2.ttsBrowserTitle")}
+                checked={draft.ttsBrowserEnabled}
+                onChange={(e) => onChange({ ttsBrowserEnabled: e.target.checked })}
+                info={t("configurator.step2.ttsBrowserText")}
+                disabled={!browserTtsSpeaksLanguage}
+              />
+              {!browserTtsSpeaksLanguage && <p className={styles.hint}>{t("configurator.step2.ttsBrowserLanguage")}</p>}
             </>
           )}
         </div>

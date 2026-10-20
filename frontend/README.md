@@ -32,7 +32,7 @@ See the [root README](../README.md) for how this fits into the rest of the app, 
 | `src/styles/` | Global styles, plus `dashboard.module.css` with patterns the dashboard pages share through CSS Modules `composes` (e.g. the content card) |
 | `src/types/` | Shared TypeScript types |
 | `src/vendor/` | Third-party code copied in rather than installed: `motion-engine/` (the avatar's gestures, see its `ATTRIBUTION.md`) |
-| `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), in-browser speech output for the latency test — Pocket TTS (`pocketWorker.ts`, used through `src/lib/pocketTts.ts`; the generation itself is `src/lib/pocketTtsCore.ts`, the model comes from `scripts/fetch-tts-model.sh`) and the microphone capture AudioWorklet |
+| `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), on-device speech output for the public chat and the latency test — Pocket TTS (`pocketWorker.ts`, used through `src/lib/pocketTts.ts`; the generation itself is `src/lib/pocketTtsCore.ts`, the model comes from `scripts/fetch-tts-model.sh`) and the microphone capture AudioWorklet |
 
 ## Pages
 
@@ -50,7 +50,7 @@ See the [root README](../README.md) for how this fits into the rest of the app, 
 | `/dashboard/change-password-required` | `Dashboard/ForcePasswordChange` | Forced password reset (e.g. after an admin-issued reset) |
 | `/dashboard/admin`, `/dashboard/admin/settings` | `Dashboard/Admin` | Admin-only: manage other users, site-wide settings (e.g. registration on/off) |
 | `/dashboard/admin/pages`, `/dashboard/admin/pages/:id` | `Dashboard/Admin/Pages` | Admin-only: edit the landing page texts, imprint and privacy policy per language, create pages such as an accessibility statement, and see who changed what when |
-| `/c/:projectSlug` | `PublicChat` | The public chat page visitors use — no login required. Shows a loading screen until the on-device speech recognition model is ready (or has failed, in which case voice input uses the server) |
+| `/c/:projectSlug` | `PublicChat` | The public chat page visitors use — no login required. Shows a loading screen until the on-device speech recognition model is ready (or has failed, in which case voice input uses the server). Projects with on-device speech output load Pocket TTS in the background and speak replies on the device once it's ready (messages then go out with `speakOnDevice`); until then, the server speaks |
 | `/stt-test` | `SttTest` | Unlinked device test for on-device speech recognition: load time, live-text latency, re-decode times (see [docs/stt-device-test.md](../docs/stt-device-test.md)) |
 | `/impressum`, `/datenschutz`, `/credits` | `Imprint`, `Privacy`, `Credits` | Legal/attribution pages (German URLs, matching German legal terminology). Imprint and privacy show an admin's Markdown when there is one (visitor's language, then English), otherwise the built-in template — see `lib/pages.ts` |
 | `/p/:slug` | `CustomPage` | Pages an admin created, e.g. an accessibility statement; published ones can be linked in the site footer |

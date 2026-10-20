@@ -22,6 +22,9 @@ export interface PublicProject {
   // if the project/deployment opted out. Whenever null — or the visitor's browser can't run the
   // model — voice input goes through the /transcriptions route below instead.
   browserSttModelUrl: string | null;
+  // Base URL of the on-device speech output model (see lib/pocketTts.ts), or null if this project
+  // speaks through the server only. Once it has loaded, messages go out with speakOnDevice.
+  browserTtsModelUrl: string | null;
   // See types/project.ts — the page only uses the streaming endpoint when this AND ttsEnabled
   // are both true (see pages/PublicChat/index.tsx).
   streamingEnabled: boolean;
@@ -91,6 +94,9 @@ export interface StreamChunkEvent {
   motions: string[];
   // Plan steps ticked in this chunk, applied when its audio starts like the gestures.
   checks: ChecklistCheck[];
+  // What the device should say for this chunk (normalized, pronunciation list applied) — only
+  // sent with speakOnDevice, and then audioBase64 is null.
+  spoken?: string;
 }
 
 export interface StreamDoneEvent {
@@ -136,6 +142,7 @@ export async function sendMessageStream(
   history: ChatMessage[],
   handlers: StreamHandlers,
   signal: AbortSignal,
+  speakOnDevice = false,
 ): Promise<void> {
   let receivedAnyChunk = false;
   try {
@@ -143,7 +150,7 @@ export async function sendMessageStream(
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...requestHeaders(slug) },
-      body: JSON.stringify({ message, history }),
+      body: JSON.stringify({ message, history, speakOnDevice }),
       signal,
     });
     if (!res.ok) {
@@ -194,7 +201,7 @@ export const publicChatApi = {
     apiClient.post<{ unlockToken: string }>(`/public/${slug}/unlock`, { password }),
   // The backend returns {reply}, not a full Conversation (see app/features/chat/public_router.py) —
   // it was previously typed as a Conversation by mistake.
-  sendMessage: (slug: string, message: string, history: ChatMessage[], signal?: AbortSignal) =>
+  sendMessage: (slug: string, message: string, history: ChatMessage[], signal?: AbortSignal, speakOnDevice = false) =>
     // llmMs/ttsMs: backend-side call durations, only meaningful together with the client-side
     // timestamps captured in PublicChat/index.tsx's latency-test log (?latencyTest=1).
     apiClient.post<{
@@ -205,7 +212,9 @@ export const publicChatApi = {
       ttsMs: number | null;
       motions: string[];
       checks: ChecklistCheck[];
-    }>(`/public/${slug}/messages`, { message, history }, requestHeaders(slug), signal),
+      // What the device should say, only with speakOnDevice (see StreamChunkEvent.spoken).
+      spoken: string | null;
+    }>(`/public/${slug}/messages`, { message, history, speakOnDevice }, requestHeaders(slug), signal),
   sendMessageStream,
   // initialPrompt: text already transcribed earlier in the same recording (see the pause-triggered
   // segmentation in pages/PublicChat/index.tsx) — improves accuracy right at the segment seam.

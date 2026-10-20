@@ -33,6 +33,7 @@ export interface ConfiguratorDraft {
   sttServerEngine: SttServerEngine | null;
   sttEnabled: boolean;
   sttBrowserEnabled: boolean;
+  ttsBrowserEnabled: boolean;
   streamingEnabled: boolean;
   knowledgeMode: KnowledgeMode;
   knowledgeTopK: number;

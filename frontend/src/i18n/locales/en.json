@@ -443,7 +443,10 @@
       "localVoiceClips": "Your voice clips",
       "cloningOff": "Voice cloning isn't set up on this server, so your voice clips and donated voices can't be picked; a clip that is already selected is spoken with the default voice.",
       "localTtsUnreachable": "Local speech output isn't answering right now, so its voices can't be listed. The selected voice stays saved.",
-      "localTtsLanguageMissing": "Local speech output on this server doesn't speak this project's language. Pick another language or a cloud provider."
+      "localTtsLanguageMissing": "Local speech output on this server doesn't speak this project's language. Pick another language or a cloud provider.",
+      "ttsBrowserTitle": "On-device speech output",
+      "ttsBrowserText": "The visitor's own device speaks the replies (Pocket TTS, German voice \"Alba\") instead of getting them from the server. Each device downloads the model once (about 99 MB) before it speaks; until then, and on devices that can't load it, the speech output selected above speaks.",
+      "ttsBrowserLanguage": "Only for German projects: the model speaks German only."
     },
     "step3": {
       "defaultPreprompt": "You are a helpful, AI-powered learning assistant.\n\nAnswer in an age-appropriate, patient, and encouraging way. If you don't know something, say so honestly instead of guessing.",

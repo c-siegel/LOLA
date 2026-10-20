@@ -23,6 +23,7 @@ export const apiKeysApi = {
   listProviders: () => apiClient.get<ProviderSpec[]>("/providers"),
   localTtsStatus: () => apiClient.get<LocalTtsStatus>("/providers/local-tts-status"),
   browserSttStatus: () => apiClient.get<{ available: boolean }>("/providers/browser-stt-status"),
+  browserTtsStatus: () => apiClient.get<{ available: boolean; language: string }>("/providers/browser-tts-status"),
   serverSttStatus: () =>
     apiClient.get<{ defaultEngine: SttServerEngine; parakeetAvailable: boolean }>("/providers/server-stt-status"),
   list: () => apiClient.get<ApiKey[]>("/api-keys"),

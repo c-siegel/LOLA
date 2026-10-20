@@ -1,6 +1,6 @@
 // Runs Pocket TTS (Kyutai, German) in the browser off the main thread, so speech generation never
-// blocks the avatar's render loop or the chat UI. Only used by the latency test page
-// (pages/Dashboard/LatencyLab) through lib/pocketTts.ts, which has the message protocol. The
+// blocks the avatar's render loop or the chat UI. Used by the public chat (projects with on-device
+// speech output) and the latency test page through lib/pocketTts.ts, which has the message protocol. The
 // generation itself is lib/pocketTtsCore.ts; this file loads the files and talks to the page.
 //
 // The model files come from scripts/fetch-tts-model.sh (self-hosted under /models/, CC BY 4.0,
@@ -35,7 +35,9 @@ interface Manifest {
 
 export type PocketInbound =
   | { type: "init"; modelUrl: string }
-  | { type: "synthesize"; id: number; text: string };
+  | { type: "synthesize"; id: number; text: string }
+  /** Stops generating `id` (an interrupted reply); its "done" still follows. */
+  | { type: "cancel"; id: number };
 
 export type PocketOutbound =
   | { type: "progress"; loadedBytes: number; totalBytes: number }
@@ -48,6 +50,8 @@ let model: PocketTtsModel | null = null;
 let voice: FlowState | null = null;
 // Requests run one after another, in the order the reply's chunks arrive.
 let chain: Promise<void> = Promise.resolve();
+// Cancelled before or while they run (see "cancel").
+const cancelled = new Map<number, AbortController>();
 
 function post(message: PocketOutbound, transfer: Transferable[] = []) {
   // The options form, because this project type-checks workers against the DOM lib.
@@ -111,11 +115,14 @@ async function synthesize(id: number, text: string) {
   if (!model || !voice) throw new Error("Pocket TTS is not loaded.");
   const started = performance.now();
   let samples = 0;
-  for await (const audio of model.stream(text, voice)) {
+  const controller = cancelled.get(id) ?? new AbortController();
+  cancelled.set(id, controller);
+  for await (const audio of model.stream(text, voice, { signal: controller.signal })) {
     samples += audio.length;
     const transferable = new Float32Array(audio);
     post({ type: "audio", id, samples: transferable, sampleRate: model.sampleRate }, [transferable.buffer]);
   }
+  cancelled.delete(id);
   post({ type: "done", id, synthMs: performance.now() - started, audioSeconds: samples / model.sampleRate });
 }
 
@@ -131,5 +138,12 @@ self.onmessage = (event: MessageEvent<PocketInbound>) => {
     case "synthesize":
       run(message.id, () => synthesize(message.id, message.text));
       break;
+    case "cancel": {
+      // Not chained: it has to reach a request that's running or still waiting in the chain.
+      const controller = cancelled.get(message.id) ?? new AbortController();
+      controller.abort();
+      cancelled.set(message.id, controller);
+      break;
+    }
   }
 };

@@ -56,6 +56,10 @@ export interface Project {
   // server's local Whisper — only shown/usable in the Configurator when the deployment also
   // allows it (see useBrowserSttStatus in lib/providers.ts).
   sttBrowserEnabled: boolean;
+  // Whether the visitor's device speaks the replies (Pocket TTS in the browser), with the server's
+  // TTS as the fallback — only offered when the deployment allows it and for its model's language
+  // (see useBrowserTtsStatus in lib/providers.ts).
+  ttsBrowserEnabled: boolean;
   // Whether the public chat should use sentence-chunked streaming (text+audio per sentence)
   // instead of waiting for the full reply — see backend features/chat/public_router.py's /messages/stream.
   // Meaningless without ttsEnabled, so the configurator only shows this toggle when TTS is on.

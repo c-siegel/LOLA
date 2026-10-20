@@ -443,7 +443,10 @@
       "localVoiceClips": "Deine Stimmclips",
       "cloningOff": "Stimmklonen ist auf diesem Server nicht eingerichtet. Deine Stimmclips und gespendete Stimmen sind deshalb nicht wählbar; ein schon gewählter Clip wird mit der Standardstimme gesprochen.",
       "localTtsUnreachable": "Die lokale Sprachausgabe antwortet gerade nicht, deshalb fehlt die Liste ihrer Stimmen. Die gewählte Stimme bleibt gespeichert.",
-      "localTtsLanguageMissing": "Die lokale Sprachausgabe dieses Servers spricht die Sprache dieses Projekts nicht. Wähle eine andere Sprache oder einen Cloud-Anbieter."
+      "localTtsLanguageMissing": "Die lokale Sprachausgabe dieses Servers spricht die Sprache dieses Projekts nicht. Wähle eine andere Sprache oder einen Cloud-Anbieter.",
+      "ttsBrowserTitle": "Sprachausgabe auf dem Gerät",
+      "ttsBrowserText": "Das Gerät der Besucherin spricht die Antworten selbst (Pocket TTS, deutsche Stimme „Alba“), statt sie vom Server zu bekommen. Jedes Gerät lädt das Modell einmal herunter (etwa 99 MB), bevor es spricht; bis dahin und auf Geräten, die es nicht laden können, spricht die oben gewählte Sprachausgabe.",
+      "ttsBrowserLanguage": "Nur für deutschsprachige Projekte: Das Modell spricht nur Deutsch."
     },
     "step3": {
       "defaultPreprompt": "Du bist ein hilfreicher, KI-gestützter Lernassistent.\n\nAntworte kindgerecht, geduldig und ermutigend. Wenn du etwas nicht weißt, sag das ehrlich, anstatt zu raten.",

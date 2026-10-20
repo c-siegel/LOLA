@@ -1,5 +1,5 @@
-// What the latency test page (pages/Dashboard/LatencyLab) needs from an engine that speaks on this
-// device instead of the server, so it can stay independent of the engine (Pocket TTS today).
+// What the public chat and the latency test page need from an engine that speaks on this device
+// instead of the server, so they stay independent of the engine (Pocket TTS today).
 
 export interface BrowserSynthesis {
   /** From the request until the first audio samples arrived. */
@@ -17,5 +17,7 @@ export interface BrowserTts {
     text: string,
     language: string,
     onAudio: (samples: Float32Array<ArrayBuffer>, sampleRate: number) => void,
+    /** Stops generating early (the promise still resolves). */
+    signal?: AbortSignal,
   ): Promise<BrowserSynthesis>;
 }

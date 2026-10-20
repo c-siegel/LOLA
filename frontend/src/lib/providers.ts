@@ -54,6 +54,15 @@ export function useBrowserSttStatus() {
   });
 }
 
+/** Whether this deployment offers on-device speech output, and the one language its model speaks. */
+export function useBrowserTtsStatus() {
+  return useQuery({
+    queryKey: ["browser-tts-status"],
+    queryFn: apiKeysApi.browserTtsStatus,
+    staleTime: Infinity,
+  });
+}
+
 /** The deployment's default server STT engine and whether Parakeet's model files are present —
  * drives the Configurator's server-engine choice (see Step2Technical.tsx). */
 export function useServerSttStatus() {

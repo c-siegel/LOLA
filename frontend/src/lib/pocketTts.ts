@@ -1,5 +1,5 @@
-// Pocket TTS in the browser, for the latency test page (pages/Dashboard/LatencyLab): the main-thread
-// side of workers/pocketWorker.ts. German only, with Kyutai's predefined voice "alba" — no voice
+// Pocket TTS in the browser, for the public chat (projects with on-device speech output) and the
+// latency test page (pages/Dashboard/LatencyLab): the main-thread side of workers/pocketWorker.ts. German only, with Kyutai's predefined voice "alba" — no voice
 // cloning (that part of the model isn't shipped).
 
 import type { PocketInbound, PocketOutbound } from "@/workers/pocketWorker";
@@ -48,11 +48,14 @@ export class PocketBrowserTts implements BrowserTts {
     text: string,
     _language: string,
     onAudio: (samples: Float32Array<ArrayBuffer>, sampleRate: number) => void,
+    signal?: AbortSignal,
   ): Promise<BrowserSynthesis> {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { started: performance.now(), firstAudioMs: null, onAudio, resolve, reject });
       this.send({ type: "synthesize", id, text });
+      // The worker stops generating and still answers "done", which resolves this promise.
+      signal?.addEventListener("abort", () => this.send({ type: "cancel", id }), { once: true });
     });
   }
 
