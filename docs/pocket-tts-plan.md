@@ -1,7 +1,9 @@
 # Plan: Pocket TTS as a second local TTS engine (Latency Lab only)
 
-Status: **plan only, nothing implemented.** Written 2026-10-19. Statements about Pocket TTS and its
-ONNX exports come from the model cards and READMEs and still have to be verified in phase 0.
+Status: **browser engine done (phase 4); Pocket replaces Sopro everywhere — see
+["Decided 2026-10-20"](#decided-2026-10-20-pocket-replaces-sopro).** Written 2026-10-19. The original
+goal below (Pocket next to Sopro, Latency Lab only) is kept for the record; phases 1–3 are
+superseded by that section.
 
 ## Goal
 
@@ -321,7 +323,140 @@ iframe, see `parakeetWorker.ts`).
 **Next:** measure on the target iPads in the Latency Lab (time to first audio, gaps during
 playback, and whether Safari keeps the tab alive with Parakeet + Pocket + avatar loaded).
 
-## Phase 1: sidecar (`local-tts/`)
+## Decided 2026-10-20: Pocket replaces Sopro
+
+The maintainer compared both engines in the Latency Lab: Pocket TTS sounds clearly better than
+Sopro and the int8 model runs faster than real time in the browser. Sopro goes away:
+
+- **Step 1 — done 2026-10-20:** Sopro removed as an in-browser engine (worker, wrapper,
+  `@soprotts/onnx-web`, Latency Lab panel and strings). A stored `"browser"` setting maps to
+  `"browser-pocket"`.
+- **Step 2 — this section:** Pocket becomes *the* engine of the `local-tts/` sidecar, the
+  production path for every project without a cloud TTS key. Sopro is removed from the sidecar,
+  its image and the docs in the same change. No engine switch, no side-by-side operation.
+
+### What Kyutai ships (checked 2026-10-20)
+
+`kyutai/pocket-tts-without-voice-cloning@a3055dc` (CC BY 4.0, ungated) and `pocket-tts` 3.3.0 on
+PyPI:
+
+| Language | Model (6 layers) | Native preset voice (Kyutai's default) | Its source and licence |
+|---|---|---|---|
+| English | `english` (+ dated, 24-layer and small 2M/7M/18M variants) | — (fallback `alba`) | — |
+| German | `german`, `german_24l` | `juergen` | `de-DE-juergen.mp3`, **source undocumented** |
+| French | `french`, `french_24l` | `estelle` | Kyutai's own recording, CC0 |
+| Italian | `italian`, `italian_24l` | `giovanni` | Mozilla Common Voice, CC0 |
+| Spanish | `spanish`, `spanish_24l` | `lola` | Mozilla Common Voice, CC0 |
+| Portuguese | `portuguese`, `portuguese_24l` | `rafael` | a YouTube clip (`g-Vi8PgmSY0`), **source undocumented** |
+| Dutch | `dutch`, `dutch_24l` | `daan` | CML-TTS, CC BY 4.0 |
+
+- Dutch is new since the plan was written. Each language is its own ~219 MB model; voices are
+  precomputed states, and **every one of the 27 presets exists for all seven languages** (the
+  speaker keeps their voice, the model supplies the language).
+- Voice licences (from `pocket_tts/utils/utils.py` → `kyutai/tts-voices`): CC0 — marius, javert,
+  bill_boerst, peter_yearsley, stuart_bell, caro_davy, estelle, giovanni, lola; CC BY 4.0 — alba,
+  anna, vera, fantine, charles, paul, eponine, azelma, george, mary, jane, michael, eve, daan;
+  **non-commercial, never offered** — cosette (Expresso), jean (EARS); **undocumented, not offered
+  until Kyutai answers** — juergen, rafael.
+- So German and Portuguese have no native-speaker preset we may use yet. German with `alba` is
+  what we measured (5.0 % WER, H2 above) and what the browser uses; keep it as the German default
+  so server and browser sound alike. Ask Kyutai about `juergen` and `rafael` (GitHub issue).
+- Kyutai retrained German on 2026-10-01; PyPI 3.3.0 still loads the 2026-09-24 weights. The
+  browser runs the October weights.
+
+### Decision needed before coding: teachers' own voices
+
+Sopro clones every voice clip (Dashboard → Voices; the consent checkbox already exists). Pocket only
+clones with the **gated** weights (`kyutai/pocket-tts`, Hugging Face token whose account accepted
+Kyutai's terms); the ungated release has the voice encoder zeroed.
+
+- **A. Presets plus optional cloning (recommended).** `TTS_HF_TOKEN` set → clips are cloned as
+  today. Not set → a project with a clip speaks with the language's default preset, the dashboard
+  says so (Voices page and configurator), nothing fails. Deployments keep working either way.
+- **B. Presets only.** No token handling, no encoder; the Voices page is hidden when the only TTS is
+  local. Simpler, but removes a feature teachers use today.
+
+Both variants add a **preset voice picker** for local TTS in the configurator (today the voice
+field is ignored for local TTS), limited to the allowlist above.
+
+### Phase 0: checks (half a day)
+
+1. Does `TTSModel.load_model` accept a weights revision, so the server can pin the October German
+   weights (`ab24877` or newer) that the browser uses? Otherwise install `pocket-tts` from a pinned
+   git commit until 3.4 ships.
+2. English: does Pocket read digits, dates and abbreviations in English, or does English need a
+   verbalizer like German? Same 12-sentence WER round trip as above, in English.
+3. Memory and speed of the sidecar with German + English loaded, 2 concurrent requests, on the
+   reference laptop (RTF, first audio, peak RAM). Decides the default for `TTS_LANGUAGES`.
+4. With a token: clone one teacher clip, compare to `alba` by ear and by WER.
+
+### Phase 1: sidecar (`local-tts/`)
+
+- `app/synthesis.py` rewritten for Pocket: one `TTSModel` per language, loaded lazily on first use
+  and cached; `torch.set_num_threads(settings.torch_threads)` set explicitly (importing
+  `pocket_tts` sets it to 1 process-wide).
+- Language codes `en de fr it es pt nl` → Pocket's names. A language outside
+  `settings.languages` → `UnsupportedLanguageError` (400), as today.
+- Voices: the request's `voice` (a preset name, checked against the allowlist) or
+  `voice_sha256` (a stored clip, variant A only) or the language's default preset. Precomputed
+  states are cached per (language, voice); cloned clips per (language, sha256).
+- API unchanged except an optional `"voice"` field in `POST /synthesize`; `GET /health` additionally
+  returns `{"languages": [...], "voices": [...], "cloning": bool}` so the backend can report it.
+- Output: WAV at Pocket's 24 kHz with the existing 0.4 s silent tail (check whether Pocket still
+  needs it — its `frames_after_eos` already lets speech ring out).
+- Settings: drop `TTS_MODEL_REPO`, `TTS_QUANTIZATION`; `TTS_VOICES_DIR` becomes optional (an
+  operator's own default clip per language still works in variant A). New: `TTS_LANGUAGES`
+  (default `de,en`), `TTS_HF_TOKEN` (variant A), `TTS_TORCH_THREADS`.
+- `pyproject.toml`: replace `sopro` by `pocket-tts>=3.3,<4`; add `pytest` dev extra.
+- **New:** `local-tts/tests/` (the sidecar has none today), with the model faked at
+  `TTSModel`: language mapping, allowlist (cosette/jean/juergen/rafael refused), clip storage and
+  hash checks, 404 `VOICE_NOT_STORED`, cloning disabled without a token.
+- `docker/local-tts.Dockerfile`: same CPU-torch step, then `pip install .`. Compose: rename the
+  `sopro-voices` mount, add the new variables.
+
+### Phase 2: backend
+
+- `LocalTTSClient` sends the project's preset voice (`tts_voice`, reused for local TTS) as
+  `voice`; a clip still goes as `voice_sha256`.
+- Variant A without a token: don't send the clip (read `cloning` from the sidecar's `/health`,
+  cached briefly), so the request uses the preset instead of failing.
+- `/local-tts-status` grows `languages`, `voices`, `cloning`.
+- Tests in `backend/tests/` with the sidecar faked at httpx; OpenAPI snapshot update. No model
+  change, so no migration: `Project.tts_voice` and `tts_voice_clip_id` already exist.
+
+### Phase 3: frontend
+
+- Configurator: preset voice picker when the project's TTS is local; clip picker only when
+  `cloning` is true, otherwise a hint that clips need cloning to be enabled on the server.
+- Voices page: same hint when cloning is off (variant A) or hidden (variant B).
+- Latency Lab: "Local TTS on the server (Sopro)" → "(Pocket TTS)".
+- Credits page: Pocket TTS on the server (weights CC BY 4.0) and the credited voices; drop Sopro.
+- All strings in `de.json` and `en.json`.
+
+### Phase 4: docs and licences
+
+- Root README (the local-TTS section and the licence table), `local-tts/README.md`,
+  `local-tts/voices/README.md`, `docker/README.md`, `.env.example` (new/removed `TTS_*` variables
+  with their deploy path), `docs/latency-test.md`.
+- `pocket-tts` has an MIT licence file but no licence metadata: add a reviewed entry if the
+  sidecar gets the licence gate (worth adding now that it's the production TTS).
+
+### More languages for LOLA (separate change, after step 2)
+
+LOLA projects speak only German and English (`SPOKEN_LANGUAGE_VALUES`, several backend
+`Literal["de", "en"]`). The sidecar will be able to speak French, Italian, Spanish, Portuguese and
+Dutch as soon as it lists them in `TTS_LANGUAGES`, but offering them to teachers touches more than
+TTS:
+
+- speech input: Whisper handles all of them; check on-device Parakeet's languages;
+- the verbalizer is German only — every new language needs its own number/abbreviation rules
+  (Pocket can't read digits, at least in German);
+- the browser engine has German (and English in our mirror) only;
+- UI language lists, pronunciation dictionary and evaluation (`Literal["de", "en"]`).
+
+Start with one language (French: native CC0 preset `estelle`, own Kyutai recording) as a pilot.
+
+## Phase 1: sidecar (`local-tts/`) — superseded, see "Decided 2026-10-20"
 
 - Split `app/synthesis.py` into `app/engines/sopro.py` and `app/engines/pocket.py` behind one small
   interface (load, prepare reference, synthesize, sample rate). Clip storage and hashing stay shared;
@@ -334,7 +469,7 @@ playback, and whether Safari keeps the tab alive with Parakeet + Pocket + avatar
 - `pyproject.toml`: pin `pocket-tts` with an upper bound. Both engines accept CPU torch ≥ 2.5; the
   Dockerfile only changes through `pip install`.
 
-## Phase 2: backend (latency route only)
+## Phase 2: backend (latency route only) — superseded
 
 - `LatencyTestMessageIn.tts_mode` gains `"local-pocket"`.
 - `ChatContext.local_tts_engine: str = "sopro"`, passed through `synthesize_speech` to
@@ -344,7 +479,7 @@ playback, and whether Safari keeps the tab alive with Parakeet + Pocket + avatar
   `engine: "pocket"`; public/preview chat send no engine; 400 when Pocket isn't enabled. Update the
   OpenAPI snapshot.
 
-## Phase 3: frontend, server option
+## Phase 3: frontend, server option — superseded
 
 - `TtsMode` (`LatencyLab/metrics.ts`) gains `"local-pocket"`, shown only when the sidecar reports
   Pocket.
