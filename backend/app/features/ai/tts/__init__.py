@@ -15,6 +15,8 @@ How to use:
     audio_bytes, content_type = synthesize_speech(text, None, None, "de", voice_clip=reference)
 """
 
+from normt2s import RuleSet
+
 from app.core.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.providers import CARTESIA_PROVIDER, GOOGLE_CLOUD_TTS_PROVIDER
@@ -24,7 +26,6 @@ from app.features.ai.tts.google import GoogleCloudTTSClient
 from app.features.ai.tts.litellm_provider import LiteLLMSpeechClient
 from app.features.ai.tts.local import LocalTTSClient, VoiceReference
 from app.features.ai.tts.normalizer import normalize_for_speech
-from app.features.ai.tts.pronunciation import PronunciationMatcher
 from app.features.api_keys.models import UserApiKey
 
 __all__ = ["TTSClient", "VoiceReference", "VoiceRequiredError", "get_tts_client", "synthesize_speech"]
@@ -59,17 +60,21 @@ def synthesize_speech(
     language: str = "de",
     voice_clip: VoiceReference | None = None,
     local_timeout_seconds: float | None = None,
-    pronunciation: PronunciationMatcher | None = None,
+    pronunciation: RuleSet | None = None,
+    normalized: bool = False,
 ) -> tuple[bytes, str]:
     """Generate speech for `text`, dispatching to the right provider integration for the given key.
 
-    `text` is normalized for speech first (see normalizer.py) — decimal numbers and math symbols
-    read correctly, but this only affects what's spoken, never what's displayed. `pronunciation` is
-    the teacher's own word list for `language` (see features/pronunciation/service.py::matcher_for).
+    `text` is normalized for speech first (see normalizer.py) — numbers, units and math read
+    correctly, but this only affects what's spoken, never what's displayed. `pronunciation` is
+    the teacher's own word list for `language` (see features/pronunciation/service.py::rules_for).
+    `normalized=True` skips that step for text that already is the spoken form (a streamed reply's
+    chunks come out of normalizer.py::speech_stream normalized), so it isn't rewritten twice.
 
     `api_key_record` is None when the caller has TTS enabled but no cloud key configured — same
     convention as features/ai/stt/__init__.py::transcribe_audio's `api_key_record` (see get_tts_client).
     """
-    text = normalize_for_speech(text, language, pronunciation)
+    if not normalized:
+        text = normalize_for_speech(text, language, pronunciation)
     client = get_tts_client(api_key_record, voice_clip, local_timeout_seconds)
     return client.synthesize(text, tts_voice, language)

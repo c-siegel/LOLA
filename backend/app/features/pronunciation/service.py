@@ -3,24 +3,25 @@ Pronunciation Word List Service
 
 Manages each teacher's own pronunciation rules (features/pronunciation/models.py): adding,
 editing and deleting entries, importing/exporting them as plain text/CSV, and handing the TTS a
-compiled matcher for a teacher's list (see features/ai/tts/pronunciation.py).
+compiled rule set for a teacher's list (see features/ai/tts/pronunciation.py).
 
 How to use:
-    from app.features.pronunciation.service import matcher_for
+    from app.features.pronunciation.service import rules_for
 
-    matcher = matcher_for(session, project.user_id, project.spoken_language)
-    synthesize_speech(text, voice, key, project.spoken_language, pronunciation=matcher)
+    rules = rules_for(session, project.user_id, project.spoken_language)
+    synthesize_speech(text, voice, key, project.spoken_language, pronunciation=rules)
 """
 
 import csv
 import io
 from dataclasses import dataclass, field
 
+from normt2s import Rule, RuleSet
 from sqlmodel import Session, select
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import DomainError
-from app.features.ai.tts.pronunciation import PronunciationMatcher, PronunciationRule, compile_rules
+from app.features.ai.tts.pronunciation import compile_rules
 from app.features.pronunciation.models import PronunciationEntry
 from app.features.pronunciation.schemas import (
     PronunciationEntryCreate,
@@ -136,11 +137,11 @@ def delete_entry(session: Session, entry: PronunciationEntry) -> None:
     session.commit()
 
 
-def _to_rule(entry: PronunciationEntry) -> PronunciationRule:
-    return PronunciationRule(entry.term, entry.spoken, entry.whole_word, entry.case_sensitive)
+def _to_rule(entry: PronunciationEntry) -> Rule:
+    return Rule(entry.term, entry.spoken, entry.whole_word, entry.case_sensitive)
 
 
-def matcher_for(session: Session, user_id: str, language: str) -> PronunciationMatcher | None:
+def rules_for(session: Session, user_id: str, language: str) -> RuleSet | None:
     """The compiled word list of `user_id` for `language`, or None if it's empty.
 
     Read fresh on every call (one small indexed query), so an edit applies to the very next reply

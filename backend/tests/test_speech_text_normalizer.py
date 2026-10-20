@@ -3,7 +3,7 @@ read is normt2s's own job and tested there; these only check what LOLA configure
 
 import pytest
 
-from app.features.ai.tts.normalizer import normalize_for_speech
+from app.features.ai.tts.normalizer import normalize_for_speech, speech_stream
 
 
 @pytest.mark.parametrize(
@@ -60,3 +60,35 @@ def test_speaks_each_language(text: str, language: str, expected: str) -> None:
 )
 def test_speaks_math(text: str, language: str, expected: str) -> None:
     assert normalize_for_speech(text, language) == expected
+
+
+def stream_pieces(text: str, step: int = 1) -> list:
+    """The pieces speech_stream releases for `text`, fed `step` characters at a time."""
+    stream = speech_stream("de")
+    pieces = [p for i in range(0, len(text), step) for p in stream.feed_pieces(text[i : i + step])]
+    tail = stream.flush_piece()
+    return pieces + ([tail] if tail else [])
+
+
+def test_stream_releases_a_short_first_chunk_then_longer_ones() -> None:
+    first = "Das ist der erste Satz hier."  # over the 25-character first-chunk minimum
+    rest = "Kurz. " * 10 + "Ende."
+    pieces = stream_pieces(f"{first} {rest}")
+    assert pieces[0].raw.strip() == first
+    # Later chunks wait for 80 characters instead of releasing every short sentence.
+    assert all(len(p.raw) >= 80 for p in pieces[1:-1])
+
+
+def test_stream_never_cuts_inside_a_number_unit_or_abbreviation() -> None:
+    text = "Ein Auto fährt hier mit 120 km/h. Dr. Müller sagt, z. B. 3,5 kg sind genug für heute."
+    pieces = stream_pieces(text)
+    assert "".join(p.raw for p in pieces) == text
+    assert "".join(p.spoken for p in pieces) == normalize_for_speech(text, "de")
+    for piece in pieces:
+        assert not piece.raw.rstrip().endswith(("Dr.", "z.", "B.", "120")), piece
+
+
+def test_stream_cuts_a_long_run_without_sentence_ends() -> None:
+    pieces = stream_pieces("wort " * 120)
+    assert len(pieces) >= 2
+    assert all(len(p.raw) <= 300 for p in pieces)

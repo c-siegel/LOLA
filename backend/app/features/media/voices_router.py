@@ -26,7 +26,7 @@ from app.features.media import service as media
 from app.features.media.models import VoiceClip
 from app.features.media.schemas import VoiceClipOut, VoicePreviewIn
 from app.features.media.voice_audio import normalize_voice_clip
-from app.features.pronunciation.service import matcher_for
+from app.features.pronunciation.service import rules_for
 from app.features.users.models import User
 from app.storage.files import immutable_file_response
 
@@ -118,7 +118,7 @@ def preview_voice_clip(
             voice_clip=VoiceReference(sha256=clip.sha256, path=clip.file_path),
             local_timeout_seconds=settings.voice_preview_timeout_seconds,
             # The teacher should hear the clip exactly as their students would, word list included.
-            pronunciation=matcher_for(session, current_user.id, body.language),
+            pronunciation=rules_for(session, current_user.id, body.language),
         )
     except Exception as exc:
         logger.exception("Voice preview failed (clip_id=%s)", clip.id)

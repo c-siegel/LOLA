@@ -12,15 +12,20 @@ How to use:
 
     spoken_text = normalize_for_speech(reply_text, language=project.spoken_language)
     # With the project owner's own word list (see pronunciation.py):
-    spoken_text = normalize_for_speech(reply_text, project.spoken_language, pronunciation=matcher)
+    spoken_text = normalize_for_speech(reply_text, project.spoken_language, pronunciation=rules)
+
+    # A streamed LLM reply, chunk by chunk (see features/chat/pipeline.py::stream_turn):
+    stream = speech_stream(project.spoken_language, rules)
+    for delta in llm_deltas:
+        for piece in stream.feed_pieces(delta):
+            show(piece.raw)
+            speak(piece.spoken)
+    last = stream.flush_piece()  # None if nothing was left
 """
 
 import threading
-from functools import lru_cache
 
-from normt2s import Normalizer, Rule, RuleSet
-
-from app.features.ai.tts.pronunciation import PronunciationMatcher, PronunciationRule
+from normt2s import Normalizer, RuleSet, StreamNormalizer
 
 _DEFAULT_LANGUAGE = "de"
 # Gesture and conversation-plan markers ("::nod_yes::", "::done_2::"). motion.py::extract_markers
@@ -30,6 +35,13 @@ _DEFAULT_LANGUAGE = "de"
 _MARKER_PATTERN = r"(?<![\w:])::[ \t]*[A-Za-z][\w -]{0,38}?[ \t]*::"
 # normt2s reads "·" only inside $...$, but LLMs write "F = m · a" in plain text too.
 _MULTIPLICATION_DOT = {"de": "mal", "en": "times"}
+
+# Chunk sizes for a streamed reply: the first chunk is short so the avatar starts speaking early,
+# later ones are longer so the voice doesn't stutter between many tiny clips, and a run without any
+# sentence end is still cut eventually so it can't stall the audio.
+_FIRST_CHUNK_MIN_CHARS = 25
+_MIN_CHUNK_CHARS = 80
+_MAX_CHUNK_CHARS = 300
 
 _normalizers: dict[str, Normalizer] = {}
 _lock = threading.Lock()
@@ -51,15 +63,10 @@ def _normalizer(language: str) -> Normalizer:
         return _normalizers[language]
 
 
-@lru_cache(maxsize=256)
-def _rule_set(rules: tuple[PronunciationRule, ...]) -> RuleSet:
-    return RuleSet([Rule(r.term, r.spoken, r.whole_word, r.case_sensitive) for r in rules])
-
-
 def normalize_for_speech(
     text: str,
     language: str,
-    pronunciation: PronunciationMatcher | None = None,
+    pronunciation: RuleSet | None = None,
     applied: list | None = None,
 ) -> str:
     """The spoken form of `text`.
@@ -68,5 +75,16 @@ def normalize_for_speech(
     after Markdown is stripped and before numbers become words. `applied`, if given, collects the
     rules from it that matched (for the dashboard's test box).
     """
-    rules = _rule_set(pronunciation.rules) if pronunciation else None
-    return _normalizer(language).normalize(text, rules=rules, applied=applied)
+    return _normalizer(language).normalize(text, rules=pronunciation or None, applied=applied)
+
+
+def speech_stream(language: str, pronunciation: RuleSet | None = None) -> StreamNormalizer:
+    """A stream that buffers LLM deltas and releases them as Pieces of (raw, spoken) text at
+    sentence ends — never inside a number and its unit, an abbreviation or a marker. The raw parts
+    join to exactly the input, the spoken parts to normalize_for_speech of it."""
+    return _normalizer(language).stream(
+        max_buffer=_MAX_CHUNK_CHARS,
+        first_min_chars=_FIRST_CHUNK_MIN_CHARS,
+        min_chars=_MIN_CHUNK_CHARS,
+        rules=pronunciation or None,
+    )

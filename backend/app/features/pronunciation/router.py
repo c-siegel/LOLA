@@ -3,7 +3,7 @@ Pronunciation Word List Routes
 
 Lets a teacher maintain their own list of terms the avatar should pronounce differently ("pH" ->
 "p H"), per spoken language, and import/export it as text. The list applies to the speech of
-every one of their projects in that language (see service.py::matcher_for); the logic lives in
+every one of their projects in that language (see service.py::rules_for); the logic lives in
 service.py, the test box's in preview.py.
 """
 
