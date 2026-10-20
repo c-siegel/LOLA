@@ -364,7 +364,7 @@ PyPI:
 - Kyutai retrained German on 2026-10-01; PyPI 3.3.0 still loads the 2026-09-24 weights. The
   browser runs the October weights.
 
-### Decision needed before coding: teachers' own voices
+### Decision: teachers' own voices (decided 2026-10-20: A)
 
 Sopro clones every voice clip (Dashboard → Voices; the consent checkbox already exists). Pocket only
 clones with the **gated** weights (`kyutai/pocket-tts`, Hugging Face token whose account accepted
@@ -379,7 +379,55 @@ Kyutai's terms); the ungated release has the voice encoder zeroed.
 Both variants add a **preset voice picker** for local TTS in the configurator (today the voice
 field is ignored for local TTS), limited to the allowlist above.
 
-### Phase 0: checks (half a day)
+### Done 2026-10-20 — variant A implemented
+
+The maintainer chose **A** and pointed at the CC0 voices in `kyutai/tts-voices` (`voice-zero/`,
+`voice-donations/`). Commits on `pocket-tts-implementation`: sidecar, backend, frontend.
+
+**Phase 0 results** (Ryzen 5 5625U, one torch thread, ungated October weights, preset alba):
+
+- Weights: the ungated repo at `a3055dc` carries the October retrains (German, French, Italian,
+  Spanish, Portuguese 2026-10-01, English 2026-10-11, Dutch 2026-09-27) with unchanged tokenizers;
+  `pocket-tts` 3.3.0 pins `4e1e0a3` (September). The sidecar rewrites pocket-tts' configs to the
+  pinned revisions (ungated `a3055dc`, gated `a72dba0` — its content couldn't be checked without a
+  token). Voice states are taken from the same revision, since a state only fits its weights.
+- Speed: first audio ~80 ms, RTF ~0.25, for German and English alike. Loading ~20 s per language.
+- Memory: ~670 MB (German) + ~490 MB (English) on top of the process, ~1.6 GB peak RSS together.
+- Two threads generating on one model at once: both clips clean (Whisper round trip), 1.45 s wall
+  time for both — one model per language is enough, no pool.
+- **English needs a verbalizer too.** Plain sentences and abbreviations ("Dr.", "St.", "e.g.") are
+  fine, but numbers break: "fell on November 9, 1989" → "…November 9." (year dropped), "$12.50,
+  that's about 13 dollars" → "12 dollars", "pages 47 to 52 by Monday" → "pages 47-" (cut off),
+  "3² is 9" cut off. `verbalizer.py` only has German rules.
+
+**What was built**
+
+- Sidecar (`local-tts/`): Pocket replaces Sopro; `TTS_LANGUAGES` (default `de,en`) load at startup
+  in the background; `TTS_HF_TOKEN` enables cloning; `GET /voices` lists languages, cloning and
+  voices; `POST /synthesize` takes an optional `voice`. Presets: 23 allowlisted (the four
+  voice-zero voices are among them, so they work without a token). Donated voices: all 228 from
+  `voice-donations` at `323332d`, cloned from the `_enhanced.wav` on first use, `TTS_DONATED_VOICES`
+  narrows the list. Without cloning, clip and donation requests fall back to a preset instead of
+  failing. Cloned states are cached as files. First tests (24), CI job with the licence gate
+  (`pocket-tts` listed as reviewed: MIT file, no metadata).
+- Backend: forwards `tts_voice` to the sidecar; `/providers/local-tts-status` adds `reachable`,
+  `cloning`, `languages`, `voices` (cached 60 s).
+- Frontend: one local voice picker (presets, donated voices, own clips) with notes for cloning off,
+  sidecar down and missing language; Voices page and pronunciation test box respect cloning;
+  Credits list the voice sources.
+
+**Still open**
+
+- Real cloning with a token (teacher clip and a donated voice) — not testable here.
+- The Docker image wasn't built here (no Docker); release CI builds it.
+- English verbalizer (numbers, years, money, ranges, ordinals, superscripts) before English
+  projects rely on local TTS.
+- Curate the donated voices by ear: the names are the donors' own handles, some recordings may be
+  noisy or in other languages. `TTS_DONATED_VOICES` takes the curated list.
+- Ask Kyutai about the sources of `juergen` and `rafael` (native German and Portuguese presets).
+- Browser engine: other languages than German need their ONNX bundles.
+
+### Phase 0: checks (half a day) — done, results above
 
 1. Does `TTSModel.load_model` accept a weights revision, so the server can pin the October German
    weights (`ab24877` or newer) that the browser uses? Otherwise install `pocket-tts` from a pinned
