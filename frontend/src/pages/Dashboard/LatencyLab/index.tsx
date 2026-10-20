@@ -17,11 +17,9 @@ import { Input, Textarea } from "@/components/Input";
 import { AudioOnlySpeaker, TalkingHeadAvatar, type TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
 import { apiKeysApi } from "@/api/apiKeys";
 import { projectsApi } from "@/api/projects";
-import { voiceClipsApi } from "@/api/voiceClips";
 import { ParakeetSttEngine, isWebGpuAvailable, type LoadProgress } from "@/lib/parakeetStt";
 import { modelLabel, useBrowserSttStatus, useLocalTtsStatus, useProviders, useServerSttStatus } from "@/lib/providers";
 import { PocketBrowserTts } from "@/lib/pocketTts";
-import { SoproBrowserTts } from "@/lib/soproTts";
 import type { ChatMessage } from "@/types/chat";
 import {
   METRIC_COLUMNS,
@@ -53,7 +51,6 @@ interface StoredSettings {
   script?: string;
   repeats?: number;
   pauseMs?: number;
-  soproModelUrl?: string;
 }
 
 // Per-viewer convenience only: the page works the same with nothing stored (private browsing).
@@ -113,7 +110,6 @@ export function LatencyLabPage() {
   const stored = useMemo(loadSettings, []);
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: projectsApi.list });
   const keysQuery = useQuery({ queryKey: ["api-keys"], queryFn: apiKeysApi.list });
-  const clipsQuery = useQuery({ queryKey: ["voice-clips"], queryFn: voiceClipsApi.list });
   const specs = useProviders().data ?? [];
   const browserSttAvailable = useBrowserSttStatus().data?.available ?? false;
   const localTtsAvailable = useLocalTtsStatus().data?.available ?? false;
@@ -123,19 +119,22 @@ export function LatencyLabPage() {
   const llmKeys = (keysQuery.data ?? []).filter((key) => key.keyType === "llm");
   const [projectId, setProjectId] = useState(stored.projectId ?? "");
   const project = projects.find((p) => p.id === projectId) ?? null;
-  const [config, setConfig] = useState<LabConfig>({ ...DEFAULT_CONFIG, ...stored.config });
+  const [config, setConfig] = useState<LabConfig>(() => {
+    const merged = { ...DEFAULT_CONFIG, ...stored.config };
+    // "browser" was Sopro in this browser, removed in favour of Pocket TTS.
+    return (merged.ttsMode as string) === "browser" ? { ...merged, ttsMode: "browser-pocket" } : merged;
+  });
   const [script, setScript] = useState(stored.script ?? DEFAULT_SCRIPT);
   const [repeats, setRepeats] = useState(stored.repeats ?? 3);
   const [pauseMs, setPauseMs] = useState(stored.pauseMs ?? 1500);
-  const [soproModelUrl, setSoproModelUrl] = useState(stored.soproModelUrl ?? "");
 
   useEffect(() => {
     if (!projectId && projects.length) setProjectId(projects[0].id);
   }, [projectId, projects]);
 
   useEffect(() => {
-    saveSettings({ projectId, config, script, repeats, pauseMs, soproModelUrl });
-  }, [projectId, config, script, repeats, pauseMs, soproModelUrl]);
+    saveSettings({ projectId, config, script, repeats, pauseMs });
+  }, [projectId, config, script, repeats, pauseMs]);
 
   // ---- Device and engines ----
   const [device, setDevice] = useState<DeviceInfo>({
@@ -151,18 +150,13 @@ export function LatencyLabPage() {
   }, []);
 
   const parakeetRef = useRef<ParakeetSttEngine | null>(null);
-  const soproRef = useRef<SoproBrowserTts | null>(null);
   const pocketRef = useRef<PocketBrowserTts | null>(null);
   const [parakeet, setParakeet] = useState<EngineState>(idleEngine);
-  const [sopro, setSopro] = useState<EngineState & { backend: string | null }>({ ...idleEngine, backend: null });
   const [pocket, setPocket] = useState<EngineState & { backend: string | null }>({ ...idleEngine, backend: null });
-  const [voice, setVoice] = useState<{ name: string; prepareMs: number } | null>(null);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   useEffect(
     () => () => {
       parakeetRef.current?.dispose();
-      soproRef.current?.dispose();
       pocketRef.current?.dispose();
     },
     [],
@@ -183,20 +177,6 @@ export function LatencyLabPage() {
     });
   }
 
-  async function loadSopro() {
-    const engine = soproRef.current ?? new SoproBrowserTts();
-    soproRef.current = engine;
-    setVoice(null);
-    const started = performance.now();
-    setSopro({ ...idleEngine, status: "loading", backend: null });
-    try {
-      await engine.load(soproModelUrl.trim() || null, (progress) => setSopro((prev) => ({ ...prev, progress })));
-      setSopro({ status: "ready", progress: null, loadSeconds: (performance.now() - started) / 1000, error: null, backend: engine.backend });
-    } catch (error) {
-      setSopro({ ...idleEngine, status: "error", error: error instanceof Error ? error.message : String(error), backend: null });
-    }
-  }
-
   async function loadPocket() {
     const engine = pocketRef.current ?? new PocketBrowserTts();
     pocketRef.current = engine;
@@ -208,27 +188,6 @@ export function LatencyLabPage() {
     } catch (error) {
       setPocket({ ...idleEngine, status: "error", error: error instanceof Error ? error.message : String(error), backend: null });
     }
-  }
-
-  async function setSoproVoice(name: string, blob: Blob) {
-    setVoiceError(null);
-    try {
-      const prepareMs = await soproRef.current!.setReference(blob);
-      setVoice({ name, prepareMs });
-    } catch (error) {
-      setVoiceError(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  async function pickVoiceClip(clipId: string) {
-    const clip = clipsQuery.data?.find((c) => c.id === clipId);
-    if (!clip) return;
-    const response = await fetch(clip.fileUrl, { credentials: "include" });
-    if (!response.ok) {
-      setVoiceError(`HTTP ${response.status}`);
-      return;
-    }
-    await setSoproVoice(clip.name, await response.blob());
   }
 
   // ---- Clips ----
@@ -273,7 +232,6 @@ export function LatencyLabPage() {
   function setupProblem(spoken: boolean): string | null {
     if (!project) return t("latencyLab.noProject");
     if (spoken && config.sttMode === "device" && parakeetRef.current?.status !== "ready") return t("latencyLab.needParakeet");
-    if (config.ttsMode === "browser" && (sopro.status !== "ready" || !voice)) return t("latencyLab.needSopro");
     if (config.ttsMode === "browser-pocket" && pocket.status !== "ready") return t("latencyLab.needPocket");
     return null;
   }
@@ -298,7 +256,7 @@ export function LatencyLabPage() {
       speaker: speakerRef.current!,
       inputContext: inputContextRef.current!,
       parakeet: parakeetRef.current,
-      browserTts: config.ttsMode === "browser" ? soproRef.current : config.ttsMode === "browser-pocket" ? pocketRef.current : null,
+      browserTts: config.ttsMode === "browser-pocket" ? pocketRef.current : null,
       history: historyRef.current,
       signal,
       onPartial: setPartial,
@@ -489,7 +447,6 @@ export function LatencyLabPage() {
               <option value="local" disabled={!localTtsAvailable}>
                 {t("latencyLab.ttsLocal")}
               </option>
-              <option value="browser">{t("latencyLab.ttsBrowser")}</option>
               <option value="browser-pocket">{t("latencyLab.ttsBrowserPocket")}</option>
               <option value="none">{t("latencyLab.ttsNone")}</option>
             </select>
@@ -543,58 +500,6 @@ export function LatencyLabPage() {
             <HeadingWithInfo
               as="h4"
               className={styles.engineTitle}
-              title={t("latencyLab.soproTitle")}
-              info={t("latencyLab.soproHint")}
-            />
-            <Button size="sm" onClick={() => void loadSopro()} disabled={busy || sopro.status === "loading"}>
-              {t("latencyLab.load")}
-            </Button>
-          </div>
-          <Input
-            label={t("latencyLab.soproModelUrl")}
-            placeholder="https://huggingface.co/samuel-vitorino/sopro-v2-turbo-onnx/resolve/main"
-            value={soproModelUrl}
-            onChange={(e) => setSoproModelUrl(e.target.value)}
-          />
-          <EngineLine state={sopro} extra={sopro.backend ? t("latencyLab.soproBackend", { backend: sopro.backend }) : null} />
-          {sopro.status === "ready" && (
-            <div className={styles.voiceRow}>
-              <label className={styles.field}>
-                <span className={styles.label}>{t("latencyLab.soproVoice")}</span>
-                <select className={styles.select} defaultValue="" onChange={(e) => void pickVoiceClip(e.target.value)} disabled={busy}>
-                  <option value="" disabled>
-                    {t("latencyLab.soproVoicePick")}
-                  </option>
-                  {(clipsQuery.data ?? []).map((clip) => (
-                    <option key={clip.id} value={clip.id}>
-                      {clip.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.fileButton}>
-                <Upload size={16} /> {t("latencyLab.soproVoiceUpload")}
-                <input
-                  type="file"
-                  accept="audio/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (file) void setSoproVoice(file.name, file);
-                  }}
-                />
-              </label>
-            </div>
-          )}
-          {voice && <p className={styles.hint}>{t("latencyLab.soproVoiceReady", { name: voice.name, ms: ms(voice.prepareMs) })}</p>}
-          {voiceError && <p className={styles.error}>{voiceError}</p>}
-        </div>
-
-        <div className={styles.engine}>
-          <div className={styles.engineHead}>
-            <HeadingWithInfo
-              as="h4"
-              className={styles.engineTitle}
               title={t("latencyLab.pocketTitle")}
               info={t("latencyLab.pocketHint")}
             />
@@ -602,7 +507,7 @@ export function LatencyLabPage() {
               {t("latencyLab.load")}
             </Button>
           </div>
-          <EngineLine state={pocket} extra={pocket.backend ? t("latencyLab.soproBackend", { backend: pocket.backend }) : null} />
+          <EngineLine state={pocket} extra={pocket.backend ? t("latencyLab.engineBackend", { backend: pocket.backend }) : null} />
           {pocket.status === "ready" && pocketRef.current?.voice && (
             <p className={styles.hint}>
               {t("latencyLab.pocketVoice", { voice: pocketRef.current.voice, credit: pocketRef.current.voiceCredit ?? "" })}

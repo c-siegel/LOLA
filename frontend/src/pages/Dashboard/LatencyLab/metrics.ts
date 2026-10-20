@@ -3,12 +3,12 @@
 // ended, or the text was sent) — the moment from which a student waits.
 
 export type SttMode = "device" | "server-project" | "server-whisper" | "server-parakeet";
-/** "browser" is Sopro (kept as the stored value of earlier sessions), "browser-pocket" Pocket TTS. */
-export type TtsMode = "project" | "local" | "browser" | "browser-pocket" | "none";
+/** "browser-pocket": Pocket TTS in this browser. */
+export type TtsMode = "project" | "local" | "browser-pocket" | "none";
 
 /** Modes in which this device speaks the reply (the server sends text only). */
 export function isBrowserTtsMode(mode: TtsMode): boolean {
-  return mode === "browser" || mode === "browser-pocket";
+  return mode === "browser-pocket";
 }
 
 export interface LabConfig {
@@ -49,9 +49,9 @@ export interface TurnResult {
   llmFirstTokenMs: number | null;
   llmTotalMs: number | null;
   firstChunkTextReadyMs: number | null;
-  /** Synthesis time of the first chunk: server TTS, or Sopro in the browser until first audio. */
+  /** Synthesis time of the first chunk: server TTS, or the browser engine until first audio. */
   firstChunkTtsMs: number | null;
-  /** Summed synthesis time (server TTS, or Sopro's generation time). */
+  /** Summed synthesis time (server TTS, or the browser engine's generation time). */
   ttsTotalMs: number | null;
 
   /** Client: request sent → first chunk received. */

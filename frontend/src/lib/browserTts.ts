@@ -1,5 +1,5 @@
 // What the latency test page (pages/Dashboard/LatencyLab) needs from an engine that speaks on this
-// device instead of the server, so it can compare several (Sopro, Pocket TTS) without knowing which.
+// device instead of the server, so it can stay independent of the engine (Pocket TTS today).
 
 export interface BrowserSynthesis {
   /** From the request until the first audio samples arrived. */
