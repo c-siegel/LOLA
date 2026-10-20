@@ -35,6 +35,7 @@ raise `DomainError`s (`app/core/errors.py`) instead of HTTP exceptions.
 | `app/features/auth/` | Register, login, logout, password reset |
 | `app/features/users/` | Own profile (`/me`), account deletion, admin account management (`/admin/users`) |
 | `app/features/site_settings/` | Instance-wide settings: public (`/settings/public`) and admin (`/admin/settings`) |
+| `app/features/pages/` | Admin-editable public pages — landing page texts, imprint, privacy policy, custom pages — per language with a change history: public (`/pages`) and admin (`/admin/pages`) |
 | `app/features/projects/` | Project CRUD, publishing, YAML export/import, cached start-prompt audio |
 | `app/features/chat/` | Public chat (`/public/{slug}`) and the configurator's preview chat; `pipeline.py` combines LLM → save → TTS for both |
 | `app/features/ai/` | One package each for LLM, TTS and STT, with one module per provider behind a small interface (`get_llm_client`, `get_tts_client`, `get_stt_client`) — including the local-TTS sidecar and local Whisper fallbacks |
@@ -359,6 +360,29 @@ audio) and come back unchanged when it's re-enabled.
 |---|---|---|
 | `GET /settings/public` | Public | The public-facing site settings (imprint details, whether self-registration is open) — see `/admin/settings` for the full, admin-only version. |
 
+### Editable pages — `app/features/pages/` (prefixes `/pages`, `/admin/pages`)
+
+Admins can replace the built-in texts of the landing page, the imprint (`impressum`) and the privacy
+policy (`datenschutz`) per language, and add pages such as an accessibility statement, served by the
+frontend at `/p/{slug}`. Imprint, privacy and custom pages are Markdown (rendered without raw HTML);
+the landing page has fixed fields (headline, hero text, feature cards) plus an optional Markdown
+section. A visitor sees their language, then English, then the built-in template; the landing page
+falls back field by field. Saving a language empty resets it. Every change is recorded with its
+author and time; deleting an account keeps the entries but drops the author.
+
+| Method & path | Auth | Description |
+|---|---|---|
+| `GET /pages` | Public | The published custom pages linked from the site footer, with their title per language. |
+| `GET /pages/{slug}` | Public | A page's texts in every language it has; no texts means the built-in template. Unpublished or empty custom pages are 404. |
+| `GET /admin/pages` | Admin only | Every page (built-in ones first) with its texts and last change. |
+| `POST /admin/pages` | Admin only | Create a custom page (slug, published, footer link and order). |
+| `GET /admin/pages/{id}` | Admin only | One page with its texts. |
+| `PATCH /admin/pages/{id}` | Admin only | Change a custom page's slug, published state or footer link; built-in pages can't be changed here. |
+| `DELETE /admin/pages/{id}` | Admin only | Delete a custom page with its texts and history. |
+| `PUT /admin/pages/{id}/translations/{locale}` | Admin only | Save the text for `de` or `en`; an empty text resets that language. |
+| `DELETE /admin/pages/{id}/translations/{locale}` | Admin only | Reset one language to the fallback. |
+| `GET /admin/pages/{id}/history` | Admin only | Who changed the page when, newest first. |
+
 ## Service-layer functions
 
 Routers stay thin — they read the request, check auth, and delegate the actual work to a service
@@ -391,8 +415,9 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 | `features/analytics/service.py` | Analytics queries behind the dashboard | `get_stats(...)`, `get_project_overview(...)`, `get_sessions_paginated(...)`, `get_session_ids(...)`, `get_timeseries_data(...)`.<br>`get_conversation_detail(...)`, `get_conversations_for_export(...)`, `delete_conversations(...)`. |
 | `features/analytics/csv_export.py` | Conversation CSV/ZIP export | `build_export(rows)`, `build_conversation_csv(conversation, project)`, `conversation_export_filename(...)`. |
 | `features/users/service.py` | Own profile and admin account management | `update_profile(...)`, `change_password(...)`, `set_profile_picture(...)`.<br>`create_user_as_admin(...)`, `admin_reset_password(...)`, `admin_update_user(session, admin, target, data)` — guards against self-lockout and removing the last admin. |
-| `features/users/account.py` | Account deletion | `delete_user_account(session, user)` — cascades to projects, keys, conversations, the pronunciation word list, and uploaded files. |
+| `features/users/account.py` | Account deletion | `delete_user_account(session, user)` — cascades to projects, keys, conversations, the pronunciation word list, and uploaded files; detaches the account from the page history. |
 | `features/site_settings/service.py` | Instance-wide site settings | `get_or_create_site_settings(session)`, `update_site_settings(session, data)`. |
+| `features/pages/service.py` | Admin-editable public pages | `list_pages(session)` (creates the built-in rows on first use), `get_public_page(session, slug)`, `footer_pages(session)`.<br>`create_page(...)`, `update_page(...)`, `save_translation(session, author, page, locale, data)`, `reset_translation(...)`, `delete_page(...)`, `history(...)` — every change is recorded as a `SitePageRevision`. |
 | `features/chat/motion.py` | Avatar gestures the LLM marks as `::name::` in its reply (projects with `motion_enabled`) | `MOTIONS` — the ten offered gestures (must match `frontend/src/vendor/motion-engine/motions.json`).<br>`MOTION_PROMPT` — default gesture instructions, appended to the system prompt; a project's own `motion_prompt` replaces it (`effective_motion_prompt`, `compose_system_prompt`). `GET /projects/{id}/system-prompt` returns the assembled prompt.<br>`extract_markers(text)` — cleaned text plus each gesture's and each plan tick's position. |
 | `features/chat/checklist.py` | Conversation plan the LLM ticks off with `::done_N::` / `::undone_N::` (projects with `checklist_enabled`) | `checklist_for(project)` — the plan, or None when it is off or empty.<br>`replay(checks_per_message)` — the step IDs done after the history's ticks.<br>`checklist_prompt(checklist, done_ids)` — the plan for the system prompt, with a one-line status. |
 | `features/chat/streaming.py` | Splitting streamed LLM text into speakable sentence chunks | `SentenceChunker` — `feed()`/`flush()` for a live stream.<br>`chunk_text(text)` for an already-complete string; `sse_event(event, data)` for one SSE frame. |

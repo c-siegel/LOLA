@@ -10,10 +10,12 @@ import {
   Timer,
   ScrollText,
   BarChart3,
+  FileText,
   KeyRound,
   Languages,
   Settings2,
   ShieldCheck,
+  SlidersHorizontal,
   Menu,
   X,
   LogOut,
@@ -101,10 +103,22 @@ const NAV_ITEMS = {
     isActive: (p) => p.startsWith("/dashboard/evaluation"),
   },
   admin: {
-    labelKey: "nav.admin",
+    labelKey: "nav.adminUsers",
     href: "/dashboard/admin",
     icon: ShieldCheck,
-    isActive: (p) => p.startsWith("/dashboard/admin"),
+    isActive: (p) => p === "/dashboard/admin",
+  },
+  adminSettings: {
+    labelKey: "nav.adminSettings",
+    href: "/dashboard/admin/settings",
+    icon: SlidersHorizontal,
+    isActive: (p) => p.startsWith("/dashboard/admin/settings"),
+  },
+  adminPages: {
+    labelKey: "nav.adminPages",
+    href: "/dashboard/admin/pages",
+    icon: FileText,
+    isActive: (p) => p.startsWith("/dashboard/admin/pages"),
   },
 } satisfies Record<string, NavConfigItem>;
 
@@ -192,7 +206,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       items: [NAV_ITEMS.analytics, ...(knowledgeAvailable && evaluationAvailable ? [NAV_ITEMS.evaluation] : []), NAV_ITEMS.latencyLab, NAV_ITEMS.motionPrompt],
     },
     { id: "setup", labelKey: "nav.groups.setup", items: [NAV_ITEMS.apiDashboard, NAV_ITEMS.profile] },
-    ...(user?.isAdmin ? [{ id: "admin", labelKey: "nav.groups.admin", items: [NAV_ITEMS.admin] }] : []),
+    ...(user?.isAdmin ? [{ id: "admin", labelKey: "nav.groups.admin", items: [NAV_ITEMS.admin, NAV_ITEMS.adminSettings, NAV_ITEMS.adminPages] }] : []),
   ];
   const activeItem = navGroups.flatMap((group) => group.items).find((item) => item.isActive(location.pathname));
   const activeLabel = activeItem ? t(activeItem.labelKey) : t("nav.dashboardFallback");

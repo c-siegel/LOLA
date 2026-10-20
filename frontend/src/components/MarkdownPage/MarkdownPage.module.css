@@ -1,0 +1,50 @@
+/* Same frame as the built-in imprint and privacy pages (pages/Imprint, pages/Privacy), so
+   switching a page to the admin's own text doesn't change its look. */
+.container {
+  /* The public layout is a flex column, which would shrink a short page to its text's width. */
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  color: var(--text-primary);
+}
+
+.header {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.footer {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-default);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.footer p {
+  margin: 0 0 0.5rem;
+}
+
+.footer a {
+  color: var(--text-link);
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 3rem 1rem;
+  }
+
+  .header h1 {
+    font-size: 2rem;
+  }
+}
