@@ -116,22 +116,26 @@ user/group has access (as on a TrueNAS dataset).
 
 ## Local text-to-speech (optional)
 
-The `tts-local` service runs the local text-to-speech engine (see [local-tts/](../local-tts/)):
-speech output for projects without a cloud TTS key, including voices cloned from teachers' own
-clips (Dashboard → Voices). It's off unless you switch it on, because it needs a few GB of RAM
-and keeps CPU cores busy while it speaks. To enable it, add to the root `.env`:
+The `tts-local` service runs the local text-to-speech engine, Kyutai's Pocket TTS (see
+[local-tts/](../local-tts/)): speech output for projects without a cloud TTS key, with preset
+voices and — given a Hugging Face token — voices cloned from teachers' own clips (Dashboard →
+Voices). It's off unless you switch it on, because it needs ~0.7 GB of RAM per language and keeps
+CPU cores busy while it speaks. To enable it, add to the root `.env`:
 
 ```bash
 COMPOSE_PROFILES=local-tts   # makes `docker compose up` also start the tts-local service
 LOCAL_TTS_ENABLED=true       # makes the backend use it
+# Optional:
+TTS_LANGUAGES=de,en          # which Pocket TTS models to load (de en fr it es pt nl)
+TTS_HF_TOKEN=hf_...          # voice cloning, see local-tts/README.md#voice-cloning
 ```
 
 and run the usual `docker compose -f docker/docker-compose.yml --env-file .env up -d`. Its data
-lives in `<LOLA_DATA_DIR>/local-tts/`: the downloaded model (~600 MB, fetched on first use),
-optional default voices in `voices/<language>.wav` (see
-[local-tts/voices/README.md](../local-tts/voices/README.md)), and a cache of teachers' clips. The
-very first speech request after a start also loads the model, which can take over a minute;
-after that, a sentence takes a second or two.
+lives in `<LOLA_DATA_DIR>/local-tts/`: the downloaded models (~220 MB per language, fetched on
+the first start) and a cache of teachers' clips and cloned voices. The models load in the
+background right after the container starts (about 20 s per language); after that, a sentence
+starts within a fraction of a second. An older `voices/` folder there (default clips for the
+previous engine, Sopro) is no longer read and can be deleted.
 
 ## Knowledge bases (optional)
 

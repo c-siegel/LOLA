@@ -29,6 +29,10 @@ python -m alembic upgrade head
 python -m alembic revision --autogenerate -m "Add foo to project"   # then review by hand
 uvicorn app.main:app --reload             # http://localhost:8000, needs .env (see README)
 
+# Local TTS sidecar (from local-tts/) — tests fake Pocket TTS, nothing is downloaded
+pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install -e ".[dev]"
+python -m pytest
+
 # Knowledge service (from rag/) — tests fake the embedding model, nothing is downloaded
 pip install -e ".[dev]"
 RAG_SERVICE_TOKEN=test python -m pytest
@@ -51,8 +55,8 @@ npm run dev                               # http://localhost:5173, proxies /api 
 ```
 
 There is no linter/formatter config and no CI on pull requests — CI only runs on tagged releases
-(`.github/workflows/docker-publish.yml`: `pytest` and the licence gate for backend, `rag/` and
-`rag-eval/`, plus frontend `npm run build`). So run the ones you touched yourself before you push.
+(`.github/workflows/docker-publish.yml`: `pytest` and the licence gate for backend, `rag/`,
+`rag-eval/` and `local-tts/`, plus frontend `npm run build`). So run the ones you touched yourself before you push.
 
 ## Where things live
 
@@ -92,7 +96,8 @@ There is no linter/formatter config and no CI on pull requests — CI only runs 
 
 **Dependencies**
 - Only permissive licences (MIT, BSD, Apache-2.0, ISC, PSF, MPL-2.0 unmodified) — no GPL/LGPL/AGPL,
-  SSPL or non-commercial licences, also for model weights. `scripts/check-licences.sh` enforces
+  SSPL or non-commercial licences, also for model weights (CC BY 4.0 weights and voices are fine
+  when credited on the Credits page, as for Pocket TTS). `scripts/check-licences.sh` enforces
   this in CI; local embedding models are allowlisted in `rag/app/embedding.py`.
 
 **Docs**

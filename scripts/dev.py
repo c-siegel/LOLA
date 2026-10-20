@@ -60,7 +60,6 @@ SERVICES = [
         "local-tts", "local-tts", 8080, "LOCAL_TTS_ENABLED", "LOCAL_TTS_URL",
         data_dirs={
             "TTS_MODEL_CACHE_DIR": ".cache",
-            "TTS_VOICES_DIR": "voices",
             "TTS_CUSTOM_VOICES_DIR": ".data/custom-voices",
         },
         pip_extras="",
@@ -153,7 +152,7 @@ def setup(names: list[str]) -> None:
         run([str(python), "-m", "pip", "install", "--upgrade", "pip"], cwd)
         if name == "local-tts":
             # CPU-only build — the default PyPI torch wheel pulls several GB of unused CUDA libraries.
-            run([str(python), "-m", "pip", "install", "torch", "torchaudio",
+            run([str(python), "-m", "pip", "install", "torch",
                  "--index-url", "https://download.pytorch.org/whl/cpu"], cwd)
         run([str(python), "-m", "pip", "install", "-e", f".{service.pip_extras}"], cwd)
         if name == "backend" and (ROOT / ".env").exists():

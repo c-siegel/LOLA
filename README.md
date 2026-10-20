@@ -288,16 +288,18 @@ By default, projects that leave the TTS key unset simply get no speech output (u
 of no-key-needed fallback for speech *output*: a small self-hosted TTS engine running as its own
 process, so nobody needs a cloud API key just to hear an avatar speak.
 
-It's opt-in. Each teacher can also clone voices from their own short recordings (Dashboard →
-Voices) and pick one per project. In Docker it's an optional service — see
+It's opt-in and runs Kyutai's [Pocket TTS](https://github.com/kyutai-labs/pocket-tts): 23 preset
+voices in German, English, French, Italian, Spanish, Portuguese and Dutch. With a Hugging Face
+token for Kyutai's gated weights (`TTS_HF_TOKEN`), teachers can also clone voices from their own
+short recordings (Dashboard → Voices) and pick from 228 donated CC0 voices. In Docker it's an optional service — see
 [docker/README.md](docker/README.md#local-text-to-speech-optional). To try it locally:
 
 ```bash
 cd local-tts
 python3 -m venv .venv
-./.venv/bin/pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+./.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
 ./.venv/bin/pip install -e .
-TTS_MODEL_CACHE_DIR="$PWD/.cache" TTS_VOICES_DIR="$PWD/voices" \
+TTS_MODEL_CACHE_DIR="$PWD/.cache" TTS_CUSTOM_VOICES_DIR="$PWD/.data/custom-voices" \
   ./.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8080 --app-dir .
 ```
 
@@ -309,9 +311,8 @@ LOCAL_TTS_ENABLED=true
 LOCAL_TTS_URL=http://127.0.0.1:8080
 ```
 
-Projects speak either with a teacher's own voice clip (Dashboard → Voices) or with a default
-clip per language — see [`local-tts/voices/README.md`](local-tts/voices/README.md); the repo ships
-none by default.
+Projects speak with a preset voice picked in the configurator (or the language's default), or —
+with voice cloning — with a teacher's own clip or a donated voice.
 Full details, including the model's resource footprint and API: [local-tts/README.md](local-tts/README.md).
 
 ### Knowledge bases (optional)
@@ -439,7 +440,7 @@ To check a specific device, open `/stt-test` on it and follow
 | Auth | JWT (JSON Web Tokens) + bcrypt password hashing |
 | LLM / TTS providers | [litellm](https://github.com/BerriAI/litellm) (provider-agnostic client) |
 | Speech-to-text | [Parakeet Redux](https://huggingface.co/moondream/parakeet-redux) on the visitor's device via [onnxruntime-web](https://onnxruntime.ai/) + WebGPU (default, live text while speaking); [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (or optionally Parakeet, `STT_ENGINE=parakeet`) in the backend process as the fallback |
-| Local text-to-speech (optional) | [sopro](https://github.com/samuel-vitorino/sopro), runs in its own sidecar process (see `local-tts/`) |
+| Local text-to-speech (optional) | Kyutai's [Pocket TTS](https://github.com/kyutai-labs/pocket-tts), runs in its own sidecar process (see `local-tts/`); in the latency test also in the browser via onnxruntime-web |
 | Frontend framework | React 18 + TypeScript, built with Vite |
 | 3D avatar rendering | three.js + [@met4citizen/talkinghead](https://github.com/met4citizen/TalkingHead) |
 | Frontend data fetching | TanStack Query |

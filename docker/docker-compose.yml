@@ -46,10 +46,11 @@ services:
       - ${LOLA_DATA_DIR}/models:/models
     restart: "no"
 
-  # Optional local text-to-speech (see local-tts/): speech output without a cloud key, including
-  # voices cloned from teachers' own clips (Dashboard → Voices). Only started with the
-  # "local-tts" profile — set COMPOSE_PROFILES=local-tts and LOCAL_TTS_ENABLED=true in .env (see
-  # docker/README.md). Needs a few GB of RAM and plenty of CPU; nothing else depends on it.
+  # Optional local text-to-speech (see local-tts/): speech output without a cloud key with
+  # Kyutai's Pocket TTS, and with TTS_HF_TOKEN also voices cloned from teachers' own clips
+  # (Dashboard → Voices). Only started with the "local-tts" profile — set
+  # COMPOSE_PROFILES=local-tts and LOCAL_TTS_ENABLED=true in .env (see docker/README.md). Needs
+  # ~0.7 GB of RAM per language in TTS_LANGUAGES and CPU cores; nothing else depends on it.
   tts-local:
     image: ghcr.io/c-siegel/lola:local-tts
     pull_policy: always
@@ -57,9 +58,6 @@ services:
     env_file: ../.env
     environment:
       TTS_MODEL_CACHE_DIR: /data/model-cache
-      # Optional default voices, one <language>.wav each (see local-tts/voices/README.md) — used
-      # by projects that haven't picked a voice clip.
-      TTS_VOICES_DIR: /data/voices
       # Only a cache: the backend re-sends a teacher's clip whenever it's missing here.
       TTS_CUSTOM_VOICES_DIR: /data/custom-voices
     volumes:
@@ -70,6 +68,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+      # The models load at startup; /health answers while they do.
       start_period: 20s
 
   # Optional knowledge base (RAG, see rag/ and docs/rag-plan.md): teachers upload their own
