@@ -263,8 +263,8 @@ class Settings(BaseSettings):
     # ==================== ADMIN BOOTSTRAP SETTINGS ====================
 
     # Set both together to create (or promote) an admin account on startup — see
-    # app/cli/bootstrap_admin.py, run from docker/backend-entrypoint.sh. Safe to remove from your
-    # .env after the first successful run; the bootstrap is idempotent either way.
+    # app/cli/bootstrap_admin.py, run from docker/backend-entrypoint.sh and scripts/dev.py. Safe to
+    # remove from your .env after the first successful run; the bootstrap is idempotent either way.
 
     admin_email: str | None = None
     """
