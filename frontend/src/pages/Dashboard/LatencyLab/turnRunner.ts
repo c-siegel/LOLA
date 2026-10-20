@@ -263,7 +263,9 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
     // Chunks are decoded/synthesized strictly in order, so they also play in order.
     let speech: Promise<void> = Promise.resolve();
 
-    const play = (buffer: AudioBuffer) => {
+    // `pieces`: the buffer continues the previous one mid-word (browser TTS), so it must follow it
+    // without TalkingHead's gap between speech-queue items.
+    const play = (buffer: AudioBuffer, pieces = false) => {
       const now = performance.now();
       if (firstAudioAt == null) {
         firstAudioAt = now;
@@ -273,7 +275,8 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
         gapMs += now - queueEnd;
       }
       queueEnd = Math.max(now, queueEnd) + buffer.duration * 1000;
-      ctx.speaker.speakBuffer(buffer);
+      if (pieces) ctx.speaker.queueBuffer(buffer);
+      else ctx.speaker.speakBuffer(buffer);
     };
 
     const onChunk = (chunk: LatencyChunkEvent) => {
@@ -290,7 +293,7 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
           const synthesis = await ctx.browserTts!.synthesize(chunk.text, ctx.language, (samples, sampleRate) => {
             const buffer = new AudioBuffer({ length: samples.length, numberOfChannels: 1, sampleRate });
             buffer.copyToChannel(samples, 0);
-            play(buffer);
+            play(buffer, true);
           });
           if (chunk.index === 0) result.firstChunkTtsMs = synthesis.firstAudioMs;
           browserTtsMs += synthesis.synthMs;
