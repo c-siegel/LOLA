@@ -2,9 +2,26 @@ import { apiClient } from "./client";
 import type { ApiKey, ApiKeyInput, ProviderSpec } from "@/types/apiKey";
 import type { SttServerEngine } from "@/types/project";
 
+/** The local TTS sidecar (backend providers_router.py::local_tts_status). */
+export interface LocalTtsStatus {
+  available: boolean;
+  /** The sidecar answered; the fields below are empty when it didn't. */
+  reachable: boolean;
+  /** Teachers' clips and donated voices are cloned; otherwise only presets speak. */
+  cloning: boolean;
+  languages: string[];
+  voices: LocalTtsVoice[];
+}
+
+export interface LocalTtsVoice {
+  id: string;
+  label: string;
+  kind: "preset" | "donation";
+}
+
 export const apiKeysApi = {
   listProviders: () => apiClient.get<ProviderSpec[]>("/providers"),
-  localTtsStatus: () => apiClient.get<{ available: boolean }>("/providers/local-tts-status"),
+  localTtsStatus: () => apiClient.get<LocalTtsStatus>("/providers/local-tts-status"),
   browserSttStatus: () => apiClient.get<{ available: boolean }>("/providers/browser-stt-status"),
   serverSttStatus: () =>
     apiClient.get<{ defaultEngine: SttServerEngine; parakeetAvailable: boolean }>("/providers/server-stt-status"),

@@ -422,7 +422,7 @@
       "voiceHint": "Für Cartesia und Google Cloud TTS ist eine Stimme Pflicht (kein Standardwert) — ohne läuft die Sprachausgabe für dieses Projekt ins Leere.",
       "voiceClip": "Stimme (lokale Sprachausgabe)",
       "voiceClipDefault": "Standardstimme der Sprache",
-      "voiceClipHint": "Klont eine Stimme aus einem deiner eigenen Stimmclips. Clips anlegen und anhören unter",
+      "voiceClipHint": "Wähle eine voreingestellte Stimme oder — wenn auf diesem Server das Stimmklonen eingerichtet ist — eine gespendete Stimme oder einen deiner eigenen Stimmclips. Clips anlegen und anhören unter",
       "sttTitle": "Spracheingabe (STT)",
       "sttText": "Aktiviert den Mikrofon-Button im öffentlichen Chat. Standardmäßig aus.",
       "sttKey": "Spracherkennung auf dem Server",
@@ -437,7 +437,13 @@
       "sttBrowserTitle": "Spracherkennung auf dem Gerät (empfohlen)",
       "sttBrowserText": "Sprachnachrichten werden auf dem Gerät der Besucherin erkannt, mit Live-Text schon während des Sprechens — die Aufnahmen verlassen das Gerät nicht. Jedes Gerät lädt das Modell einmal herunter (etwa 170 MB), bevor der Chat startet. Geräte ohne WebGPU nutzen automatisch den STT-Schlüssel bzw. das Whisper des Servers.",
       "streamingTitle": "Gestreamte Antworten",
-      "streamingText": "Der Avatar beginnt schon nach dem ersten Satz zu sprechen, statt auf die vollständige Antwort zu warten. Standardmäßig aus."
+      "streamingText": "Der Avatar beginnt schon nach dem ersten Satz zu sprechen, statt auf die vollständige Antwort zu warten. Standardmäßig aus.",
+      "localVoicePresets": "Voreingestellte Stimmen",
+      "localVoiceDonations": "Gespendete Stimmen (CC0)",
+      "localVoiceClips": "Deine Stimmclips",
+      "cloningOff": "Stimmklonen ist auf diesem Server nicht eingerichtet. Deine Stimmclips und gespendete Stimmen sind deshalb nicht wählbar; ein schon gewählter Clip wird mit der Standardstimme gesprochen.",
+      "localTtsUnreachable": "Die lokale Sprachausgabe antwortet gerade nicht, deshalb fehlt die Liste ihrer Stimmen. Die gewählte Stimme bleibt gespeichert.",
+      "localTtsLanguageMissing": "Die lokale Sprachausgabe dieses Servers spricht die Sprache dieses Projekts nicht. Wähle eine andere Sprache oder einen Cloud-Anbieter."
     },
     "step3": {
       "defaultPreprompt": "Du bist ein hilfreicher, KI-gestützter Lernassistent.\n\nAntworte kindgerecht, geduldig und ermutigend. Wenn du etwas nicht weißt, sag das ehrlich, anstatt zu raten.",
@@ -704,7 +710,8 @@
     "previewButton": "Anhören",
     "previewSample": "Hallo! Ich bin dein Lernbegleiter. Wollen wir loslegen?",
     "previewSlow": "Wird erzeugt… die erste Hörprobe nach dem Start des Sprachdienstes kann etwa eine Minute dauern.",
-    "previewFailed": "Die Hörprobe konnte nicht erzeugt werden."
+    "previewFailed": "Die Hörprobe konnte nicht erzeugt werden.",
+    "cloningOff": "Stimmklonen ist auf diesem Server nicht eingerichtet (dafür braucht die lokale Sprachausgabe einen Hugging-Face-Token). Du kannst Clips anlegen, aber Projekte sprechen bis dahin mit einer voreingestellten Stimme."
   },
   "pronunciation": {
     "title": "Aussprache",
@@ -835,7 +842,7 @@
     "llmProject": "Wie im Projekt eingestellt",
     "tts": "Sprachausgabe",
     "ttsProject": "Wie im Projekt eingestellt",
-    "ttsLocal": "Lokale Sprachausgabe auf dem Server (Sopro)",
+    "ttsLocal": "Lokale Sprachausgabe auf dem Server (Pocket TTS)",
     "ttsBrowserPocket": "Pocket TTS in diesem Browser (Deutsch)",
     "ttsNone": "Keine (nur Text)",
     "streaming": "Streaming (der Avatar spricht schon nach dem ersten Satz)",
@@ -978,8 +985,9 @@
       },
       "onnxRuntime": { "description": "Führt die Modelle für Spracherkennung und Sprachausgabe per WebGPU und WebAssembly im Browser aus" },
       "pocket": {
-        "description": "Deutsche Sprachausgabe, die auf dem Gerät der Besucherin läuft (vorerst im Latenztest)",
-        "note": "ONNX-Export und int8-Quantisierung von Lauro00000 (mit lookbe/pocket-tts-onnx-export), von LOLA unverändert gespiegelt; der Teil zum Stimmklonen ist nicht enthalten. Tokenizer und Stimmzustand „alba“ von Kyutai, unverändert. Stimme aufgenommen von Alba MacKenna (CC BY 4.0)."
+        "description": "Sprachausgabe ohne Cloud-Anbieter: auf dem Server für alle Projekte ohne TTS-Schlüssel und, vorerst im Latenztest, auf dem Gerät der Besucherin",
+        "note": "Im Browser: ONNX-Export und int8-Quantisierung von Lauro00000 (mit lookbe/pocket-tts-onnx-export), von LOLA unverändert gespiegelt; der Teil zum Stimmklonen ist nicht enthalten. Tokenizer und Stimmzustand „alba“ von Kyutai, unverändert. Stimme aufgenommen von Alba MacKenna (CC BY 4.0).",
+        "voicesNote": "Voreingestellte Stimmen aus Kyutais Stimmsammlung: Alba MacKenna, VCTK und CML-TTS (CC BY 4.0), Mozilla Common Voice, Voice-Zero und Kyutais eigene Aufnahmen (CC0). Gespendete Stimmen aus dem Unmute Voice Donation Project (CC0)."
       },
       "tokenizers": { "description": "Zerlegt den Text in die Tokens, die das Sprachausgabemodell liest" }
     },

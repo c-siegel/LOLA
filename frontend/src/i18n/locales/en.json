@@ -422,7 +422,7 @@
       "voiceHint": "Cartesia and Google Cloud TTS require a voice (no default) — without one, speech output for this project won't work.",
       "voiceClip": "Voice (local speech output)",
       "voiceClipDefault": "Default voice for the language",
-      "voiceClipHint": "Clone a voice from one of your own voice clips. Add and test clips under",
+      "voiceClipHint": "Pick a preset voice or — if voice cloning is set up on this server — a donated voice or one of your own voice clips. Add and test clips under",
       "sttTitle": "Voice input (STT)",
       "sttText": "Enables the microphone button in the public chat. Off by default.",
       "sttKey": "Server speech recognition",
@@ -437,7 +437,13 @@
       "sttBrowserTitle": "On-device speech recognition (recommended)",
       "sttBrowserText": "Voice messages are recognized on the visitor's own device with live text while they speak, so recordings never leave it. Each device downloads the model once (about 170 MB) before the chat opens. Devices without WebGPU automatically use the STT key or the server's Whisper instead.",
       "streamingTitle": "Streamed replies",
-      "streamingText": "The avatar starts speaking after the first sentence instead of waiting for the full reply. Off by default."
+      "streamingText": "The avatar starts speaking after the first sentence instead of waiting for the full reply. Off by default.",
+      "localVoicePresets": "Preset voices",
+      "localVoiceDonations": "Donated voices (CC0)",
+      "localVoiceClips": "Your voice clips",
+      "cloningOff": "Voice cloning isn't set up on this server, so your voice clips and donated voices can't be picked; a clip that is already selected is spoken with the default voice.",
+      "localTtsUnreachable": "Local speech output isn't answering right now, so its voices can't be listed. The selected voice stays saved.",
+      "localTtsLanguageMissing": "Local speech output on this server doesn't speak this project's language. Pick another language or a cloud provider."
     },
     "step3": {
       "defaultPreprompt": "You are a helpful, AI-powered learning assistant.\n\nAnswer in an age-appropriate, patient, and encouraging way. If you don't know something, say so honestly instead of guessing.",
@@ -704,7 +710,8 @@
     "previewButton": "Listen",
     "previewSample": "Hello! I'm your learning companion. Shall we get started?",
     "previewSlow": "Generating… the first sample after the speech service starts can take about a minute.",
-    "previewFailed": "The sample couldn't be generated."
+    "previewFailed": "The sample couldn't be generated.",
+    "cloningOff": "Voice cloning isn't set up on this server (local speech output needs a Hugging Face token for it). You can add clips, but until then projects speak with a preset voice."
   },
   "pronunciation": {
     "title": "Pronunciation",
@@ -835,7 +842,7 @@
     "llmProject": "As the project is set up",
     "tts": "Speech output",
     "ttsProject": "As the project is set up",
-    "ttsLocal": "Local TTS on the server (Sopro)",
+    "ttsLocal": "Local TTS on the server (Pocket TTS)",
     "ttsBrowserPocket": "Pocket TTS in this browser (German)",
     "ttsNone": "None (text only)",
     "streaming": "Streaming (the avatar starts speaking after the first sentence)",
@@ -978,8 +985,9 @@
       },
       "onnxRuntime": { "description": "Runs the speech recognition and speech output models in the browser via WebGPU and WebAssembly" },
       "pocket": {
-        "description": "German speech output that runs on the visitor's device (for now in the latency test)",
-        "note": "ONNX export and int8 quantization by Lauro00000 (with lookbe/pocket-tts-onnx-export), mirrored unchanged by LOLA; the voice-cloning part is not included. Tokenizer and the voice state \"alba\" from Kyutai, unchanged. Voice recorded by Alba MacKenna (CC BY 4.0)."
+        "description": "Speech output without a cloud provider: on the server for every project without a TTS key and, for now in the latency test, on the visitor's device",
+        "note": "In the browser: ONNX export and int8 quantization by Lauro00000 (with lookbe/pocket-tts-onnx-export), mirrored unchanged by LOLA; the voice-cloning part is not included. Tokenizer and the voice state \"alba\" from Kyutai, unchanged. Voice recorded by Alba MacKenna (CC BY 4.0).",
+        "voicesNote": "Preset voices from Kyutai's voice collection: Alba MacKenna, VCTK and CML-TTS (CC BY 4.0), Mozilla Common Voice, Voice-Zero and Kyutai's own recordings (CC0). Donated voices from the Unmute Voice Donation Project (CC0)."
       },
       "tokenizers": { "description": "Splits the text into the tokens the speech output model reads" }
     },

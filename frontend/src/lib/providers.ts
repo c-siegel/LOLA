@@ -38,8 +38,9 @@ export function useLocalTtsStatus() {
   return useQuery({
     queryKey: ["local-tts-status"],
     queryFn: apiKeysApi.localTtsStatus,
-    // A deployment-level fact, only ever changes with a redeploy.
-    staleTime: Infinity,
+    // Whether it's enabled only changes with a redeploy, but cloning and the voices also change
+    // when the sidecar restarts (the backend caches them for a minute too).
+    staleTime: 60_000,
   });
 }
 

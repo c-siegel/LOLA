@@ -90,6 +90,9 @@ export function CreditsPage() {
                 <a href="https://huggingface.co/kyutai/pocket-tts" target="_blank" rel="noopener noreferrer">
                   kyutai/pocket-tts
                 </a>
+                <a href="https://github.com/kyutai-labs/pocket-tts" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "pocket-tts" })}
+                </a>
                 <a href="https://huggingface.co/Lauro00000/k6-onnx-int8" target="_blank" rel="noopener noreferrer">
                   Lauro00000/k6-onnx-int8
                 </a>
@@ -105,6 +108,9 @@ export function CreditsPage() {
               </div>
               <div className={styles.note}>
                 <strong>{t("credits.noteLabel")}</strong> {t("credits.speech.pocket.note")}
+              </div>
+              <div className={styles.note}>
+                <strong>{t("credits.noteLabel")}</strong> {t("credits.speech.pocket.voicesNote")}
               </div>
             </div>
 
