@@ -284,8 +284,42 @@ exporter (MIT) covers the next weight update; a fully own export is no longer th
   The best variant so far. Remaining errors: "Eichhörnchen", "Bitte lies" run together, one
   "wiedervereinigt" split by Whisper. RTF ~0.25 when the machine is idle.
 
-**Next:** the browser engine in the Latency Lab on KevinAHM's Apache-2.0 loop (load the files from
-`manifest.json`, convert the voice as above, stream audio), plus the Credits entry once it's used.
+**Done 2026-10-20 — phase 4, browser engine in the Latency Lab:**
+- `frontend/src/lib/pocketTtsCore.ts`: our own TypeScript port of pocket-tts 3.3 (text
+  preparation incl. Kyutai's German `replace_characters`, sentence chunking, flow-LM loop with
+  `MIN_FRAMES_BEFORE_EOS = 6`, streaming Mimi decode in 3- then 12-frame batches, voice
+  conversion). ONNX Runtime and file loading are injected, so it also runs under Node. KevinAHM's
+  web demo was only a reference — not copied: its bundled `sentencepiece.js` has no clear licence
+  and the Space's `ONNX-LICENSE` says CC BY-NC.
+- Tokenizer: `@huggingface/tokenizers` 0.2.0 (Apache-2.0) on Kyutai's `tokenizer.json` (added to
+  the download script). It has no byte fallback for Unigram models; the core adds it, so
+  characters outside the vocabulary become byte tokens as in Python (35/35 test texts identical,
+  emoji, CJK, German quotes included).
+- `workers/pocketWorker.ts` + `lib/pocketTts.ts` (same protocol as Sopro), behind a small
+  `BrowserTts` interface that the turn runner now uses for any in-browser engine. Download helpers
+  shared with Parakeet in `lib/modelFiles.ts` (separate cache `lola-tts-models`).
+- Latency Lab: speech output option "Pocket TTS in this browser (German)", engine panel with
+  load button, status, voice credit, German-only notice. Credits page: Pocket TTS (Kyutai, Lauro's
+  conversion, the mirror, Alba MacKenna) and Tokenizers.js.
+- Pitfall found: onnxruntime-common turns float16 data into `Float16Array` when the runtime has
+  one (Node ≥ 24, recent browsers). onnxruntime-web handles that; onnxruntime-node's native binding
+  doesn't (reads it as empty) — the Node test hides `Float16Array`.
+
+Verified (same 12 sentences after the verbalizer and dash fix, alba, 2 runs each):
+
+| Where | WER | Clips with errors | First audio | RTF |
+|---|---|---|---|---|
+| Core under onnxruntime-node, 1 thread | 2.9 % | 5/24 | 145 ms | 0.36 |
+| **Real worker in headless Chromium, WASM, 1 thread** | **2.1 %** | 4/24 | 482 ms | **0.86** |
+
+Remaining "errors" are mostly Whisper writing "wieder vereinigt" as two words. Chunking is
+identical to Python, the voice state within one fp16 ulp. In the browser it runs at 0.86 RTF on
+one laptop core — faster than real time, but with little headroom: LOLA isn't cross-origin
+isolated, so ONNX Runtime Web stays single-threaded (COOP/COEP would break the Tally survey
+iframe, see `parakeetWorker.ts`).
+
+**Next:** measure on the target iPads in the Latency Lab (time to first audio, gaps during
+playback, and whether Safari keeps the tab alive with Parakeet + Pocket + avatar loaded).
 
 ## Phase 1: sidecar (`local-tts/`)
 
@@ -355,7 +389,6 @@ exporter (MIT) covers the next weight update; a fully own export is no longer th
 ## Out of scope for now
 
 - Pocket as a project/public-chat engine.
-- Self-hosting the ONNX files (a fetch script like `scripts/fetch-stt-model.sh`).
 - A consent checkbox for voice uploads — required before Pocket leaves the Latency Lab, where only
   the logged-in teacher uses their own clips.
 
