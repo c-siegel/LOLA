@@ -106,12 +106,6 @@ export interface StreamDoneEvent {
   reply: string;
   // All of the reply's plan ticks — what gets stored on the message (see ChatMessage.checks).
   checks: ChecklistCheck[];
-  llmMs: number | null;
-  firstChunkMs: number | null;
-  // Time until the first chunk was handed to TTS — distinct from firstChunkMs, which is until
-  // that chunk's synthesis *finishes*. Isolates LLM/chunking speed from TTS speed.
-  firstChunkTextReadyMs: number | null;
-  ttsMs: number | null;
 }
 
 interface StreamHandlers {
@@ -205,14 +199,10 @@ export const publicChatApi = {
   // The backend returns {reply}, not a full Conversation (see app/features/chat/public_router.py) —
   // it was previously typed as a Conversation by mistake.
   sendMessage: (slug: string, message: string, history: ChatMessage[], signal?: AbortSignal, speakOnDevice = false) =>
-    // llmMs/ttsMs: backend-side call durations, only meaningful together with the client-side
-    // timestamps captured in PublicChat/index.tsx's latency-test log (?latencyTest=1).
     apiClient.post<{
       reply: string;
       audioBase64: string | null;
       contentType: string | null;
-      llmMs: number | null;
-      ttsMs: number | null;
       motions: string[];
       checks: ChecklistCheck[];
       // What the device should say, only with speakOnDevice (see StreamChunkEvent.spoken).
@@ -226,7 +216,7 @@ export const publicChatApi = {
     const formData = new FormData();
     formData.append("audio", audio, "recording.webm");
     if (initialPrompt) formData.append("initial_prompt", initialPrompt);
-    return apiClient.upload<{ text: string; sttMs: number | null }>(
+    return apiClient.upload<{ text: string }>(
       `/public/${slug}/transcriptions`,
       formData,
       requestHeaders(slug),

@@ -131,6 +131,11 @@
   display: none;
 }
 
+.fileButton[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .stageRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

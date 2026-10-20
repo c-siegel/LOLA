@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Mic, Play, Square, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/Button";
@@ -34,10 +35,12 @@ import {
   type TtsMode,
   type TurnResult,
 } from "./metrics";
+import { SttCheck } from "./SttCheck";
 import { runTurn, type Clip, type TurnContext, type TurnInput } from "./turnRunner";
 import styles from "./LatencyLab.module.css";
 import { sitePath } from "@/lib/basePath";
 
+// `?sttModel=<url>` loads another build of the recognizer instead, to compare model versions.
 const PARAKEET_MODEL_URL = sitePath("/models/parakeet-redux/v1/");
 // Written by scripts/fetch-tts-model.sh (German Pocket TTS with Kyutai's preset voices).
 const POCKET_MODEL_URL = sitePath("/models/pocket-tts-de/v1/");
@@ -109,6 +112,8 @@ function parseScript(script: string, clips: Clip[]): { inputs: TurnInput[]; miss
 export function LatencyLabPage() {
   const { t } = useTranslation();
   const stored = useMemo(loadSettings, []);
+  const [searchParams] = useSearchParams();
+  const parakeetModelUrl = searchParams.get("sttModel") ?? PARAKEET_MODEL_URL;
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: projectsApi.list });
   const keysQuery = useQuery({ queryKey: ["api-keys"], queryFn: apiKeysApi.list });
   const specs = useProviders().data ?? [];
@@ -165,7 +170,7 @@ export function LatencyLabPage() {
 
   async function loadParakeet() {
     parakeetRef.current?.dispose();
-    const engine = new ParakeetSttEngine(PARAKEET_MODEL_URL);
+    const engine = new ParakeetSttEngine(parakeetModelUrl);
     parakeetRef.current = engine;
     const started = performance.now();
     setParakeet({ ...idleEngine, status: "loading" });
@@ -207,6 +212,9 @@ export function LatencyLabPage() {
   const abortRef = useRef<AbortController | null>(null);
   const stopMicRef = useRef<(() => void) | null>(null);
   const [busy, setBusy] = useState(false);
+  // The speech-recognition-only check (SttCheck) shares the engine, so nothing else may run meanwhile.
+  const [sttCheckRunning, setSttCheckRunning] = useState(false);
+  const locked = busy || sttCheckRunning;
   const [recording, setRecording] = useState(false);
   const [progressText, setProgressText] = useState<string | null>(null);
   const [partial, setPartial] = useState("");
@@ -395,7 +403,7 @@ export function LatencyLabPage() {
         <div className={styles.grid}>
           <label className={styles.field}>
             <span className={styles.label}>{t("latencyLab.project")}</span>
-            <select className={styles.select} value={projectId} onChange={(e) => setProjectId(e.target.value)} disabled={busy}>
+            <select className={styles.select} value={projectId} onChange={(e) => setProjectId(e.target.value)} disabled={locked}>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title}
@@ -409,7 +417,7 @@ export function LatencyLabPage() {
               className={styles.select}
               value={config.sttMode}
               onChange={(e) => set("sttMode", e.target.value as SttMode)}
-              disabled={busy}
+              disabled={locked}
             >
               <option value="device" disabled={!browserSttAvailable}>
                 {t("latencyLab.sttDevice")}
@@ -427,7 +435,7 @@ export function LatencyLabPage() {
               className={styles.select}
               value={config.llmKeyId ?? ""}
               onChange={(e) => set("llmKeyId", e.target.value || null)}
-              disabled={busy}
+              disabled={locked}
             >
               <option value="">{t("latencyLab.llmProject")}</option>
               {llmKeys.map((key) => (
@@ -443,7 +451,7 @@ export function LatencyLabPage() {
               className={styles.select}
               value={config.ttsMode}
               onChange={(e) => set("ttsMode", e.target.value as TtsMode)}
-              disabled={busy}
+              disabled={locked}
             >
               <option value="project">{t("latencyLab.ttsProject")}</option>
               <option value="local" disabled={!localTtsAvailable}>
@@ -456,11 +464,11 @@ export function LatencyLabPage() {
         </div>
         <div className={styles.checks}>
           <label>
-            <input type="checkbox" checked={config.streaming} onChange={(e) => set("streaming", e.target.checked)} disabled={busy} />{" "}
+            <input type="checkbox" checked={config.streaming} onChange={(e) => set("streaming", e.target.checked)} disabled={locked} />{" "}
             {t("latencyLab.streaming")}
           </label>
           <label>
-            <input type="checkbox" checked={config.avatar} onChange={(e) => set("avatar", e.target.checked)} disabled={busy} />{" "}
+            <input type="checkbox" checked={config.avatar} onChange={(e) => set("avatar", e.target.checked)} disabled={locked} />{" "}
             {t("latencyLab.avatar")}
           </label>
         </div>
@@ -490,12 +498,20 @@ export function LatencyLabPage() {
         <div className={styles.engine}>
           <div className={styles.engineHead}>
             <strong>{t("latencyLab.parakeetTitle")}</strong>
-            <Button size="sm" onClick={() => void loadParakeet()} disabled={busy || parakeet.status === "loading"}>
+            <Button size="sm" onClick={() => void loadParakeet()} disabled={locked || parakeet.status === "loading"}>
               {t("latencyLab.load")}
             </Button>
           </div>
           <EngineLine state={parakeet} />
         </div>
+
+        <SttCheck
+          engine={parakeetRef.current}
+          ready={parakeet.status === "ready"}
+          loadSeconds={parakeet.loadSeconds}
+          disabled={busy}
+          onRunningChange={setSttCheckRunning}
+        />
 
         <div className={styles.engine}>
           <div className={styles.engineHead}>
@@ -505,7 +521,7 @@ export function LatencyLabPage() {
               title={t("latencyLab.pocketTitle")}
               info={t("latencyLab.pocketHint")}
             />
-            <Button size="sm" onClick={() => void loadPocket()} disabled={busy || pocket.status === "loading"}>
+            <Button size="sm" onClick={() => void loadPocket()} disabled={locked || pocket.status === "loading"}>
               {t("latencyLab.load")}
             </Button>
           </div>
@@ -549,7 +565,7 @@ export function LatencyLabPage() {
                 <Square size={14} /> {t("latencyLab.stop")}
               </Button>
             )}
-            <Button size="sm" onClick={resetConversation} disabled={busy}>
+            <Button size="sm" onClick={resetConversation} disabled={locked}>
               {t("latencyLab.resetConversation")}
             </Button>
           </div>
@@ -567,13 +583,13 @@ export function LatencyLabPage() {
             sendText();
           }}
         >
-          <Input label={t("latencyLab.textMessage")} value={text} onChange={(e) => setText(e.target.value)} disabled={busy} />
-          <Button type="submit" variant="accent" disabled={busy || !text.trim()}>
+          <Input label={t("latencyLab.textMessage")} value={text} onChange={(e) => setText(e.target.value)} disabled={locked} />
+          <Button type="submit" variant="accent" disabled={locked || !text.trim()}>
             {t("latencyLab.send")}
           </Button>
         </form>
         <div className={styles.buttons}>
-          <Button variant={recording ? "danger" : "default"} onClick={toggleMic} disabled={busy && !recording}>
+          <Button variant={recording ? "danger" : "default"} onClick={toggleMic} disabled={locked && !recording}>
             {recording ? <Square size={16} /> : <Mic size={16} />}{" "}
             {recording ? t("latencyLab.micStop") : t("latencyLab.micStart")}
           </Button>
@@ -591,13 +607,13 @@ export function LatencyLabPage() {
               <li key={clip.id}>
                 <span className={styles.mono}>{clip.name}</span>
                 <span className={styles.buttons}>
-                  <Button size="sm" onClick={() => sendClip(clip)} disabled={busy} aria-label={t("latencyLab.playClip")} title={t("latencyLab.playClip")}>
+                  <Button size="sm" onClick={() => sendClip(clip)} disabled={locked} aria-label={t("latencyLab.playClip")} title={t("latencyLab.playClip")}>
                     <Play size={14} />
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => setClips((prev) => prev.filter((c) => c.id !== clip.id))}
-                    disabled={busy}
+                    disabled={locked}
                     aria-label={t("latencyLab.removeClip")}
                     title={t("latencyLab.removeClip")}
                   >
@@ -612,7 +628,7 @@ export function LatencyLabPage() {
 
       <section className={styles.card}>
         <HeadingWithInfo title={t("latencyLab.scriptTitle")} info={t("latencyLab.scriptHint")} />
-        <Textarea label={t("latencyLab.script")} value={script} onChange={(e) => setScript(e.target.value)} rows={6} disabled={busy} />
+        <Textarea label={t("latencyLab.script")} value={script} onChange={(e) => setScript(e.target.value)} rows={6} disabled={locked} />
         <div className={styles.grid}>
           <Input
             label={t("latencyLab.repeats")}
@@ -621,7 +637,7 @@ export function LatencyLabPage() {
             max={50}
             value={repeats}
             onChange={(e) => setRepeats(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
-            disabled={busy}
+            disabled={locked}
           />
           <Input
             label={t("latencyLab.pause")}
@@ -630,14 +646,14 @@ export function LatencyLabPage() {
             step={500}
             value={pauseMs}
             onChange={(e) => setPauseMs(Math.max(0, Number(e.target.value) || 0))}
-            disabled={busy}
+            disabled={locked}
           />
         </div>
         <p className={styles.hint}>
           {t("latencyLab.scriptCount", { turns: parsedScript.inputs.length * repeats })}
         </p>
         <div className={styles.buttons}>
-          <Button variant="accent" onClick={runScript} disabled={busy || !parsedScript.inputs.length}>
+          <Button variant="accent" onClick={runScript} disabled={locked || !parsedScript.inputs.length}>
             <Play size={16} /> {t("latencyLab.runScript")}
           </Button>
         </div>
@@ -666,7 +682,7 @@ export function LatencyLabPage() {
             <Button size="sm" disabled={!results.length} onClick={() => void navigator.clipboard.writeText(toCsv(results, device))}>
               {t("latencyLab.copy")}
             </Button>
-            <Button size="sm" disabled={!results.length || busy} onClick={() => setResults([])}>
+            <Button size="sm" disabled={!results.length || locked} onClick={() => setResults([])}>
               {t("latencyLab.clear")}
             </Button>
           </div>

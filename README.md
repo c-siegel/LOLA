@@ -429,7 +429,7 @@ ready in a few seconds). Safari can delete a site's stored data after 7 days wit
 on iPads used only weekly, expect the download again now and then. On Deploy B behind Cloudflare, also see
 [docker/README.md](docker/README.md#deploying) for letting Cloudflare cache the model.
 
-To check a specific device, open `/stt-test` on it and follow
+To check a specific device, log in on it, open the dashboard's latency test and follow
 [docs/stt-device-test.md](docs/stt-device-test.md).
 
 ## Tech stack

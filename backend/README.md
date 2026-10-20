@@ -472,7 +472,8 @@ A few backend behaviors worth knowing about if you're deploying or extending thi
 
 The public chat endpoints in `app/features/chat/public_router.py` time themselves with `time.perf_counter()`
 and ride the results along as extra fields in their normal JSON responses — there's no separate
-metrics endpoint or database, just numbers the frontend console-logs for debugging. `None` always
+metrics endpoint or database. The public chat doesn't use them; the dashboard's latency test reads
+the same fields from its own routes. `None` always
 means a stage didn't run at all (e.g. TTS disabled or no key configured), never "it was instant".
 
 | Endpoint | Field(s) | What it measures |
@@ -487,12 +488,10 @@ means a stage didn't run at all (e.g. TTS disabled or no key configured), never 
 | (SSE `chunk` events) | `textReadyMs`, `ttsMs`, `sentMs` | Per chunk: when its text was handed to TTS, how long its synthesis took (`null` without TTS), and when it was sent — all since the request started. |
 | `POST /{slug}/transcriptions` | `sttMs` | Wall-clock time inside the STT (speech-to-text) call — local Whisper or Parakeet, or the cloud provider. |
 
-How to use: open the public chat page with `?latencyTest=1` appended to the URL — the frontend logs
-these numbers to the browser console, combined with client-side timings (network round trip, audio
-decode/playback, time to first spoken word). See [frontend/README.md](../frontend/README.md#debugging)
-for the full breakdown and what each logged field means. The dashboard's latency test page
-(`/dashboard/latency`, routes `/projects/{id}/latency-test/*` above) shows the same numbers per
-message and compares configurations; the `chunk` and `done` fields are the same there.
+How to use: the dashboard's latency test page (`/dashboard/latency`, routes
+`/projects/{id}/latency-test/*` above) combines these numbers with client-side timings (network
+round trip, time to first audio, playback) per message and compares configurations; the `chunk`
+and `done` fields are the same there. See [docs/latency-test.md](../docs/latency-test.md).
 
 ## Tests
 

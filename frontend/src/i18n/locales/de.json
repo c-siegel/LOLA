@@ -832,6 +832,22 @@
     "saved": "Gespeichert."
   },
   "latencyLab": {
+    "sttCheck": {
+      "title": "Nur Spracherkennung messen",
+      "hint": "Misst das geladene Spracherkennungsmodell allein, ohne Projekt, Sprachmodell oder Sprachausgabe: wie schnell der erste Live-Text erscheint, wie lange jede Neu-Erkennung dauert und wie lange es vom Stopp bis zum endgültigen Text dauert. Es wird nichts an den Server geschickt. Ablauf für einen Gerätetest: docs/stt-device-test.md.",
+      "needModel": "Lade zuerst oben die Spracherkennung auf diesem Gerät.",
+      "startMic": "Über das Mikrofon aufnehmen",
+      "stop": "Stopp",
+      "playFile": "Eine Audiodatei durch die Erkennung abspielen",
+      "partial": "Live-Text",
+      "final": "Endgültiger Text",
+      "firstPartial": "Erster Text nach",
+      "decode": "Dauer pro Neu-Erkennung (letzte / Schnitt / max.)",
+      "decodedAudio": "Audiolänge der letzten Neu-Erkennung",
+      "finalize": "Zeit vom Stopp bis zum endgültigen Text",
+      "copy": "Ergebnisse kopieren",
+      "error": "Fehler: {{message}}"
+    },
     "title": "Latenztest",
     "subtitle": "Simuliere Gespräche von Schüler:innen mit einem deiner Projekte und miss jeden Schritt auf diesem Gerät: Spracherkennung, Sprachmodell, Sprachausgabe und Avatar — vor allem, wie lange es nach dem Ende des Sprechens dauert, bis der Avatar antwortet.",
     "setupTitle": "Konfiguration",
@@ -947,23 +963,6 @@
       "avatarFps": "Bilder pro Sekunde des 3D-Avatars, während er sprach (Ziel: 30).",
       "retrievalMs": "Server: Suche der Abschnitte in den Wissensbasen des Projekts, bevor das Sprachmodell gefragt wird. Leer ohne Wissensbasis."
     }
-  },
-  "sttTest": {
-    "title": "Gerätetest Spracherkennung",
-    "intro": "Lädt das Spracherkennungsmodell und misst, wie schnell es auf diesem Gerät läuft. Es wird nichts an den Server geschickt.",
-    "status": "Status: {{status}}",
-    "loadTime": "Modell bereit nach {{seconds}} s",
-    "error": "Fehler: {{message}}",
-    "startMic": "Über das Mikrofon aufnehmen",
-    "stop": "Stopp",
-    "playFile": "Eine Audiodatei durch die Erkennung abspielen",
-    "partial": "Live-Text",
-    "final": "Endgültiger Text",
-    "firstPartial": "Erster Text nach",
-    "decode": "Dauer pro Neu-Erkennung (letzte / Schnitt / max.)",
-    "decodedAudio": "Audiolänge der letzten Neu-Erkennung",
-    "finalize": "Zeit vom Stopp bis zum endgültigen Text",
-    "copy": "Ergebnisse kopieren"
   },
   "credits": {
     "title": "Credits & Lizenzen",

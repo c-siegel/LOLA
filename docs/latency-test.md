@@ -33,6 +33,14 @@ server — fetch it first with `scripts/fetch-tts-model.sh` — and speaks with 
 to see whether in-browser speech output is fast enough on a device — the public chat doesn't use
 it.
 
+## Speech recognition only
+
+Under "Device", **Measure speech recognition only** runs the loaded on-device model by itself — on
+the microphone or an audio file, without a project, LLM or TTS — and shows the time to the first
+live text, each re-decode (last / average / max), and the time from stop to the final text. That's
+the device check in [stt-device-test.md](stt-device-test.md). To compare another build of the
+model, open the page with `?sttModel=<model folder URL>`.
+
 ## Comparable runs
 
 1. Record a few short student questions once (e.g. 3–8 s, German and English) and add them under

@@ -194,9 +194,9 @@ class ChatMessageOut(CamelModel):
     reply: str
     audio_base64: str | None = None
     content_type: str | None = None
-    # Wall-clock duration of the LLM/TTS calls in send_message(), for the client-side latency log
-    # (see pages/PublicChat/index.tsx) — None for tts_ms means TTS didn't run at all (disabled/no
-    # key), not that it was instant.
+    # Wall-clock duration of the LLM/TTS calls in send_message() — None for tts_ms means TTS didn't
+    # run at all (disabled/no key), not that it was instant. The public chat doesn't show them;
+    # latency is measured in the dashboard's latency test (latency_router.py).
     llm_ms: float | None = None
     tts_ms: float | None = None
     # Gestures for the avatar, in reply order (see features/chat/motion.py) — empty when the

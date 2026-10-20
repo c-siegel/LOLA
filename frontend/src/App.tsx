@@ -50,7 +50,6 @@ const ImprintPage = lazy(() => import("./pages/Imprint").then((m) => ({ default:
 const PrivacyPage = lazy(() => import("./pages/Privacy").then((m) => ({ default: m.PrivacyPage })));
 const CustomPage = lazy(() => import("./pages/CustomPage").then((m) => ({ default: m.CustomPage })));
 const CreditsPage = lazy(() => import("./pages/Credits").then((m) => ({ default: m.CreditsPage })));
-const SttTestPage = lazy(() => import("./pages/SttTest").then((m) => ({ default: m.SttTestPage })));
 
 // Layout route: wraps every /dashboard/* screen in the shared sidebar shell (Screen 1c).
 function DashboardLayout() {
@@ -90,7 +89,6 @@ export function App() {
           <Route path="/datenschutz" element={<PrivacyPage />} />
           <Route path="/credits" element={<CreditsPage />} />
           <Route path="/p/:slug" element={<CustomPage />} />
-          <Route path="/stt-test" element={<SttTestPage />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<OverviewPage />} />
             <Route path="projects/:id" element={<ConfiguratorPage />} />

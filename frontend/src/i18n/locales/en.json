@@ -832,6 +832,22 @@
     "saved": "Saved."
   },
   "latencyLab": {
+    "sttCheck": {
+      "title": "Measure speech recognition only",
+      "hint": "Measures the loaded speech recognition model on its own, without a project, language model or speech output: how fast the first live text appears, how long each re-decode takes, and how long it takes from stop to the final text. Nothing is sent to the server. Device test procedure: docs/stt-device-test.md.",
+      "needModel": "Load the on-device speech recognition above first.",
+      "startMic": "Record from microphone",
+      "stop": "Stop",
+      "playFile": "Play an audio file through the recognizer",
+      "partial": "Live text",
+      "final": "Final text",
+      "firstPartial": "First text after",
+      "decode": "Re-decode time (last / average / max)",
+      "decodedAudio": "Audio length of last re-decode",
+      "finalize": "Time from stop to final text",
+      "copy": "Copy results",
+      "error": "Error: {{message}}"
+    },
     "title": "Latency test",
     "subtitle": "Simulate student conversations with one of your projects and measure every step on this device: speech recognition, language model, speech output and the avatar — above all, how long after the student stops speaking the avatar starts to answer.",
     "setupTitle": "Configuration",
@@ -947,23 +963,6 @@
       "avatarFps": "Frames per second of the 3D avatar while it was speaking (target: 30).",
       "retrievalMs": "Server: looking up the passages from the project's knowledge bases before the language model is asked. Empty without a knowledge base."
     }
-  },
-  "sttTest": {
-    "title": "Speech recognition device test",
-    "intro": "Loads the on-device speech recognition model and measures how fast it runs on this device. Nothing is sent to the server.",
-    "status": "Status: {{status}}",
-    "loadTime": "Model ready after {{seconds}} s",
-    "error": "Error: {{message}}",
-    "startMic": "Record from microphone",
-    "stop": "Stop",
-    "playFile": "Play an audio file through the recognizer",
-    "partial": "Live text",
-    "final": "Final text",
-    "firstPartial": "First text after",
-    "decode": "Re-decode time (last / average / max)",
-    "decodedAudio": "Audio length of last re-decode",
-    "finalize": "Time from stop to final text",
-    "copy": "Copy results"
   },
   "credits": {
     "title": "Credits & Licenses",
