@@ -100,6 +100,10 @@ class PublicProjectOut(CamelModel):
     # server only — see features/api_keys/resolve.py::browser_tts_model_url_for. The page sends
     # speak_on_device once the model has loaded on the visitor's device.
     browser_tts_model_url: str | None = None
+    # The preset voice the device should speak with (the project's tts_voice) — None without
+    # on-device speech output. A name the model doesn't have, e.g. a cloud provider's voice, makes
+    # the device use the model's default voice (see frontend workers/pocketWorker.ts).
+    browser_tts_voice: str | None = None
     # Whether the frontend should use POST /messages/stream instead of /messages — see
     # features/chat/pipeline.py::stream_turn. Meaningless (and always False here) without
     # tts_enabled, since the whole point is audio starting before the full reply is ready.

@@ -25,6 +25,9 @@ export interface PublicProject {
   // Base URL of the on-device speech output model (see lib/pocketTts.ts), or null if this project
   // speaks through the server only. Once it has loaded, messages go out with speakOnDevice.
   browserTtsModelUrl: string | null;
+  // The preset voice for the device (the project's), null without on-device speech output; the
+  // model's default voice speaks when it doesn't have this one.
+  browserTtsVoice: string | null;
   // See types/project.ts — the page only uses the streaming endpoint when this AND ttsEnabled
   // are both true (see pages/PublicChat/index.tsx).
   streamingEnabled: boolean;

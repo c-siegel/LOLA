@@ -445,7 +445,7 @@
       "localTtsUnreachable": "Local speech output isn't answering right now, so its voices can't be listed. The selected voice stays saved.",
       "localTtsLanguageMissing": "Local speech output on this server doesn't speak this project's language. Pick another language or a cloud provider.",
       "ttsBrowserTitle": "On-device speech output",
-      "ttsBrowserText": "The visitor's own device speaks the replies (Pocket TTS, German voice \"Alba\") instead of getting them from the server. Each device downloads the model once (about 99 MB) before it speaks; until then, and on devices that can't load it, the speech output selected above speaks.",
+      "ttsBrowserText": "The visitor's own device speaks the replies (Pocket TTS, German) instead of getting them from the server — with the preset voice selected above, otherwise \"Alba\"; own voice clips and donated voices aren't available on the device. Each device downloads the model once (about 100 MB) before it speaks; until then, and on devices that can't load it, the speech output selected above speaks.",
       "ttsBrowserLanguage": "Only for German projects: the model speaks German only."
     },
     "step3": {
@@ -895,7 +895,7 @@
     "needParakeet": "Load the on-device speech recognition first (or pick server speech recognition).",
     "needPocket": "Load Pocket TTS first (or pick another speech output).",
     "pocketTitle": "Speech output in this browser (Pocket TTS)",
-    "pocketHint": "Loads Kyutai's Pocket TTS (German, about 99 MB) from this server into the browser and speaks with the preset voice \"alba\" — no voice cloning. Runs on the CPU. If loading fails, the model files are missing on the server: they are downloaded with scripts/fetch-tts-model.sh.",
+    "pocketHint": "Loads Kyutai's Pocket TTS (German, about 100 MB) from this server into the browser and speaks with the project's preset voice (otherwise \"alba\") — no voice cloning. Runs on the CPU. If loading fails, the model files are missing on the server: they are downloaded with scripts/fetch-tts-model.sh.",
     "pocketVoice": "Voice: {{voice}} — {{credit}}",
     "pocketGermanOnly": "Pocket TTS only speaks German; this project's spoken language is a different one.",
     "resultsTitle": "Results",

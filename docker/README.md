@@ -149,8 +149,9 @@ BROWSER_TTS_ENABLED=true       # lets teachers switch it on per project in the c
 ```
 
 The one-off `tts-model` service downloads the model into `<LOLA_DATA_DIR>/models/pocket-tts-de/`
-(~126 MB plus gzip copies, checksum-verified, with the CC BY 4.0 `NOTICE.md`), then exits; like
-`stt-model`, it only downloads what's missing on later starts.
+(~270 MB with all 23 preset voices, plus gzip copies, checksum-verified, with the CC BY 4.0
+`NOTICE.md`), then exits; like `stt-model`, it only downloads what's missing on later starts. Each
+device fetches only the model and its project's voice.
 
 ## Knowledge bases (optional)
 

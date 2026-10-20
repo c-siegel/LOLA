@@ -1,6 +1,7 @@
 // Pocket TTS in the browser, for the public chat (projects with on-device speech output) and the
-// latency test page (pages/Dashboard/LatencyLab): the main-thread side of workers/pocketWorker.ts. German only, with Kyutai's predefined voice "alba" — no voice
-// cloning (that part of the model isn't shipped).
+// latency test page (pages/Dashboard/LatencyLab): the main-thread side of workers/pocketWorker.ts.
+// German only, with one of Kyutai's predefined voices — no voice cloning (that part of the model
+// isn't shipped).
 
 import type { PocketInbound, PocketOutbound } from "@/workers/pocketWorker";
 import type { BrowserSynthesis, BrowserTts } from "@/lib/browserTts";
@@ -27,8 +28,9 @@ export class PocketBrowserTts implements BrowserTts {
   private pending = new Map<number, PendingSynthesis>();
   private waitingForLoad: { resolve: () => void; reject: (error: Error) => void } | null = null;
 
-  /** Downloads the self-hosted model (scripts/fetch-tts-model.sh) from `modelUrl`. */
-  load(modelUrl: string, onProgress: (progress: LoadProgress) => void): Promise<void> {
+  /** Downloads the self-hosted model (scripts/fetch-tts-model.sh) from `modelUrl`, with the preset
+   * `voice` (e.g. the project's tts_voice) or, if the model has no such voice, its default. */
+  load(modelUrl: string, onProgress: (progress: LoadProgress) => void, voice?: string | null): Promise<void> {
     this.dispose();
     this.status = "loading";
     this.errorMessage = null;
@@ -39,7 +41,7 @@ export class PocketBrowserTts implements BrowserTts {
     return new Promise((resolve, reject) => {
       this.waitingForLoad = { resolve, reject };
       // A worker has no document to resolve "/models/…" against (see parakeetStt.ts).
-      this.send({ type: "init", modelUrl: new URL(modelUrl, window.location.href).href });
+      this.send({ type: "init", modelUrl: new URL(modelUrl, window.location.href).href, voice });
     });
   }
 

@@ -3971,6 +3971,17 @@
             ],
             "title": "Browserttsmodelurl"
           },
+          "browserTtsVoice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Browserttsvoice"
+          },
           "chatLayout": {
             "default": "avatar_chat",
             "title": "Chatlayout",

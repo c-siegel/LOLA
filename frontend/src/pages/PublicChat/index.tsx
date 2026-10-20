@@ -1181,7 +1181,7 @@ export function PublicChatPage() {
     if (deviceTtsRef.current) return;
     const engine = new PocketBrowserTts();
     deviceTtsRef.current = engine;
-    engine.load(tutor.browserTtsModelUrl, () => {}).catch((error) => {
+    engine.load(tutor.browserTtsModelUrl, () => {}, tutor.browserTtsVoice).catch((error) => {
       console.error("On-device speech output unavailable, the server speaks instead.", error);
     });
   }, [tutorQuery.data, visitorNameProvided]);

@@ -4,7 +4,8 @@
 // generation itself is lib/pocketTtsCore.ts; this file loads the files and talks to the page.
 //
 // The model files come from scripts/fetch-tts-model.sh (self-hosted under /models/, CC BY 4.0,
-// see the NOTICE.md next to them); the voice is Kyutai's predefined "alba".
+// see the NOTICE.md next to them); the voice is one of Kyutai's predefined ones, the project's if
+// the manifest has it, otherwise the manifest's default.
 
 import * as ort from "onnxruntime-web/wasm";
 // Imported as a URL so Vite emits it — onnxruntime-web's own lookup breaks once Vite has moved the
@@ -30,11 +31,14 @@ const MODEL_CACHE = "lola-tts-models";
 interface Manifest {
   version: string;
   files: Record<"bundle" | "tokenizerJson" | "textConditioner" | "flowLmMain" | "flowLmFlow" | "mimiDecoder", ManifestFile>;
+  defaultVoice?: string;
   voices: Record<string, ManifestFile & { credit: string }>;
 }
 
 export type PocketInbound =
-  | { type: "init"; modelUrl: string }
+  /** `voice`: a preset name; one the manifest doesn't have (a cloud provider's, a donated or a
+   * cloned voice) falls back to its default. */
+  | { type: "init"; modelUrl: string; voice?: string | null }
   | { type: "synthesize"; id: number; text: string }
   /** Stops generating `id` (an interrupted reply); its "done" still follows. */
   | { type: "cancel"; id: number };
@@ -66,11 +70,14 @@ function errorText(error: unknown): string {
 // onnxruntime-common then converts to on its own — both describe the same bytes.
 const makeTensor: MakeTensor = (type, data, dims) => new ort.Tensor(type, data as never, dims);
 
-async function init(modelUrl: string) {
+async function init(modelUrl: string, requestedVoice: string | null) {
   const manifestResponse = await fetch(new URL("manifest.json", modelUrl), { cache: "no-cache" });
   if (!manifestResponse.ok) throw new Error(`Pocket TTS manifest not found (HTTP ${manifestResponse.status}) — run scripts/fetch-tts-model.sh`);
   const manifest = (await manifestResponse.json()) as Manifest;
-  const [voiceName, voiceFile] = Object.entries(manifest.voices)[0];
+  const voiceName =
+    [requestedVoice, manifest.defaultVoice].find((name): name is string => !!name && name in manifest.voices) ??
+    Object.keys(manifest.voices)[0];
+  const voiceFile = manifest.voices[voiceName];
   const cache = await openModelCache(MODEL_CACHE);
 
   const files = [...Object.values(manifest.files), voiceFile];
@@ -133,7 +140,7 @@ self.onmessage = (event: MessageEvent<PocketInbound>) => {
   };
   switch (message.type) {
     case "init":
-      run(null, () => init(message.modelUrl));
+      run(null, () => init(message.modelUrl, message.voice ?? null));
       break;
     case "synthesize":
       run(message.id, () => synthesize(message.id, message.text));

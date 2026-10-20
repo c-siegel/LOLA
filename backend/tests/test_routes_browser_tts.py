@@ -54,8 +54,22 @@ def test_status_endpoint(client, teacher, monkeypatch):
     assert client.get("/providers/browser-tts-status").json() == {"available": True, "language": "de"}
 
 
-def test_public_info_carries_the_model_url(anon, device_project):
-    assert anon.get(f"/public/{device_project['shareSlug']}").json()["browserTtsModelUrl"] == MODEL_URL
+def test_public_info_carries_the_model_url_and_voice(client, anon, device_project):
+    client.put(f"/projects/{device_project['id']}", json={"ttsVoice": "estelle"})
+
+    info = anon.get(f"/public/{device_project['shareSlug']}").json()
+
+    assert info["browserTtsModelUrl"] == MODEL_URL
+    assert info["browserTtsVoice"] == "estelle"
+
+
+def test_public_info_has_no_voice_without_on_device_speech(client, anon, chat_project, offered):
+    client.put(f"/projects/{chat_project['id']}", json={"ttsVoice": "estelle"})
+
+    info = anon.get(f"/public/{chat_project['shareSlug']}").json()
+
+    assert info["browserTtsModelUrl"] is None
+    assert info["browserTtsVoice"] is None
 
 
 def test_device_speaks_the_plain_reply(anon, device_project, fake_ai):

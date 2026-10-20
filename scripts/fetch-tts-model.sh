@@ -45,15 +45,68 @@ REVISION="b79d4c1fa3898a98e43fb6f5412d3dd4cb5cc904"
 SOURCES="$MIRROR_REPO@$MIRROR_REVISION $REPO@$REVISION"
 TARGET="$TARGET_ROOT/pocket-tts-de/$VERSION"
 
-# The preset voice: Kyutai's own "alba" state for the German model, from the ungated repository.
-# It fits the export above because everything that generates speech (flow LM, flow net, Mimi
+# The preset voices: Kyutai's own voice states for the German model, from the ungated repository.
+# They fit the export above because everything that generates speech (flow LM, flow net, Mimi
 # decoder) is bit-identical in Kyutai's gated and ungated October weights — only the voice encoder
-# differs (zeroed in the ungated one). Shipped as Kyutai publishes it; the browser converts it to
-# the export's state layout (see "voices" in manifest.json and docs/pocket-tts-plan.md).
+# differs (zeroed in the ungated one). Shipped as Kyutai publishes them; the browser converts the
+# one a project uses to the export's state layout (see "voices" in manifest.json and
+# docs/pocket-tts-plan.md). The same allowlist as the server's (local-tts/app/voices.py): no
+# non-commercial (cosette, jean) or undocumented (juergen, rafael) voices. Each device downloads
+# only its project's voice (4–8 MB); all of them take ~140 MB here.
 VOICE_REPO="kyutai/pocket-tts-without-voice-cloning"
 VOICE_REVISION="ab248779e0718743c013e20b2d812ace7c8f4bf7"
-VOICE_NAME="alba"
-VOICE_SHA="e34da39d613abe74a8a255426c816738372f085a83604c0c441845d7ae6c8192"
+# What projects without an allowed preset (or with a cloud provider's voice name) speak with.
+DEFAULT_VOICE="alba"
+# name, sha256
+VOICES="
+alba e34da39d613abe74a8a255426c816738372f085a83604c0c441845d7ae6c8192
+anna 54e036b70a09478ed11a5108c1e651c6d59ddd63db8191ad9b8264c0cc0d677e
+vera b3e44170a5a4fa97ecdabaac23706cc06e03bd3e9c0492b2aa43582c6cdc18cc
+fantine b77367001a30d0862e83741f19ba9263870d882310e19a0cac3ba8befe406b04
+charles 81199ad1a12f63dc2d47df1da3c55ca010cfe9e222ddffbeea056c372450af0b
+paul 3b4afcddd3c88a4daa3a19a8e3d84a1c08cb06483442d3623d10bd00bdbe9bf5
+eponine 73cddc2c86df453d4a0d8be05814a9e9d8c050be03cf2ce8bd9df0624c4c8a57
+azelma 0df5e6ab44f1adccd6717ddac4444a8a82e25bb9b2ef98c73aa20fd033cf87cb
+george a6c1a5b927b8481dbac08beada45f00b478716aeaf81f080f98c6ba04e65c12b
+mary aa2f706eeed7ff410778b3e23070b8f6dd27c27460b76cdd1baef4f7d7d61da5
+jane bd1bc91fd38a724b14f5c9cb4d67327f968568beb28d72fe7bb81f0fba75b685
+michael cf14510456e4a0047160f052ccaa35a24b012eddf260b593b64dfa9fa1fe6d73
+eve de30237de9ab96251ca7d73746f1ecc8184b91b8f025f8c06096f7a33afe7bbf
+daan 1ab0faf983edda0f314db4c843e162858b7f424fe530ec93e7d78379ab3c8b6b
+marius 1919d2fed89aa8f894753569fe15079f20abc4c9859ed9da889c8b282b244449
+javert c6ed2465f41a015d78c4dee4be1d4a517e25db3cb43e944e27f984e70006822f
+bill_boerst 15c4f662fdd05a1d379a589466ce31a4fa34ebdec9a3e9d94ec6ef5d8a1efbd1
+peter_yearsley 50360c335454f22bb80353e83070f33ccb08d7223449855f4078a3ebce6ca70d
+stuart_bell 60062fc7b9f52bcdf7cfdfc574abb84e476595979283bdadfcd53cf6b5b3e384
+caro_davy 1f19753a2d06366db2dc261bf9026f582836cde579fea9857a21e9f28c474362
+estelle ea90dd538585661872343983fdf5ccff64e0013d749675d7dff81fcfe4dbe747
+giovanni 479b21d57d3fc2d0d6350ecdd265950f7fe7845c1a3da38dbc40414930a1c649
+lola 66466f5601e1420824a7f5bb852c8807532d38cd8e29002e936b98bfb0e59a24
+"
+
+# Who recorded each voice, and the source recording's licence (see local-tts/app/voices.py).
+voice_credit() {
+  case "$1" in
+    alba) echo "Alba MacKenna (CC BY 4.0)" ;;
+    anna) echo "VCTK corpus, speaker p228 (CC BY 4.0)" ;;
+    vera) echo "VCTK corpus, speaker p229 (CC BY 4.0)" ;;
+    fantine) echo "VCTK corpus, speaker p244 (CC BY 4.0)" ;;
+    charles) echo "VCTK corpus, speaker p254 (CC BY 4.0)" ;;
+    paul) echo "VCTK corpus, speaker p259 (CC BY 4.0)" ;;
+    eponine) echo "VCTK corpus, speaker p262 (CC BY 4.0)" ;;
+    azelma) echo "VCTK corpus, speaker p303 (CC BY 4.0)" ;;
+    george) echo "VCTK corpus, speaker p315 (CC BY 4.0)" ;;
+    mary) echo "VCTK corpus, speaker p333 (CC BY 4.0)" ;;
+    jane) echo "VCTK corpus, speaker p339 (CC BY 4.0)" ;;
+    michael) echo "VCTK corpus, speaker p360 (CC BY 4.0)" ;;
+    eve) echo "VCTK corpus, speaker p361 (CC BY 4.0)" ;;
+    daan) echo "CML-TTS corpus (CC BY 4.0)" ;;
+    marius|javert) echo "Unmute Voice Donation Project (CC0)" ;;
+    bill_boerst|peter_yearsley|stuart_bell|caro_davy) echo "Voice-Zero (CC0)" ;;
+    estelle) echo "Kyutai Labs (CC0)" ;;
+    giovanni|lola) echo "Mozilla Common Voice (CC0)" ;;
+  esac
+}
 # Kyutai's tokenizer.json, the same vocabulary as the export's tokenizer.model (identical token ids,
 # checked on umlauts, quotes and emoji) but readable by a small JavaScript tokenizer, so the browser
 # needs no SentencePiece binary. pocket-tts itself uses this file.
@@ -123,8 +176,11 @@ echo "$FILES" | while read -r name sha; do
   install "$name" "$sha" $urls
 done
 
-install "voices/$VOICE_NAME.safetensors" "$VOICE_SHA" \
-  "https://huggingface.co/$VOICE_REPO/resolve/$VOICE_REVISION/languages/german/embeddings/$VOICE_NAME.safetensors"
+echo "$VOICES" | while read -r name sha; do
+  [ -n "$name" ] || continue
+  install "voices/$name.safetensors" "$sha" \
+    "https://huggingface.co/$VOICE_REPO/resolve/$VOICE_REVISION/languages/german/embeddings/$name.safetensors"
+done
 install "tokenizer.json" "$TOKENIZER_JSON_SHA" \
   "https://huggingface.co/$VOICE_REPO/resolve/$VOICE_REVISION/languages/german/tokenizer.json"
 
@@ -147,10 +203,11 @@ These model files are **© Kyutai Labs**, licensed under
   (https://huggingface.co/$VOICE_REPO, revision $VOICE_REVISION).
 - **Tokenizer \`tokenizer.json\`:** Kyutai's, unchanged, from
   https://huggingface.co/$VOICE_REPO/tree/$VOICE_REVISION/languages/german (CC BY 4.0).
-- **Voice \`voices/$VOICE_NAME.safetensors\`:** Kyutai's predefined German voice state "$VOICE_NAME",
-  unchanged, from https://huggingface.co/$VOICE_REPO/tree/$VOICE_REVISION/languages/german/embeddings
-  (CC BY 4.0). Recorded by **Alba MacKenna**, released under CC BY 4.0
-  (https://huggingface.co/kyutai/tts-voices, folder alba-mackenna).
+- **Voices \`voices/*.safetensors\`:** Kyutai's predefined German voice states, unchanged, from
+  https://huggingface.co/$VOICE_REPO/tree/$VOICE_REVISION/languages/german/embeddings (CC BY 4.0),
+  computed from these recordings (https://huggingface.co/kyutai/tts-voices and the sources named
+  in pocket-tts' \`pocket_tts/utils/utils.py\`):
+$(echo "$VOICES" | while read -r name sha; do [ -n "$name" ] && echo "  - $name: $(voice_credit "$name")"; done)
 - **No warranty:** the licensor offers the material as-is (CC BY 4.0, section 5).
 
 Kyutai asks that the model is not used to imitate or clone anyone's voice without their explicit
@@ -178,13 +235,14 @@ cat > "$TARGET/manifest.json.part" <<EOF
     "flowLmFlow": { "path": "flow_lm_flow_int8.onnx", "bytes": $(size flow_lm_flow_int8.onnx) },
     "mimiDecoder": { "path": "mimi_decoder_int8.onnx", "bytes": $(size mimi_decoder_int8.onnx) }
   },
+  "voiceFormat": "kyutai: per layer <layer>/cache float32 [2,1,T,16,64] (keys, values) and <layer>/offset = T; the export wants <layer>/cache_k and cache_v as float16 [1,capacity,16,64] with rows past T zero, and step = T",
+  "defaultVoice": "$DEFAULT_VOICE",
   "voices": {
-    "$VOICE_NAME": {
-      "path": "voices/$VOICE_NAME.safetensors",
-      "bytes": $(size "voices/$VOICE_NAME.safetensors"),
-      "credit": "Alba MacKenna (CC BY 4.0)",
-      "format": "kyutai: per layer <layer>/cache float32 [2,1,T,16,64] (keys, values) and <layer>/offset = T; the export wants <layer>/cache_k and cache_v as float16 [1,capacity,16,64] with rows past T zero, and step = T"
-    }
+$(echo "$VOICES" | while read -r name sha; do
+  [ -n "$name" ] || continue
+  printf '    "%s": { "path": "voices/%s.safetensors", "bytes": %s, "credit": "%s" },\n' \
+    "$name" "$name" "$(size "voices/$name.safetensors")" "$(voice_credit "$name")"
+done | sed '$ s/,$//')
   }
 }
 EOF
@@ -195,4 +253,4 @@ mv "$TARGET/manifest.json.part" "$TARGET/manifest.json"
 chmod -R a+rX "$TARGET_ROOT" 2>/dev/null || echo "Warning: could not make $TARGET_ROOT world-readable — the web server may answer 403." >&2
 
 echo "Done: $TARGET"
-echo "Transfer size per device (gzip): $(cat "$TARGET"/*.gz "$TARGET"/voices/*.gz | wc -c | awk '{printf "%.0f MB", $1 / 1000000}')"
+echo "Transfer size per device (gzip, with the default voice): $(cat "$TARGET"/*.gz "$TARGET/voices/$DEFAULT_VOICE.safetensors.gz" | wc -c | awk '{printf "%.0f MB", $1 / 1000000}')"

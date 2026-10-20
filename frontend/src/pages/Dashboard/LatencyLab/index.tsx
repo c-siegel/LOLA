@@ -39,7 +39,7 @@ import styles from "./LatencyLab.module.css";
 import { sitePath } from "@/lib/basePath";
 
 const PARAKEET_MODEL_URL = sitePath("/models/parakeet-redux/v1/");
-// Written by scripts/fetch-tts-model.sh (German Pocket TTS with the voice "alba").
+// Written by scripts/fetch-tts-model.sh (German Pocket TTS with Kyutai's preset voices).
 const POCKET_MODEL_URL = sitePath("/models/pocket-tts-de/v1/");
 const SETTINGS_KEY = "lola.latencyLab";
 const DEFAULT_SCRIPT = "Hallo! Wer bist du?\nKannst du mir das in einem Satz erklären?";
@@ -184,7 +184,8 @@ export function LatencyLabPage() {
     const started = performance.now();
     setPocket({ ...idleEngine, status: "loading", backend: null });
     try {
-      await engine.load(POCKET_MODEL_URL, (progress) => setPocket((prev) => ({ ...prev, progress })));
+      // The project's preset voice, like in its public chat; the model's default if it has none.
+      await engine.load(POCKET_MODEL_URL, (progress) => setPocket((prev) => ({ ...prev, progress })), project?.ttsVoice);
       setPocket({ status: "ready", progress: null, loadSeconds: (performance.now() - started) / 1000, error: null, backend: engine.backend });
     } catch (error) {
       setPocket({ ...idleEngine, status: "error", error: error instanceof Error ? error.message : String(error), backend: null });

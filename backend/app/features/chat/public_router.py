@@ -99,6 +99,7 @@ def load_tutor(
         stt_enabled=project.stt_enabled,
         browser_stt_model_url=browser_stt_model_url_for(project),
         browser_tts_model_url=browser_tts_model_url_for(project),
+        browser_tts_voice=project.tts_voice if browser_tts_model_url_for(project) else None,
         streaming_enabled=project.streaming_enabled,
         chat_layout=project.chat_layout,
         motion_enabled=project.motion_enabled,
