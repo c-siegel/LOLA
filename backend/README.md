@@ -194,7 +194,9 @@ content-sniffing validation as the avatar library.
 ### Voice library — `app/features/media/voices_router.py` (prefix `/voice-clips`)
 
 Each teacher's private voice clips for local voice cloning (local TTS only — a project picks one
-via `ttsVoiceClipId`). Uploads are content-sniffed, need a consent confirmation, must be 3–30 s
+via `ttsVoiceClipId`). Cloning needs the sidecar's `TTS_HF_TOKEN` (see
+[local-tts/README.md](../local-tts/README.md#voice-cloning)); without it the sidecar speaks with
+the project's preset voice (`ttsVoice`) instead. Uploads are content-sniffed, need a consent confirmation, must be 3–30 s
 long, and are stored as normalized 24 kHz mono WAV whatever format came in.
 
 | Method & path | Auth | Description |
@@ -272,7 +274,7 @@ duplicating that data. Keys are encrypted at rest.
 | Method & path | Router | Auth | Description |
 |---|---|---|---|
 | `GET /providers` | `providers_router.py` | Login required | List all supported providers and their config. |
-| `GET /providers/local-tts-status` | `providers_router.py` | Login required | Whether this deployment's local-TTS sidecar is enabled. |
+| `GET /providers/local-tts-status` | `providers_router.py` | Login required | Whether this deployment's local-TTS sidecar is enabled, and — if it answers — whether it clones voices, its languages and its voices (presets, plus donated voices with cloning) for the configurator's picker. Cached for a minute. |
 | `GET /providers/browser-stt-status` | `providers_router.py` | Login required | Whether on-device (WebGPU) transcription is enabled for this deployment. |
 | `GET /providers/server-stt-status` | `providers_router.py` | Login required | The deployment's default server STT engine and whether a project may pick Parakeet instead (its model files are present). |
 | `GET /api-keys` | `router.py` | Login required | List the current user's stored keys, with how many projects use each one. |

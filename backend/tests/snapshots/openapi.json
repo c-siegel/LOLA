@@ -1997,12 +1997,65 @@
           "available": {
             "title": "Available",
             "type": "boolean"
+          },
+          "cloning": {
+            "default": false,
+            "title": "Cloning",
+            "type": "boolean"
+          },
+          "languages": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "reachable": {
+            "default": false,
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "voices": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LocalTtsVoiceOut"
+            },
+            "title": "Voices",
+            "type": "array"
           }
         },
         "required": [
           "available"
         ],
         "title": "LocalTtsStatusOut",
+        "type": "object"
+      },
+      "LocalTtsVoiceOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "preset",
+              "donation"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind"
+        ],
+        "title": "LocalTtsVoiceOut",
         "type": "object"
       },
       "LoginRequest": {

@@ -13,9 +13,11 @@ from app.core.config import settings
 from app.core.deps import get_current_user
 from app.core.providers import KEY_TYPE_EMBEDDING, PROVIDERS
 from app.features.ai.stt import parakeet_local
+from app.features.ai.tts.local import sidecar_voices
 from app.features.api_keys.schemas import (
     BrowserSttStatusOut,
     LocalTtsStatusOut,
+    LocalTtsVoiceOut,
     ProviderModelOut,
     ProviderSpecOut,
     ServerSttStatusOut,
@@ -53,8 +55,23 @@ def list_providers(_: User = Depends(get_current_user)):
 
 @router.get("/local-tts-status", response_model=LocalTtsStatusOut)
 def local_tts_status(_: User = Depends(get_current_user)):
-    """Whether the local-TTS sidecar is enabled for this deployment (see Settings.local_tts_enabled)."""
-    return LocalTtsStatusOut(available=settings.local_tts_enabled)
+    """Whether the local-TTS sidecar is enabled for this deployment (see Settings.local_tts_enabled),
+    and if it answers, what it can speak: languages, voice cloning and its voices."""
+    sidecar = sidecar_voices()
+    if sidecar is None:
+        return LocalTtsStatusOut(available=settings.local_tts_enabled)
+    return LocalTtsStatusOut(
+        available=True,
+        reachable=True,
+        cloning=sidecar.cloning,
+        languages=sidecar.languages,
+        voices=[
+            LocalTtsVoiceOut(id=voice["id"], label=voice.get("label") or voice["id"], kind=voice["kind"])
+            for voice in sidecar.voices
+            # A newer sidecar may know kinds this backend doesn't; leave those out.
+            if voice.get("kind") in ("preset", "donation") and voice.get("id")
+        ],
+    )
 
 
 @router.get("/browser-stt-status", response_model=BrowserSttStatusOut)

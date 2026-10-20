@@ -163,11 +163,24 @@ class ApiKeyTestResult(CamelModel):
     message: str | None = None
 
 
+class LocalTtsVoiceOut(CamelModel):
+    id: str
+    label: str
+    # "preset": always available; "donation": a donated CC0 voice, only with cloning.
+    kind: Literal["preset", "donation"]
+
+
 class LocalTtsStatusOut(CamelModel):
     # Whether the local-TTS sidecar (see local-tts/) is enabled for this deployment — lets the
     # frontend treat "no TTS key configured" the same forgiving way it already treats local STT,
     # instead of always showing the "add a key" warning (see Step2Technical.tsx).
     available: bool
+    # Whether the sidecar answered just now; the fields below are empty when it didn't.
+    reachable: bool = False
+    # Whether it clones voices (teachers' clips, donated voices) — needs its TTS_HF_TOKEN.
+    cloning: bool = False
+    languages: list[str] = []
+    voices: list[LocalTtsVoiceOut] = []
 
 
 class BrowserSttStatusOut(CamelModel):
