@@ -16,6 +16,7 @@ from app.features.ai.stt import parakeet_local
 from app.features.ai.tts.local import sidecar_voices
 from app.features.api_keys.schemas import (
     BrowserSttStatusOut,
+    BrowserTtsStatusOut,
     LocalTtsStatusOut,
     LocalTtsVoiceOut,
     ProviderModelOut,
@@ -79,6 +80,13 @@ def browser_stt_status(_: User = Depends(get_current_user)):
     """Whether browser-side (WebGPU) transcription is enabled for this deployment (see
     Settings.browser_stt_enabled)."""
     return BrowserSttStatusOut(available=settings.browser_stt_enabled)
+
+
+@router.get("/browser-tts-status", response_model=BrowserTtsStatusOut)
+def browser_tts_status(_: User = Depends(get_current_user)):
+    """Whether this deployment offers on-device speech output (see Settings.browser_tts_enabled),
+    and the one language its model speaks."""
+    return BrowserTtsStatusOut(available=settings.browser_tts_enabled, language=settings.browser_tts_language)
 
 
 @router.get("/server-stt-status", response_model=ServerSttStatusOut)

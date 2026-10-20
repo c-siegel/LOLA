@@ -183,6 +183,14 @@ class LocalTtsStatusOut(CamelModel):
     voices: list[LocalTtsVoiceOut] = []
 
 
+class BrowserTtsStatusOut(CamelModel):
+    # Whether this deployment offers on-device speech output (Settings.browser_tts_enabled) — gates
+    # the Configurator's per-project checkbox.
+    available: bool
+    # The model's language: projects in other languages speak through the server.
+    language: str
+
+
 class BrowserSttStatusOut(CamelModel):
     # Whether this deployment allows browser-side (WebGPU) transcription at all (see
     # Settings.browser_stt_enabled) — gates whether the Configurator even shows its per-project

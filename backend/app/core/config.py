@@ -417,6 +417,30 @@ class Settings(BaseSettings):
     docker/Caddyfile) and Vite in development (see frontend/vite.config.ts).
     """
 
+    # ==================== BROWSER TEXT-TO-SPEECH SETTINGS ====================
+    # Speech output generated on the visitor's own device: Kyutai's Pocket TTS (int8 ONNX, German,
+    # preset voice "alba") in a web worker — see frontend/src/lib/pocketTts.ts. The server then
+    # only sends the reply's text and its spoken form; a project's own TTS (cloud key or local
+    # sidecar) stays the fallback for a device that can't load the model. Like browser STT, the
+    # backend computes nothing here (see features/api_keys/resolve.py::browser_tts_model_url_for).
+
+    browser_tts_enabled: bool = False
+    """
+    Whether projects may let visitors' devices speak the replies. Off by default because the model
+    files aren't downloaded by default: Docker Compose's "browser-tts" profile downloads them (in
+    development, run scripts/fetch-tts-model.sh). Each project still opts in with its own
+    "tts_browser_enabled" checkbox. Every visitor's device downloads the model once (~99 MB).
+    """
+
+    browser_tts_model_url: str = "/models/pocket-tts-de/v1/"
+    """Base URL of the model files, as written by scripts/fetch-tts-model.sh. Same-origin by
+    default, like browser_stt_model_url."""
+
+    browser_tts_language: str = "de"
+    """The language of the model at browser_tts_model_url — Pocket TTS has one model per language,
+    and scripts/fetch-tts-model.sh downloads the German one. Projects in other languages keep
+    speaking through the server."""
+
     # ==================== PUBLIC CHAT & VOICE INPUT RATE LIMITS ====================
 
     # Sized for a school class of ~30 students in one 45-minute lesson (see

@@ -12,6 +12,7 @@ turn failures into deliberately generic errors (no provider/model detail for ano
 
 import logging
 import time
+from dataclasses import replace
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, Header, HTTPException, Request, Response, UploadFile
@@ -27,10 +28,10 @@ from app.core.rate_limit import (
     enforce_public_transcribe_rate_limit,
 )
 from app.features.ai.stt import transcribe_audio
-from app.features.api_keys.resolve import browser_stt_model_url_for, resolve_stt_key
+from app.features.api_keys.resolve import browser_stt_model_url_for, browser_tts_model_url_for, resolve_stt_key
 from app.features.chat.audio_upload import read_audio_upload
 from app.features.chat.checklist import checklist_for, replay
-from app.features.chat.pipeline import ChatTurn, LLMFailed, prepare_chat, reply_turn, stream_turn
+from app.features.chat.pipeline import ChatContext, ChatTurn, LLMFailed, prepare_chat, reply_turn, stream_turn
 from app.features.chat.schemas import (
     ChatMessageIn,
     ChatMessageOut,
@@ -97,6 +98,7 @@ def load_tutor(
         tts_enabled=project.tts_enabled,
         stt_enabled=project.stt_enabled,
         browser_stt_model_url=browser_stt_model_url_for(project),
+        browser_tts_model_url=browser_tts_model_url_for(project),
         streaming_enabled=project.streaming_enabled,
         chat_layout=project.chat_layout,
         motion_enabled=project.motion_enabled,
@@ -168,6 +170,17 @@ def _start_turn(
     return ChatTurn(data.message, history, visitor_id, visitor_name, received_at, done)
 
 
+def _chat_context(session: Session, project: Project, data: ChatMessageIn) -> ChatContext:
+    """The turn's context; 503 without a usable LLM key. The device only takes over speech output
+    where the project offers it — a request can't switch off the server's TTS otherwise."""
+    context = prepare_chat(session, project)
+    if context is None:
+        raise HTTPException(status_code=503, detail=ErrorCode.CHAT_UNAVAILABLE)
+    if data.speak_on_device and browser_tts_model_url_for(project):
+        context = replace(context, speak_on_device=True)
+    return context
+
+
 @router.post("/{slug}/messages", response_model=ChatMessageOut)
 def send_message(
     data: ChatMessageIn,
@@ -183,9 +196,7 @@ def send_message(
 
     # No technical detail (provider/model) is passed to anonymous visitors — that's the project
     # owner's configuration problem, not something visitors are affected by or can fix.
-    context = prepare_chat(session, project)
-    if context is None:
-        raise HTTPException(status_code=503, detail=ErrorCode.CHAT_UNAVAILABLE)
+    context = _chat_context(session, project, data)
     # The LLM and TTS calls take seconds, and holding a pooled DB connection for that whole time
     # is what let a class-sized burst of concurrent chats exhaust the connection pool.
     session.close()
@@ -203,6 +214,7 @@ def send_message(
         tts_ms=reply.tts_ms,
         motions=reply.motions,
         checks=[c.to_client() for c in reply.checks],
+        spoken=reply.spoken,
     )
 
 
@@ -222,9 +234,7 @@ def send_message_stream(
     """
     turn = _start_turn(data, request, response, project, x_chat_unlock_token, x_visitor_name)
 
-    context = prepare_chat(session, project)
-    if context is None:
-        raise HTTPException(status_code=503, detail=ErrorCode.CHAT_UNAVAILABLE)
+    context = _chat_context(session, project, data)
     # Same reason as in send_message, only more so: a streamed reply runs for the LLM call plus
     # every sentence's TTS. Everything the stream needs was read into `context` up front, and
     # saving opens its own session, so nothing touches `session` after this.

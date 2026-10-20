@@ -914,6 +914,24 @@
         "title": "BrowserSttStatusOut",
         "type": "object"
       },
+      "BrowserTtsStatusOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "language"
+        ],
+        "title": "BrowserTtsStatusOut",
+        "type": "object"
+      },
       "ChatHistoryEntry": {
         "properties": {
           "checks": {
@@ -969,6 +987,11 @@
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "speakOnDevice": {
+            "default": false,
+            "title": "Speakondevice",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1031,6 +1054,17 @@
           "reply": {
             "title": "Reply",
             "type": "string"
+          },
+          "spoken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spoken"
           },
           "ttsMs": {
             "anyOf": [
@@ -1947,6 +1981,11 @@
             "title": "Message",
             "type": "string"
           },
+          "speakOnDevice": {
+            "default": false,
+            "title": "Speakondevice",
+            "type": "boolean"
+          },
           "streaming": {
             "default": true,
             "title": "Streaming",
@@ -2789,6 +2828,10 @@
             ],
             "title": "Ttsapikeyid"
           },
+          "ttsBrowserEnabled": {
+            "title": "Ttsbrowserenabled",
+            "type": "boolean"
+          },
           "ttsEnabled": {
             "title": "Ttsenabled",
             "type": "boolean"
@@ -2849,6 +2892,7 @@
           "sttServerEngine",
           "sttEnabled",
           "sttBrowserEnabled",
+          "ttsBrowserEnabled",
           "streamingEnabled",
           "chatLayout",
           "motionEnabled",
@@ -3320,6 +3364,17 @@
               }
             ],
             "title": "Ttsapikeyid"
+          },
+          "ttsBrowserEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ttsbrowserenabled"
           },
           "ttsEnabled": {
             "anyOf": [
@@ -3904,6 +3959,17 @@
               }
             ],
             "title": "Browsersttmodelurl"
+          },
+          "browserTtsModelUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Browserttsmodelurl"
           },
           "chatLayout": {
             "default": "avatar_chat",
@@ -9991,6 +10057,22 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BrowserSttStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/v1/providers/browser-tts-status": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserTtsStatusOut"
                 }
               }
             },
