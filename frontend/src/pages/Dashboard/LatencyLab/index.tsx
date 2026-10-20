@@ -20,11 +20,11 @@ import { apiKeysApi } from "@/api/apiKeys";
 import { projectsApi } from "@/api/projects";
 import { ParakeetSttEngine, isWebGpuAvailable, type LoadProgress } from "@/lib/parakeetStt";
 import { modelLabel, useBrowserSttStatus, useLocalTtsStatus, useProviders, useServerSttStatus } from "@/lib/providers";
+import { saveFile } from "@/lib/download";
 import { PocketBrowserTts } from "@/lib/pocketTts";
 import type { ChatMessage } from "@/types/chat";
 import {
   METRIC_COLUMNS,
-  downloadFile,
   summarize,
   toCsv,
   type DeviceInfo,
@@ -647,13 +647,19 @@ export function LatencyLabPage() {
         <div className={styles.engineHead}>
           <HeadingWithInfo title={t("latencyLab.resultsTitle")} info={t("latencyLab.resultsHint")} />
           <div className={styles.buttons}>
-            <Button size="sm" disabled={!results.length} onClick={() => downloadFile(toCsv(results, device), `${exportName}.csv`, "text/csv")}>
+            <Button
+              size="sm"
+              disabled={!results.length}
+              onClick={() => saveFile(new Blob([toCsv(results, device)], { type: "text/csv" }), `${exportName}.csv`)}
+            >
               CSV
             </Button>
             <Button
               size="sm"
               disabled={!results.length}
-              onClick={() => downloadFile(JSON.stringify({ device, results }, null, 2), `${exportName}.json`, "application/json")}
+              onClick={() =>
+                saveFile(new Blob([JSON.stringify({ device, results }, null, 2)], { type: "application/json" }), `${exportName}.json`)
+              }
             >
               JSON
             </Button>

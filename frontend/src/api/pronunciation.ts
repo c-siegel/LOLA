@@ -2,7 +2,7 @@
 // avatar should pronounce differently ("pH" -> "p H"), per spoken language, plus preset packs,
 // text import/export and the test box.
 
-import { API_BASE_URL, ApiError, apiClient, filenameFromContentDisposition } from "./client";
+import { apiClient, downloadFile } from "./client";
 import type { SpokenLanguage } from "@/types/project";
 
 export interface PronunciationEntry {
@@ -75,20 +75,6 @@ export const pronunciationApi = {
   import: (language: SpokenLanguage, text: string, overwrite: boolean, dryRun: boolean) =>
     apiClient.post<ImportResult>("/pronunciation/import", { language, text, overwrite, dryRun }),
   preview: (input: PreviewInput) => apiClient.post<PreviewResult>("/pronunciation/preview", input),
-  // Downloads the word list as .csv — bypasses apiClient like projectsApi.exportYaml, since the
-  // response is a file, not JSON.
-  exportCsv: async (language: SpokenLanguage) => {
-    const res = await fetch(`${API_BASE_URL}/pronunciation/export?language=${language}`, { credentials: "include" });
-    if (!res.ok) throw new ApiError(res.status, await res.text());
-    const filename = filenameFromContentDisposition(
-      res.headers.get("Content-Disposition"),
-      `pronunciation-${language}.csv`,
-    );
-    const url = URL.createObjectURL(await res.blob());
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-  },
+  exportCsv: (language: SpokenLanguage) =>
+    downloadFile(`/pronunciation/export?language=${language}`, `pronunciation-${language}.csv`),
 };
