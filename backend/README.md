@@ -28,7 +28,7 @@ raise `DomainError`s (`app/core/errors.py`) instead of HTTP exceptions.
 |---|---|
 | `app/main.py` | Builds the app (`create_app()`): middleware, error handling, lifespan, `/health` |
 | `app/api_router.py` | Mounts every feature's router under `/api/v1` (`app/core/urls.py`); the order matters for overlapping paths — see [API Reference](#api-reference) below |
-| `app/core/` | Cross-cutting setup: settings (`config.py`), auth dependencies (`deps.py`), ownership checks (`ownership.py`), cookies, domain errors, middleware, public URLs (`urls.py`), the LLM/TTS/STT provider registry (`providers.py`), rate limiting, security helpers |
+| `app/core/` | Cross-cutting setup: settings (`config.py`), auth dependencies (`deps.py`), ownership checks (`ownership.py`), the CSV formula guard (`csv.py`), cookies, domain errors, middleware, public URLs (`urls.py`), the LLM/TTS/STT provider registry (`providers.py`), rate limiting, security helpers |
 | `app/db/` | Database session/engine setup; `base.py` imports every feature's models for Alembic |
 | `app/storage/` | Shared upload handling: content sniffing, saving/deleting files, cached file responses |
 | `app/tasks/` | Background work: the periodic data-retention purge, and retrying deletes the knowledge service missed while it was down |
@@ -460,10 +460,10 @@ A few backend behaviors worth knowing about if you're deploying or extending thi
 - **Data retention** (`app/tasks/retention.py`) is enforced both at startup and
   periodically (every 6 hours, see `app/main.py`) for as long as the process runs, not just once
   per restart.
-- **Conversation exports are CSV-injection-safe** (`app/features/analytics/csv_export.py`): a
-  visitor name or message starting with `=`, `+`, `-`, or `@` is escaped before being written to
-  the exported CSV/ZIP, so it can't turn into a live spreadsheet formula when a teacher opens it.
-  The pronunciation word-list export does the same (and its import strips the escape again).
+- **CSV exports are CSV-injection-safe** (`app/core/csv.py`): a visitor name, message, word-list
+  term or evaluation question starting with `=`, `+`, `-`, or `@` is escaped before being written
+  to the exported CSV/ZIP, so it can't turn into a live spreadsheet formula when a teacher opens
+  it. The word-list and evaluation-question imports strip the escape again.
 - **Pronunciation rules are never regular expressions.** Teachers' terms are escaped before they
   are compiled (`app/features/ai/tts/pronunciation.py`), so a word list can't inject a pattern or
   cause catastrophic backtracking; the only syntax is the `{number}` placeholder.

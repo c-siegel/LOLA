@@ -11,6 +11,7 @@ import json
 import re
 import zipfile
 
+from app.core.csv import csv_safe
 from app.features.chat.models import Conversation
 from app.features.projects.models import Project
 
@@ -30,26 +31,6 @@ def conversation_export_filename(conversation: Conversation, project: Project) -
     date_part = conversation.started_at.strftime("%Y%m%d-%H%M")
     who = conversation.visitor_name or conversation.id[:8]
     return f"{_slugify(project.title)}_{date_part}_{_slugify(who)}.csv"
-
-
-# Cell-leading characters a spreadsheet app (Excel, Google Sheets) reads as "this cell is a
-# formula" rather than plain text — the classic CSV/formula-injection set (OWASP), plus a
-# leading tab/CR which some parsers treat the same way.
-_CSV_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
-
-
-def _csv_safe(value: str) -> str:
-    """Neutralize CSV/formula injection in an exported cell.
-
-    visitor_name and message content in build_conversation_csv below come straight from an
-    anonymous chat visitor with no format restriction — a name or message starting with e.g.
-    '=HYPERLINK("http://evil","x")' becomes a live, clickable formula the moment a teacher opens
-    the exported CSV/ZIP in Excel or Sheets. Prefixing with a single quote is the standard fix:
-    spreadsheet apps then show the cell as plain text and drop the leading quote themselves.
-    """
-    if value and value[0] in _CSV_FORMULA_TRIGGERS:
-        return "'" + value
-    return value
 
 
 def _sources_cell(sources: list[dict], document_names: dict[str, str]) -> str:
@@ -96,9 +77,9 @@ def build_conversation_csv(
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(["Projekt", _csv_safe(project.title)])
-    writer.writerow(["LLM-Modell", _csv_safe(project.llm_model or "")])
-    writer.writerow(["Name/ID", _csv_safe(conversation.visitor_name or "")])
+    writer.writerow(["Projekt", csv_safe(project.title)])
+    writer.writerow(["LLM-Modell", csv_safe(project.llm_model or "")])
+    writer.writerow(["Name/ID", csv_safe(conversation.visitor_name or "")])
     writer.writerow(["Gestartet", conversation.started_at.isoformat()])
     writer.writerow([])
     with_sources = any("sources" in message for message in messages)
@@ -113,15 +94,15 @@ def build_conversation_csv(
     )
     for message in messages:
         timestamp = message.get("timestamp") or ""
-        content = _csv_safe(message.get("content", ""))
+        content = csv_safe(message.get("content", ""))
         if message.get("role") == "assistant":
             row = [timestamp, content, ""]
             if with_sources:
-                row.append(_csv_safe(_sources_cell(message.get("sources") or [], document_names or {})))
+                row.append(csv_safe(_sources_cell(message.get("sources") or [], document_names or {})))
             if with_motions:
                 row.append(_motions_cell(message.get("motions") or []))
             if with_checks:
-                row.append(_csv_safe(_checks_cell(message.get("checks") or [], step_titles)))
+                row.append(csv_safe(_checks_cell(message.get("checks") or [], step_titles)))
         else:
             row = [timestamp, "", content] + [""] * (with_sources + with_motions + with_checks)
         writer.writerow(row)

@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from normt2s import Rule, RuleSet
 from sqlmodel import Session, select
 
+from app.core.csv import csv_safe, strip_csv_guard
 from app.core.error_codes import ErrorCode
 from app.core.errors import DomainError
 from app.features.ai.tts.pronunciation import compile_rules
@@ -41,10 +42,6 @@ _EXPORT_HEADER = ["term", "spoken", "whole_word", "case_sensitive"]
 _HEADER_NAMES = {"term", "begriff"}
 _TRUE = {"1", "true", "yes", "ja", "x", "wahr", "y", "j"}
 _FALSE = {"0", "false", "no", "nein", "falsch", "n", ""}
-# Same formula-injection guard as the conversation export (features/analytics/csv_export.py): a
-# term like "=mc²" or "+" would otherwise become a live formula when the file is opened in Excel
-# or Sheets. The import strips the quote again, so an export always re-imports unchanged.
-_CSV_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
 
 
 class DuplicateEntry(DomainError):
@@ -167,12 +164,6 @@ def _parse_flag(value: str) -> bool:
     raise ValueError(ErrorCode.PRONUNCIATION_IMPORT_FLAG_INVALID)
 
 
-def _unquote_formula_guard(value: str) -> str:
-    if len(value) > 1 and value[0] == "'" and value[1] in _CSV_FORMULA_TRIGGERS:
-        return value[1:]
-    return value
-
-
 def _split_line(raw: str) -> list[str]:
     """One import line's fields, from any of the three formats teachers produce.
 
@@ -199,7 +190,7 @@ def _parse(text: str) -> _ParseResult:
         if not raw.strip() or raw.lstrip().startswith("#"):
             continue
         try:
-            fields = [_unquote_formula_guard(f.strip()) for f in _split_line(raw)]
+            fields = [strip_csv_guard(f.strip()) for f in _split_line(raw)]
             if first_row and fields[0].lower() in _HEADER_NAMES:
                 first_row = False
                 continue
@@ -268,10 +259,6 @@ def import_text(
     return PronunciationImportResult(added=added, updated=updated, skipped=skipped, errors=parsed.errors)
 
 
-def _csv_safe(value: str) -> str:
-    return "'" + value if value and value[0] in _CSV_FORMULA_TRIGGERS else value
-
-
 def export_csv(session: Session, user_id: str, language: str) -> str:
     """The word list for `language` as semicolon-separated CSV, in the format import_text reads."""
     buffer = io.StringIO()
@@ -280,8 +267,8 @@ def export_csv(session: Session, user_id: str, language: str) -> str:
     for entry in list_entries(session, user_id, language):
         writer.writerow(
             [
-                _csv_safe(entry.term),
-                _csv_safe(entry.spoken),
+                csv_safe(entry.term),
+                csv_safe(entry.spoken),
                 "1" if entry.whole_word else "0",
                 "1" if entry.case_sensitive else "0",
             ]
