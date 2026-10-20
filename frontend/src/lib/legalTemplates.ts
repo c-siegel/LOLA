@@ -1,6 +1,6 @@
-// The built-in imprint and privacy policy (pages/Imprint, pages/Privacy) as Markdown, so an admin
-// who replaces a page starts from the current text with the site settings' details filled in,
-// rather than from a blank editor. Keep in step with those two pages when their sections change.
+// The built-in imprint and privacy policy as Markdown, filled in with the site settings' details.
+// pages/Imprint and pages/Privacy render it until an admin replaces the page, and the admin's
+// editor starts from it, so what an admin edits is exactly what the site showed before.
 import type { TFunction } from "i18next";
 import i18n from "@/i18n";
 import type { PageLocale } from "@/api/pages";
@@ -15,6 +15,12 @@ function paragraphs(...texts: string[]): string {
   return texts.map(escapeMarkdown).join("\n\n");
 }
 
+// A link when the setting holds something address-shaped; the setting itself isn't validated.
+function emailValue(email: string | null | undefined, placeholder: string): string {
+  if (email && /^[^\s<>@]+@[^\s<>@]+$/.test(email)) return `<${email}>`;
+  return escapeMarkdown(email || placeholder);
+}
+
 function section(title: string, body: string): string {
   return `## ${escapeMarkdown(title)}\n\n${body}`;
 }
@@ -23,7 +29,7 @@ function imprint(t: TFunction, settings: PublicSiteSettings | undefined): string
   const placeholder = t("imprint.placeholder");
   const line = (label: string, value: string | null | undefined, fallback = placeholder) =>
     `**${escapeMarkdown(label)}** ${escapeMarkdown(value || fallback)}`;
-  const email = line(t("imprint.contact.email"), settings?.contactEmail);
+  const email = `**${escapeMarkdown(t("imprint.contact.email"))}** ${emailValue(settings?.contactEmail, placeholder)}`;
   return [
     section(
       t("imprint.provider.title"),
@@ -49,7 +55,7 @@ function privacy(t: TFunction, settings: PublicSiteSettings | undefined): string
   const address = [settings?.providerName, settings?.providerStreet, settings?.providerCity, settings?.providerCountry]
     .map((value) => escapeMarkdown(value || placeholder))
     .join("  \n");
-  const email = `**${escapeMarkdown(t("imprint.contact.email"))}** ${escapeMarkdown(settings?.contactEmail || placeholder)}`;
+  const email = `**${escapeMarkdown(t("imprint.contact.email"))}** ${emailValue(settings?.contactEmail, placeholder)}`;
   return [
     section(t("privacy.controller.title"), [escapeMarkdown(t("privacy.controller.text")), address, email].join("\n\n")),
     section(t("privacy.teachers.title"), paragraphs(t("privacy.teachers.text"), t("privacy.teachers.legalBasis"))),
