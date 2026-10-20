@@ -222,7 +222,7 @@ def test_preview_shows_the_spoken_text_without_synthesizing(client, teacher, fak
     response = client.post("/pronunciation/preview", json={"text": "**pH** bei 1,5", "language": "de"})
     assert response.status_code == 200
     assert response.json() == {
-        "spokenText": "p H bei 1 Komma 5",
+        "spokenText": "p H bei eins Komma fünf",
         "appliedTerms": ["pH"],
         "audioBase64": None,
         "contentType": None,
