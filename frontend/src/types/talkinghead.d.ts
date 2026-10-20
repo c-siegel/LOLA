@@ -30,6 +30,10 @@ declare module "@met4citizen/talkinghead" {
     // also sets stateName and calls speakWithHands() the way startSpeaking() does.
     audioAnalyzerNode: AnalyserNode;
     stateName: string;
+    // Every sound passes through this convolver; setReverb(null) loads a dry impulse. See the
+    // constructor call in TalkingHeadAvatar.tsx for why `normalize` is switched off.
+    audioReverbNode: ConvolverNode;
+    setReverb(url?: string | null): Promise<void>;
     speakWithHands(delay?: number, prob?: number): void;
     // Stops the currently playing audio source and clears the queued speech/animation backlog.
     stopSpeaking(): void;

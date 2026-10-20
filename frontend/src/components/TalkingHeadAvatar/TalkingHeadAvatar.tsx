@@ -454,6 +454,12 @@ export const TalkingHeadAvatar = forwardRef<TalkingHeadAvatarHandle, TalkingHead
             // A factor on top of devicePixelRatio, see MAX_PIXEL_RATIO.
             modelPixelRatio: Math.min(1, MAX_PIXEL_RATIO / window.devicePixelRatio),
           });
+          // TalkingHead sends all audio through a convolver with a one-second "dry" impulse. The
+          // convolver normalizes its impulse by default, which scales that single 1.0 sample down
+          // to about 0.25 (-12 dB in Chromium): the avatar spoke much quieter than audio-only output.
+          // `normalize` only takes effect when the buffer is set, hence setReverb() again.
+          head.audioReverbNode.normalize = false;
+          await head.setReverb(null);
           await head.showAvatar({ url: avatarUrl, body: "F" });
           if (cancelled) return;
           headRef.current = head;
