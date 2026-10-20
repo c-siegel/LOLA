@@ -46,6 +46,23 @@ services:
       - ${LOLA_DATA_DIR}/models:/models
     restart: "no"
 
+  # Optional: downloads the on-device speech output model (Pocket TTS, German, see
+  # scripts/fetch-tts-model.sh) like stt-model above, for projects that let the visitor's device
+  # speak. Only started with the "browser-tts" profile — set COMPOSE_PROFILES=browser-tts (with any
+  # other profiles, comma-separated) and BROWSER_TTS_ENABLED=true in .env (see docker/README.md).
+  tts-model:
+    image: ghcr.io/c-siegel/lola:frontend
+    pull_policy: always
+    profiles: ["browser-tts"]
+    entrypoint: ["fetch-tts-model", "/models"]
+    user: "${PUID:-568}:${PGID:-568}"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ${LOLA_DATA_DIR}/models:/models
+    restart: "no"
+
   # Optional local text-to-speech (see local-tts/): speech output without a cloud key with
   # Kyutai's Pocket TTS, and with TTS_HF_TOKEN also voices cloned from teachers' own clips
   # (Dashboard → Voices). Only started with the "local-tts" profile — set

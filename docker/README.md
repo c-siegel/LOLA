@@ -137,6 +137,21 @@ background right after the container starts (about 20 s per language); after tha
 starts within a fraction of a second. An older `voices/` folder there (default clips for the
 previous engine, Sopro) is no longer read and can be deleted.
 
+## On-device speech output (optional)
+
+Projects can let the visitor's own device speak the replies (Kyutai's Pocket TTS in the browser,
+German only); the project's server TTS stays the fallback for devices that can't load the model.
+Each device downloads the model once (~99 MB). To offer it, add to the root `.env`:
+
+```bash
+COMPOSE_PROFILES=browser-tts   # or e.g. local-tts,browser-tts — starts the tts-model service
+BROWSER_TTS_ENABLED=true       # lets teachers switch it on per project in the configurator
+```
+
+The one-off `tts-model` service downloads the model into `<LOLA_DATA_DIR>/models/pocket-tts-de/`
+(~126 MB plus gzip copies, checksum-verified, with the CC BY 4.0 `NOTICE.md`), then exits; like
+`stt-model`, it only downloads what's missing on later starts.
+
 ## Knowledge bases (optional)
 
 The `rag` service runs the knowledge service (see [rag/](../rag/)): teachers upload documents

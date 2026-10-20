@@ -1,7 +1,8 @@
 #!/bin/sh
 # Downloads the on-device German text-to-speech (TTS) model — Kyutai's Pocket TTS as an int8 ONNX
-# export — verifies it, and stores a gzipped copy of every file next to it. For now only the
-# latency test page uses it (see docs/pocket-tts-plan.md, phase 4).
+# export — verifies it, and stores a gzipped copy of every file next to it. Used by projects that
+# let the visitor's device speak (BROWSER_TTS_ENABLED, Project.tts_browser_enabled) and by the
+# latency test page. In Docker, the `tts-model` service (Compose profile "browser-tts") runs it.
 #
 # Why this export: it's built from Kyutai's German weights of 2026-10-01 (the newest), and in our
 # benchmark it was the fastest and smallest variant at server-level intelligibility. Its repo
