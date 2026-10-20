@@ -116,13 +116,6 @@
   gap: var(--space-3);
 }
 
-.voiceRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-4);
-}
-
 .fileButton {
   display: inline-flex;
   align-items: center;
@@ -286,7 +279,7 @@
   color: var(--text-secondary);
 }
 
-/* Engine names (e.g. Sopro) read like the bold labels they replaced, not like section headings. */
+/* Engine names (e.g. Pocket TTS) read like the bold labels they replaced, not like section headings. */
 .engineTitle h4 {
   font-family: var(--font-body);
   font-size: 0.9375rem;

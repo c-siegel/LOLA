@@ -57,6 +57,8 @@ export const AudioOnlySpeaker = forwardRef<TalkingHeadAvatarHandle, AudioOnlySpe
         return audioCtx.decodeAudioData(bytes.buffer);
       },
       speakBuffer,
+      // speakBuffer already plays consecutive buffers without a gap here.
+      queueBuffer: speakBuffer,
       stopSpeaking() {
         for (const source of sourcesRef.current) {
           source.onended = null;

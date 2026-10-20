@@ -39,11 +39,15 @@ export function TestBox({ language: pageLanguage }: { language: SpokenLanguage }
   const [voiceClipId, setVoiceClipId] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
-  const localTtsAvailable = useLocalTtsStatus().data?.available ?? false;
+  const localTts = useLocalTtsStatus().data;
+  const localTtsAvailable = localTts?.available ?? false;
   const specs = useProviders().data ?? [];
   const keysQuery = useQuery({ queryKey: ["api-keys"], queryFn: apiKeysApi.list });
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: projectsApi.list });
   const clipsQuery = useQuery({ queryKey: ["voice-clips"], queryFn: voiceClipsApi.list, enabled: localTtsAvailable });
+  // Clips only speak in their own voice where the sidecar clones voices; otherwise it would
+  // quietly use the default voice.
+  const offeredClips = localTts?.cloning ? (clipsQuery.data ?? []) : [];
   // Same filter as the Configurator (Step2Technical.tsx): a TTS key needs a model, unless its
   // provider has a fixed one.
   const ttsKeys = (keysQuery.data ?? []).filter(
@@ -200,7 +204,7 @@ export function TestBox({ language: pageLanguage }: { language: SpokenLanguage }
               <span className={styles.selectLabel}>{t("pronunciation.test.voiceClip")}</span>
               <select className={styles.select} value={voiceClipId} onChange={(e) => setVoiceClipId(e.target.value)}>
                 <option value="">{t("configurator.step2.voiceClipDefault")}</option>
-                {(clipsQuery.data ?? []).map((clip) => (
+                {offeredClips.map((clip) => (
                   <option key={clip.id} value={clip.id}>
                     {clip.name}
                   </option>

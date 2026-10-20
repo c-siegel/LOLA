@@ -139,6 +139,7 @@ class ProjectOut(CamelModel):
     stt_server_engine: SttServerEngine | None
     stt_enabled: bool
     stt_browser_enabled: bool
+    tts_browser_enabled: bool
     streaming_enabled: bool
     chat_layout: ChatLayout
     motion_enabled: bool
@@ -189,6 +190,7 @@ class ProjectUpdate(CamelModel):
     stt_server_engine: SttServerEngine | None = None
     stt_enabled: bool | None = None
     stt_browser_enabled: bool | None = None
+    tts_browser_enabled: bool | None = None
     streaming_enabled: bool | None = None
     chat_layout: ChatLayout | None = None
     motion_enabled: bool | None = None
@@ -316,6 +318,7 @@ class ProjectExportData(BaseModel):
     stt_server_engine: SttServerEngine | None = None
     stt_enabled: bool = True
     stt_browser_enabled: bool = True
+    tts_browser_enabled: bool = False
     streaming_enabled: bool = True
     chat_layout: ChatLayout = "avatar_chat"
     motion_enabled: bool = True

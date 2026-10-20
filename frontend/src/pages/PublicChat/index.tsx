@@ -20,6 +20,7 @@ import {
 import { PublicChatLayout } from "@/layouts/PublicChatLayout";
 import { publicChatApi, type StreamChunkEvent, type StreamDoneEvent } from "@/api/publicChat";
 import { ParakeetSttEngine, type LoadProgress, type StreamingSession } from "@/lib/parakeetStt";
+import { PocketBrowserTts } from "@/lib/pocketTts";
 import { FALLBACK_SILENCE_RMS_THRESHOLD, calibrateSilenceThreshold, rms } from "@/lib/audioLevel";
 import { ApiError, errorMessage } from "@/api/client";
 import { setUnlockToken } from "@/lib/chatUnlockStorage";
@@ -412,6 +413,12 @@ export function PublicChatPage() {
   // Built once per page visit by the warm-up effect below and kept across recordings — loading
   // the model is the expensive part.
   const sttEngineRef = useRef<ParakeetSttEngine | null>(null);
+  // On-device speech output (Pocket TTS), loaded in the background by the effect below when the
+  // project offers it; until it's ready — or if it never gets there — the server speaks.
+  const deviceTtsRef = useRef<PocketBrowserTts | null>(null);
+  // performance.now() at which the audio queued on the device so far runs out — when the next
+  // piece will start playing (see speakOnDevice).
+  const deviceQueueEndRef = useRef(0);
   // The on-device recording in progress, if any (the server fallback uses mediaRecorderRef).
   const streamingSessionRef = useRef<StreamingSession | null>(null);
   // Whatever the student had already typed when the recording started — the live transcript is
@@ -498,6 +505,48 @@ export function PublicChatPage() {
     });
   }
 
+  /** Whether this message should be spoken on the device rather than by the server. */
+  function speaksOnDevice(): boolean {
+    return deviceTtsRef.current?.status === "ready";
+  }
+
+  /**
+   * Speaks `text` on the device: every generated piece is queued right behind the audio already
+   * queued (queueBuffer), so a reply plays without gaps while it's still being generated.
+   * `onStart` runs when this text's first piece becomes audible — the moment the server path
+   * reveals a chunk — or right away if nothing could be generated. Resolves once the text is
+   * fully generated and `onStart` has run (not when it has finished playing), so the next chunk
+   * is generated while this one plays. Returns the seconds of audio queued.
+   */
+  async function speakOnDevice(text: string, onStart: () => void, signal: AbortSignal | undefined): Promise<number> {
+    const engine = deviceTtsRef.current;
+    let started: Promise<void> | null = null;
+    let seconds = 0;
+    if (engine && text.trim()) {
+      try {
+        await engine.synthesize(text, tutor.spokenLanguage, (samples, sampleRate) => {
+          if (signal?.aborted) return;
+          const buffer = new AudioBuffer({ length: samples.length, numberOfChannels: 1, sampleRate });
+          buffer.copyToChannel(samples, 0);
+          const now = performance.now();
+          const startsAt = Math.max(now, deviceQueueEndRef.current);
+          deviceQueueEndRef.current = startsAt + buffer.duration * 1000;
+          avatarRef.current?.queueBuffer(buffer);
+          seconds += buffer.duration;
+          started ??= delay(startsAt - now, signal).then(() => {
+            if (!signal?.aborted) onStart();
+          });
+        }, signal);
+      } catch (error) {
+        // The text still goes out; only this part stays silent.
+        console.error("On-device speech output failed.", error);
+      }
+    }
+    if (started) await started;
+    else if (!signal?.aborted) onStart();
+    return seconds;
+  }
+
   async function playStreamedChunk(chunk: StreamChunkEvent): Promise<void> {
     // Already interrupted (see interruptResponse) — drop this chunk entirely: no text reveal, no
     // audio. Chunks already in flight when the student clicked stop still resolve and reach this
@@ -505,6 +554,21 @@ export function PublicChatPage() {
     const signal = abortControllerRef.current?.signal;
     if (signal?.aborted) return;
     if (chunk.index === 0) avatarRef.current?.stopThinking();
+    if (chunk.spoken !== undefined) {
+      const seconds = await speakOnDevice(
+        chunk.spoken,
+        () => {
+          revealStreamedChunk(chunk);
+          if (speakingStatsRef.current.firstSpeechAt === null) {
+            speakingStatsRef.current.firstSpeechAt = performance.now();
+            avatarRef.current?.startFpsTracking();
+          }
+        },
+        signal,
+      );
+      speakingStatsRef.current.speakingDurationMs += seconds * 1000;
+      return;
+    }
     if (!chunk.audioBase64) {
       revealStreamedChunk(chunk);
       return;
@@ -587,6 +651,9 @@ export function PublicChatPage() {
       lastStreamDoneRef.current = null;
       streamDoneReceivedAtRef.current = null;
       const signal = abortControllerRef.current!.signal;
+      // Decided once per message: a model that finishes loading mid-reply waits for the next one.
+      const onDevice = speaksOnDevice();
+      deviceQueueEndRef.current = 0;
       if (tutor.streamingEnabled && tutor.ttsEnabled) {
         try {
           await publicChatApi.sendMessageStream(
@@ -595,6 +662,7 @@ export function PublicChatPage() {
             history,
             { onChunk: handleStreamChunk, onDone: handleStreamDone },
             signal,
+            onDevice,
           );
           await playChainRef.current;
           // playChainRef's own per-chunk delay() calls are a drifting estimate, not a real
@@ -612,7 +680,7 @@ export function PublicChatPage() {
           console.error("Streaming chat failed, falling back to a plain request.", error);
         }
       }
-      const res = await publicChatApi.sendMessage(slug, message, history, signal);
+      const res = await publicChatApi.sendMessage(slug, message, history, signal, onDevice);
       return { kind: "plain" as const, res };
     },
     onSuccess: async (result, variables) => {
@@ -662,7 +730,24 @@ export function PublicChatPage() {
       // at their sentence like in the streamed path.
       if (!abortControllerRef.current?.signal.aborted) avatarRef.current?.playMotions(res.motions);
       let audioReadyAt = replyReceivedAt;
-      if (res.audioBase64 && !abortControllerRef.current?.signal.aborted) {
+      const replySignal = abortControllerRef.current?.signal;
+      if (res.spoken != null && !replySignal?.aborted) {
+        const seconds = await speakOnDevice(
+          res.spoken,
+          () => {
+            audioReadyAt = performance.now();
+            speakingStatsRef.current.firstSpeechAt = audioReadyAt;
+            avatarRef.current?.startFpsTracking();
+          },
+          replySignal,
+        );
+        speakingStatsRef.current.speakingDurationMs = seconds * 1000;
+        // Generated doesn't mean played: wait until the queued audio has run out (see
+        // waitUntilIdle), then put the mouth back to idle like the server path below.
+        await avatarRef.current?.waitUntilIdle(replySignal);
+        speakingStatsRef.current.fpsResult = avatarRef.current?.stopFpsTracking() ?? null;
+        avatarRef.current?.stopSpeaking();
+      } else if (res.audioBase64 && !abortControllerRef.current?.signal.aborted) {
         // Deliberately awaited (not fire-and-forget), so decode time and total speaking duration
         // are both measurable for the latency log below. Visible side effect: isPending now stays
         // true for the whole spoken reply, not just until the HTTP response arrives — confirmed by
@@ -985,6 +1070,7 @@ export function PublicChatPage() {
   function interruptResponse() {
     abortControllerRef.current?.abort();
     avatarRef.current?.stopSpeaking();
+    deviceQueueEndRef.current = 0;
     avatarRef.current?.stopMotion();
     speakingStatsRef.current.fpsResult = avatarRef.current?.stopFpsTracking() ?? null;
     setMessages((prev) => [...prev, { role: "system", content: t("publicChat.responseInterrupted") }]);
@@ -1083,6 +1169,27 @@ export function PublicChatPage() {
         }
       });
   }, [tutorQuery.data, visitorNameProvided, t]);
+
+  // Loads the on-device speech output model once the visitor has passed any password/name gate
+  // (same reason as above). Unlike speech recognition it doesn't hold the chat back: replies are
+  // spoken by the server until the model is ready, and messages go out with speakOnDevice after.
+  useEffect(() => {
+    const tutor = tutorQuery.data;
+    if (!tutor?.ttsEnabled || !tutor.browserTtsModelUrl) return;
+    if (tutor.passwordProtected && !tutor.unlocked) return;
+    if (tutor.requireVisitorName && !visitorNameProvided) return;
+    if (deviceTtsRef.current) return;
+    const engine = new PocketBrowserTts();
+    deviceTtsRef.current = engine;
+    engine.load(tutor.browserTtsModelUrl, () => {}, tutor.browserTtsVoice).catch((error) => {
+      console.error("On-device speech output unavailable, the server speaks instead.", error);
+    });
+  }, [tutorQuery.data, visitorNameProvided]);
+
+  // Ends the speech output worker with the page, like the speech recognition one below.
+  useEffect(() => {
+    return () => deviceTtsRef.current?.dispose();
+  }, []);
 
   // Keeps keyboard focus and screen readers out of the chat while the loading screen covers it —
   // it's already rendered underneath so the avatar can load in parallel with the model. No deps:

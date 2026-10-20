@@ -110,6 +110,21 @@ def browser_stt_model_url_for(project: Project) -> str | None:
     return site_url(settings.browser_stt_model_url)
 
 
+def browser_tts_model_url_for(project: Project) -> str | None:
+    """Base URL of the on-device speech output model the visitor's browser should load, or None
+    if this project speaks through the server only.
+
+    None if the deployment doesn't offer it (Settings.browser_tts_enabled), the project hasn't opted
+    in (project.tts_browser_enabled), speech output is off, or the project speaks another language
+    than the model (Settings.browser_tts_language).
+    """
+    if not (settings.browser_tts_enabled and project.tts_enabled and project.tts_browser_enabled):
+        return None
+    if project.spoken_language != settings.browser_tts_language:
+        return None
+    return site_url(settings.browser_tts_model_url)
+
+
 def effective_api_base(key: UserApiKey) -> str | None:
     """The endpoint address to pass to litellm, or None to use litellm's own default.
 

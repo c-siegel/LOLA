@@ -36,6 +36,7 @@ _BLOCKED_API_BASE_HOSTNAMES = {
     "tts-local",
     "docling",
     "stt-model",
+    "tts-model",
 }
 # AWS IMDSv2's IPv6 alias lives in fd00::/8 (unique-local), which ipaddress's `is_link_local`
 # doesn't cover, so it's blocked by exact match alongside the well-known v4 metadata IP.
@@ -163,11 +164,32 @@ class ApiKeyTestResult(CamelModel):
     message: str | None = None
 
 
+class LocalTtsVoiceOut(CamelModel):
+    id: str
+    label: str
+    # "preset": always available; "donation": a donated CC0 voice, only with cloning.
+    kind: Literal["preset", "donation"]
+
+
 class LocalTtsStatusOut(CamelModel):
     # Whether the local-TTS sidecar (see local-tts/) is enabled for this deployment — lets the
     # frontend treat "no TTS key configured" the same forgiving way it already treats local STT,
     # instead of always showing the "add a key" warning (see Step2Technical.tsx).
     available: bool
+    # Whether the sidecar answered just now; the fields below are empty when it didn't.
+    reachable: bool = False
+    # Whether it clones voices (teachers' clips, donated voices) — needs its TTS_HF_TOKEN.
+    cloning: bool = False
+    languages: list[str] = []
+    voices: list[LocalTtsVoiceOut] = []
+
+
+class BrowserTtsStatusOut(CamelModel):
+    # Whether this deployment offers on-device speech output (Settings.browser_tts_enabled) — gates
+    # the Configurator's per-project checkbox.
+    available: bool
+    # The model's language: projects in other languages speak through the server.
+    language: str
 
 
 class BrowserSttStatusOut(CamelModel):
