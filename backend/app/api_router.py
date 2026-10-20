@@ -16,6 +16,8 @@ from app.features.auth import router as auth_router
 from app.features.chat import latency_router, preview_router, public_router
 from app.features.evaluation import router as evaluation_router
 from app.features.knowledge import router as knowledge_router
+from app.features.pages import admin_router as pages_admin_router
+from app.features.pages import public_router as pages_public_router
 from app.features.media import avatars_router, backgrounds_router, voices_router
 from app.features.projects import publication_router, start_audio_router, transfer_router
 from app.features.projects import router as projects_router
@@ -55,7 +57,9 @@ api_router.include_router(conversations_router.router)  # /conversations: list, 
 # Public chat (no login)
 api_router.include_router(public_router.router)  # /public/{slug}...
 
-# Admin and site settings
+# Admin, site settings and the editable public pages
 api_router.include_router(admin_users_router.router)  # /admin/users
 api_router.include_router(site_settings_admin_router.router)  # /admin/settings
 api_router.include_router(site_settings_public_router.router)  # /settings/public
+api_router.include_router(pages_admin_router.router)  # /admin/pages: editable landing/legal/custom pages
+api_router.include_router(pages_public_router.router)  # /pages: their public read side

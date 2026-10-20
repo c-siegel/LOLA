@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { settingsApi } from "@/api/settings";
+import { MarkdownPage } from "@/components/MarkdownPage";
 import { numberLocale } from "@/lib/format";
+import { pickTranslation, usePageLocale, usePublicPage } from "@/lib/pages";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import styles from "./Imprint.module.css";
 
@@ -15,6 +17,28 @@ export function ImprintPage() {
   const settingsQuery = useQuery({ queryKey: ["settings", "public"], queryFn: settingsApi.getPublic });
   const settings = settingsQuery.data;
   const placeholder = t("imprint.placeholder");
+  // An admin can replace the whole page with their own Markdown (Dashboard → Admin → Pages);
+  // the template below is what an instance shows until then.
+  const pageLocale = usePageLocale();
+  const pageQuery = usePublicPage("impressum");
+  const custom = pickTranslation(pageQuery.data, pageLocale);
+
+  // Nothing until it's known which of the two to show, rather than flashing the template.
+  if (pageQuery.isPending) return <PublicLayout>{null}</PublicLayout>;
+  if (custom) {
+    return (
+      <MarkdownPage
+        title={custom.title || t("imprint.title")}
+        contentMd={custom.contentMd}
+        updatedAt={custom.updatedAt}
+        footer={
+          <p>
+            <Link to="/datenschutz">{t("landing.footer.privacy")}</Link>
+          </p>
+        }
+      />
+    );
+  }
 
   const contactEmailValue = settings?.contactEmail ? (
     <a href={`mailto:${settings.contactEmail}`}>{settings.contactEmail}</a>

@@ -156,6 +156,21 @@
   display: none;
 }
 
+/* The admin's texts are still loading (see LandingPage). */
+.pending {
+  visibility: hidden;
+}
+
+/* The admin's optional Markdown section below the feature cards. */
+.extra {
+  padding: var(--space-16) var(--space-8);
+}
+
+.extraContent {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
 @media (max-width: 860px) {
   .nav {
     display: none;
@@ -186,7 +201,8 @@
     grid-template-columns: 1fr;
   }
 
-  .features {
+  .features,
+  .extra {
     padding: var(--space-10) var(--space-5);
   }
 

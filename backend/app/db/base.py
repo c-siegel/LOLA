@@ -39,6 +39,7 @@ from app.features.knowledge.models import (  # noqa: F401
     RagPendingDeletion,
 )
 from app.features.media.models import AvatarModel, BackgroundImage  # noqa: F401
+from app.features.pages.models import SitePage, SitePageRevision, SitePageTranslation  # noqa: F401
 from app.features.projects.models import Project  # noqa: F401
 from app.features.pronunciation.models import PronunciationEntry  # noqa: F401
 from app.features.site_settings.models import SiteSettings  # noqa: F401
