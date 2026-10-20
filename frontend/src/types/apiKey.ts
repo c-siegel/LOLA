@@ -68,6 +68,8 @@ export interface ProviderSpec {
   sttModelFixed: boolean;
   // Extra required field "Arcana ID" in the key form (currently only GWDG Arcana).
   requiresArcanaId: boolean;
+  // The project's thinking on/off switch is offered for keys of this provider.
+  thinkingSwitch: boolean;
   // Curated models for embedding keys; empty means the model ID is typed in.
   embeddingModels: ProviderModel[];
 }

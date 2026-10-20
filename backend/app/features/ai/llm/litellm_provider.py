@@ -16,7 +16,7 @@ import litellm
 from app.core.error_codes import ErrorCode
 from app.core.providers import build_model_string, get_provider
 from app.features.ai.llm.base import ChatRequest
-from app.features.ai.llm.history import build_messages, sampling_params
+from app.features.ai.llm.history import build_messages, sampling_params, thinking_extra_body
 from app.features.api_keys.crypto import reveal_api_key_for_litellm
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.resolve import effective_api_base
@@ -78,6 +78,13 @@ def _retry_transient(call):
             time.sleep(_LLM_RETRY_DELAYS[attempt - 1])
 
 
+def _thinking_kwargs(api_key_record: UserApiKey, request: ChatRequest) -> dict:
+    """litellm kwargs for the project's thinking switch, only for providers that honour it."""
+    spec = get_provider(api_key_record.provider)
+    body = thinking_extra_body(request) if spec and spec.thinking_switch else {}
+    return {"extra_body": body} if body else {}
+
+
 class LiteLLMClient:
     """Chat completion via litellm, for every provider except Arcana."""
 
@@ -94,6 +101,7 @@ class LiteLLMClient:
                 api_key=api_key,
                 messages=build_messages(request),
                 **sampling_params(request),
+                **_thinking_kwargs(self._key, request),
                 **extra,
             )
         )
@@ -124,6 +132,7 @@ class LiteLLMClient:
                     messages=build_messages(request),
                     stream=True,
                     **sampling_params(request),
+                    **_thinking_kwargs(self._key, request),
                     **extra,
                 )
                 for chunk in response:

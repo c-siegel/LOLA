@@ -49,6 +49,7 @@ def list_providers(_: User = Depends(get_current_user)):
             tts_model_fixed=spec.tts_model is not None,
             stt_model_fixed=spec.stt_model is not None,
             requires_arcana_id=spec.requires_arcana_id,
+            thinking_switch=spec.thinking_switch,
         )
         for spec in PROVIDERS
     ]

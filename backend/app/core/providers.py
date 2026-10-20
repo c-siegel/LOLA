@@ -90,6 +90,11 @@ class ProviderSpec:
     # Only relevant for GWDG Arcana — requires an Arcana ID (which knowledge base to query) in
     # addition to the model, see features/ai/llm/arcana.py::ArcanaClient.
     requires_arcana_id: bool = False
+    # The model behind this provider may be able to switch its reasoning ("thinking") on and off
+    # per request (features/ai/llm/history.py::thinking_extra_body). Only set for endpoints that
+    # run vLLM-style servers, where `chat_template_kwargs` reaches the chat template; native
+    # OpenAI/Anthropic/Gemini have their own, different parameters and are not covered yet.
+    thinking_switch: bool = False
     # Curated embedding models for KEY_TYPE_EMBEDDING keys (value without prefix, label), shown in
     # the key form like `models` is for LLM keys.
     embedding_models: tuple[tuple[str, str], ...] = ()
@@ -203,6 +208,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         "Arcana-ID im Format \"nutzername/Projektname\", siehe "
         "https://docs.hpc.gwdg.de/services/ai-services/arcana/.",
         requires_arcana_id=True,
+        thinking_switch=True,
     ),
     ProviderSpec(
         value=GWDG_SAIA_PROVIDER,
@@ -304,6 +310,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         hint="Für selbst gehostete oder Drittanbieter-Endpunkte, die die OpenAI-API nachbilden "
         "(z. B. Together.ai, Groq, vLLM). Für TTS: ein Endpunkt, der OpenAIs Sprach-API "
         "(/v1/audio/speech) nachbildet.",
+        thinking_switch=True,
     ),
 )
 

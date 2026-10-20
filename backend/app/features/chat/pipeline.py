@@ -71,6 +71,7 @@ class ChatContext:
     preprompt: str
     temperature: float | None
     top_p: float | None
+    thinking: bool | None
     start_prompt: str | None
     tts_voice: str | None
     spoken_language: str
@@ -158,6 +159,7 @@ def prepare_chat(session: Session, project: Project, llm_key: UserApiKey | None 
         preprompt=project.preprompt or "",
         temperature=project.temperature,
         top_p=project.top_p,
+        thinking={"on": True, "off": False}.get(project.thinking_mode),
         start_prompt=project.start_prompt,
         tts_voice=project.tts_voice,
         spoken_language=project.spoken_language,
@@ -194,6 +196,7 @@ def _chat_request(context: ChatContext, turn: ChatTurn, passages: list[Passage],
         context.start_prompt,
         turn.history,
         reference_material=reference,
+        thinking=context.thinking,
     )
 
 

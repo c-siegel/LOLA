@@ -67,6 +67,11 @@ class Project(SQLModel, table=True):
     temperature: float = 0.5
     # 1.0 = no nucleus filtering, which is what every provider defaults to.
     top_p: float = 1.0
+    # Whether the model reasons ("thinks") before it answers: "default" leaves the model's own
+    # behaviour alone, "on"/"off" are sent to providers that can switch it (see
+    # features/ai/llm/history.py::thinking_extra_body). Mainly for comparing latency with and
+    # without reasoning on the same model.
+    thinking_mode: str = "default"
     published: bool = False
     share_slug: str | None = Field(default=None, unique=True, index=True)
     save_conversations: bool = False

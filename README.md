@@ -378,10 +378,16 @@ TTS key unset and it falls back to that instead of producing no audio.
 | Google Gemini | LLM + TTS | |
 | Mistral | LLM | |
 | Ollama | LLM | Self-hosted, e.g. on your own GPU server |
-| OpenAI-compatible endpoint | LLM | Any self-hosted or third-party API that mimics OpenAI's (Together.ai, Groq, ...) |
+| OpenAI-compatible endpoint | LLM | Any self-hosted or third-party API that mimics OpenAI's (vLLM, Together.ai, Groq, ...) |
 | Cartesia | TTS | |
 | Google Cloud TTS | TTS | The classic per-character Cloud TTS product, not Gemini's built-in voice |
 | GWDG Arcana | LLM | German academic cloud provider; adds RAG (retrieval-augmented generation) against a knowledge base you configure there |
+
+Projects on an OpenAI-compatible endpoint or GWDG Arcana get a **Thinking** setting (model default,
+on, off) in the configurator's technical step. It is sent as `chat_template_kwargs.enable_thinking`,
+which vLLM-style servers pass to the model's chat template; models that can't switch reasoning
+ignore it. Mainly useful to compare the latency of one model with and without reasoning in the
+Latency Lab.
 
 Adding a new provider is a matter of one entry in
 [`backend/app/core/providers.py`](backend/app/core/providers.py) — the frontend's provider list

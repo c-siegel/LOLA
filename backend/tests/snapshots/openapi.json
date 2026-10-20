@@ -2805,6 +2805,15 @@
             "title": "Temperature",
             "type": "number"
           },
+          "thinkingMode": {
+            "enum": [
+              "default",
+              "on",
+              "off"
+            ],
+            "title": "Thinkingmode",
+            "type": "string"
+          },
           "thinkingMotionsEnabled": {
             "title": "Thinkingmotionsenabled",
             "type": "boolean"
@@ -2876,6 +2885,7 @@
           "gradeLevel",
           "temperature",
           "topP",
+          "thinkingMode",
           "published",
           "shareSlug",
           "saveConversations",
@@ -3320,6 +3330,22 @@
               }
             ],
             "title": "Temperature"
+          },
+          "thinkingMode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "default",
+                  "on",
+                  "off"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thinkingmode"
           },
           "thinkingMotionsEnabled": {
             "anyOf": [
@@ -3830,6 +3856,11 @@
             },
             "title": "Supportedtypes",
             "type": "array"
+          },
+          "thinkingSwitch": {
+            "default": false,
+            "title": "Thinkingswitch",
+            "type": "boolean"
           },
           "ttsModelFixed": {
             "default": false,

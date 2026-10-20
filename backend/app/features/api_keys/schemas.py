@@ -229,5 +229,7 @@ class ProviderSpecOut(CamelModel):
     stt_model_fixed: bool = False
     # Extra required "Arcana ID" field in the key form (currently only GWDG Arcana).
     requires_arcana_id: bool = False
+    # The project's "thinking" switch is offered for keys of this provider (see ProviderSpec).
+    thinking_switch: bool = False
     # Curated models for embedding keys (knowledge bases); empty means free text only.
     embedding_models: list[ProviderModelOut] = []
