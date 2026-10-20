@@ -203,8 +203,4 @@ nothing after it (AGENTS.md). PRs target `working-branch`.
 
 ## Open questions
 
-- Exact file names and input/output names of the text graph (step 1).
-- Does `onnx-community`'s q8 text graph keep the 512→768 projection and mean pooling inside the
-  graph? (The OpenVINO card's text tower does: output `sentence_embedding [b, 768]`.)
-- Real German retrieval quality and distance-threshold behaviour (step 5).
-- Whether to ship MRL truncation at all.
+The graph questions were answered by the spike. What remains is in [open-work.md](open-work.md).

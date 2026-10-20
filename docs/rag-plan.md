@@ -779,63 +779,18 @@ Model licences are enforced in code by the allowlist in `rag/app/embedding.py`.
 
 ## 11. Implementation steps
 
-Each step is one or more focused commits on `claude/working-branch`, with tests, so the branch
-stays green after every step. Everything stays behind `RAG_ENABLED=false` /
-`RAG_EVALUATION_ENABLED=false`.
+All built (see §14 and §15 for how it ended up). Everything stays behind `RAG_ENABLED=false` /
+`RAG_EVALUATION_ENABLED=false`, and Part A can be used without Part B. The order was:
 
-**Part A: knowledge base (MVP)**
-
-1. **Spike**: pin versions, choose the `docling-serve` image tag and its OCR engine, and measure
-   local embedding speed for the default model on a 4-core CPU (target: under 50 ms per query,
-   about 20 chunks/s indexing). Fix the defaults in this plan if the numbers disagree.
-2. **`rag` service skeleton**: config, token auth, `/health`, `/capabilities`, SQLite store with
-   sqlite-vec + FTS5, `rag.Dockerfile`, Compose `rag` profile, CI job, licence gate.
-3. **Parsing + safety**: checks (§6.2), sandbox (§6.3), pypdf/docx/text parsers, normalisation,
-   per-request limits with ceilings (§5.5). Tests with a malicious corpus generated in the tests
-   (zip bomb, deep-nesting XML, XXE, billion-laughs, wrong extension, encrypted PDF, too many pages,
-   NUL-laden text, empty scanned PDF). No downloads in tests.
-4. **Chunking, embedding, ingest worker, search**: local embedder behind an interface faked in
-   tests, API embedder via litellm (faked at the litellm seam like the backend tests), hybrid
-   search + RRF, delete/status/embed/chunk-sample routes.
-5. **Backend data model + knowledge feature**: migration, models, service, `rag_client`, routes,
-   quotas, rate limit, upload checks (§6.1), deletion cascade + pending-deletion retry, new key
-   type `embedding` in the provider registry, `/providers/rag-status`, config validation, OpenAPI
-   snapshot update.
-6. **Admin limits**: the `SiteSettings` columns, schema validation against the `rag` ceilings, the
-   admin settings section, and passing the limits to `rag` (§5.5).
-7. **Chat integration**: `ChatRequest.context_passages`, `build_messages()`, retrieval in
-   `reply_turn`/`stream_turn` with the timeout and fallback, Arcana exclusion, `sources` in saved
-   turns, project fields + export/import.
-8. **Frontend**: Knowledge page, configurator section, embedding key type, transcript sources, CSV
-   column, latency column, i18n (de/en).
-9. **Docling option**: `docling` Compose profile, `docling.py` client with its own timeout and
-   size cap, parser choice in UI and API.
-
-**Part B: evaluation**
-
-10. **`rag-eval` service**: skeleton, token auth, Ragas with explicit judge LLM and embeddings,
-    telemetry off, `/score` and `/generate-testset`, prompt adaptation cache, Dockerfile, Compose
-    profile, CI job with the licence gate. Tests fake the judge at the litellm seam, so no real LLM
-    calls are made.
-11. **Backend evaluation feature**: tables (§7.5), test set CRUD + CSV import/export, generation
-    with review, run orchestration in the background (answers through the preview path, then
-    batched scoring), cost estimate, cascade deletes, admin cap.
-12. **Evaluation UI**: the test sets tab, the evaluation page with run start, progress, results,
-    comparison and export, i18n.
-
-**Part C: wrap-up**
-
-13. **Docs**: `rag/README.md`, `rag-eval/README.md`, root README ("Ground answers in your own
-    material" now covers every provider; new "Evaluate answer quality" item for researchers),
-    `docker/README.md`, `.env.example`, AGENTS.md (new folders and commands), backend README.
-14. **End-to-end check**: run the stack with `rag,rag-eval` and verify
-    upload → ready → test search → preview chat that cites the material → saved transcript with
-    sources → evaluation run with a small test set → delete, which removes chunks, test sets and
-    runs. Check latency in the latency test page. Change an admin limit and confirm it's enforced
-    by both services. Run the `security-privacy-auditor` and `migration-reviewer` agents over the
-    changes.
-
-Part A can be merged and used on its own; Part B builds on it.
+- **Part A (knowledge base):** a spike to pin versions and measure local embedding speed (target:
+  under 50 ms per query, about 20 chunks/s indexing on 4 cores); the `rag` service (store, parsing
+  and safety checks, chunking, embedding, hybrid search); the backend feature (migration, quotas,
+  upload checks, deletion cascade, `embedding` key type); admin limits (§5.5); chat integration;
+  the frontend; the optional Docling profile.
+- **Part B (evaluation):** the `rag-eval` service, the backend evaluation feature (§7.5), the
+  evaluation UI.
+- **Part C (wrap-up):** READMEs, `.env.example`, AGENTS.md, and an end-to-end check with the
+  `rag,rag-eval` profiles plus the `security-privacy-auditor` and `migration-reviewer` agents.
 
 **Definition of done**
 - With `RAG_ENABLED=false` (the default), nothing changes: no new nav items, no new outbound
@@ -874,11 +829,9 @@ Part A can be merged and used on its own; Part B builds on it.
 | LLM-judge scores are noisy and less reliable outside English. | Present scores for comparing runs, show the judge's reasoning, recommend a stronger judge model, and allow repeated runs. |
 | Evaluation costs money on the teacher's key. | Cost estimate with confirmation, an admin cap on questions per run, generation from a bounded chunk sample. |
 
-Open questions for the maintainer:
-1. Should evaluation also be available to the preview of unpublished projects? (The plan assumes
-   yes: any of the teacher's projects.)
-2. Default judge recommendation: should the UI suggest a specific model per provider, or just say
-   "use your strongest model"?
+Two questions were still open when the plan was written. The plan assumed that evaluation works for
+any of the teacher's projects, including unpublished ones. For the judge model it left open whether
+the UI suggests a model per provider or only says "use your strongest model".
 
 ## 14. Implementation notes (Part A)
 

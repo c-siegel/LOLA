@@ -2,8 +2,9 @@
 
 Status: **browser engine done (phase 4); Pocket replaces Sopro everywhere — see
 ["Decided 2026-10-20"](#decided-2026-10-20-pocket-replaces-sopro).** Written 2026-10-19. The original
-goal below (Pocket next to Sopro, Latency Lab only) is kept for the record; phases 1–3 are
-superseded by that section.
+goal below (Pocket next to Sopro, Latency Lab only) is kept for the record; the original phases
+1–3 (engine switch in the sidecar, latency route, server option) were removed as superseded by that
+section.
 
 ## Goal
 
@@ -416,16 +417,7 @@ The maintainer chose **A** and pointed at the CC0 voices in `kyutai/tts-voices` 
   sidecar down and missing language; Voices page and pronunciation test box respect cloning;
   Credits list the voice sources.
 
-**Still open**
-
-- Real cloning with a token (teacher clip and a donated voice) — not testable here.
-- The Docker image wasn't built here (no Docker); release CI builds it.
-- English verbalizer (numbers, years, money, ranges, ordinals, superscripts) before English
-  projects rely on local TTS.
-- Curate the donated voices by ear: the names are the donors' own handles, some recordings may be
-  noisy or in other languages. `TTS_DONATED_VOICES` takes the curated list.
-- Ask Kyutai about the sources of `juergen` and `rafael` (native German and Portuguese presets).
-- Browser engine: other languages than German need their ONNX bundles.
+**Still open:** see [open-work.md](open-work.md).
 
 ### Phase 0: checks (half a day) — done, results above
 
@@ -504,35 +496,6 @@ TTS:
 
 Start with one language (French: native CC0 preset `estelle`, own Kyutai recording) as a pilot.
 
-## Phase 1: sidecar (`local-tts/`) — superseded, see "Decided 2026-10-20"
-
-- Split `app/synthesis.py` into `app/engines/sopro.py` and `app/engines/pocket.py` behind one small
-  interface (load, prepare reference, synthesize, sample rate). Clip storage and hashing stay shared;
-  the reference cache is keyed by engine + clip.
-- `POST /synthesize` takes an optional `"engine": "sopro" | "pocket"`, default `"sopro"` — existing
-  backend calls are unaffected. `/health` lists the enabled engines.
-- Pocket: `TTSModel.load_model(..., quantize=False)`, one model per language loaded on first use;
-  map `de/en/fr/it/es/pt` to Pocket's language names; without a clip, the language's preset voice.
-- Settings: `TTS_ENGINES` (default `sopro`; Pocket loads only if listed), `TTS_HF_TOKEN`.
-- `pyproject.toml`: pin `pocket-tts` with an upper bound. Both engines accept CPU torch ≥ 2.5; the
-  Dockerfile only changes through `pip install`.
-
-## Phase 2: backend (latency route only) — superseded
-
-- `LatencyTestMessageIn.tts_mode` gains `"local-pocket"`.
-- `ChatContext.local_tts_engine: str = "sopro"`, passed through `synthesize_speech` to
-  `LocalTTSClient(engine=...)`. Only `features/chat/latency_router.py` ever sets `"pocket"`.
-- The local-TTS status endpoint (`useLocalTtsStatus`) reports Pocket availability from `/health`.
-- Tests (`tests/test_routes_latency_test.py`, sidecar faked at httpx): `local-pocket` sends
-  `engine: "pocket"`; public/preview chat send no engine; 400 when Pocket isn't enabled. Update the
-  OpenAPI snapshot.
-
-## Phase 3: frontend, server option — superseded
-
-- `TtsMode` (`LatencyLab/metrics.ts`) gains `"local-pocket"`, shown only when the sidecar reports
-  Pocket.
-- Results and CSV export record a `ttsEngine` field.
-
 ## Phase 4: frontend, int8 in the browser
 
 - `workers/pocketWorker.ts` + `lib/pocketTts.ts`, same message protocol as the sopro pair.
@@ -577,5 +540,4 @@ Start with one language (French: native CC0 preset `estelle`, own Kyutai recordi
 
 ## Open question
 
-- Which iPad models to test on — decides whether the 24-layer German variant is worth offering in
-  the browser.
+- Which iPad models to test on: see [open-work.md](open-work.md).
