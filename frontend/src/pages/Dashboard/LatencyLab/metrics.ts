@@ -5,6 +5,11 @@
 export type SttMode = "device" | "server-project" | "server-whisper" | "server-parakeet";
 export type TtsMode = "project" | "local" | "browser" | "none";
 
+/** Modes in which this device speaks the reply (the server sends text only). */
+export function isBrowserTtsMode(mode: TtsMode): boolean {
+  return mode === "browser";
+}
+
 export interface LabConfig {
   sttMode: SttMode;
   /** Another of the teacher's LLM keys; null: the project's own. */

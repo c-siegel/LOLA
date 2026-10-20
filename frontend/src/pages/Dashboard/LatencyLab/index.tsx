@@ -278,7 +278,7 @@ export function LatencyLabPage() {
       speaker: speakerRef.current!,
       inputContext: inputContextRef.current!,
       parakeet: parakeetRef.current,
-      sopro: soproRef.current,
+      browserTts: config.ttsMode === "browser" ? soproRef.current : null,
       history: historyRef.current,
       signal,
       onPartial: setPartial,

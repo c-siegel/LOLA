@@ -3,28 +3,21 @@
 // clip the teacher picks on that page.
 
 import type { SoproInbound, SoproOutbound } from "@/workers/soproWorker";
+import type { BrowserSynthesis, BrowserTts } from "@/lib/browserTts";
 import type { LoadProgress } from "@/lib/parakeetStt";
 
 // Sopro v2 only speaks these; anything else lets the model detect the language itself.
 const SOPRO_LANGUAGES = new Set(["en", "de", "fr", "pt"]);
 
-export interface SoproSynthesis {
-  /** From the request until the first audio samples arrived. */
-  firstAudioMs: number;
-  /** Generation time inside the worker. */
-  synthMs: number;
-  audioSeconds: number;
-}
-
 interface PendingSynthesis {
   started: number;
   firstAudioMs: number | null;
   onAudio: (samples: Float32Array<ArrayBuffer>, sampleRate: number) => void;
-  resolve: (result: SoproSynthesis) => void;
+  resolve: (result: BrowserSynthesis) => void;
   reject: (error: Error) => void;
 }
 
-export class SoproBrowserTts {
+export class SoproBrowserTts implements BrowserTts {
   status: "idle" | "loading" | "ready" | "error" = "idle";
   /** Model profile chosen for this device, e.g. "webgpu-fp16" or "wasm-uint8". */
   backend: string | null = null;
@@ -76,7 +69,7 @@ export class SoproBrowserTts {
     text: string,
     language: string,
     onAudio: (samples: Float32Array<ArrayBuffer>, sampleRate: number) => void,
-  ): Promise<SoproSynthesis> {
+  ): Promise<BrowserSynthesis> {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { started: performance.now(), firstAudioMs: null, onAudio, resolve, reject });
