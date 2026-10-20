@@ -449,10 +449,10 @@ The avatar rendering and lip-sync are built on two MIT-licensed libraries by the
   every project's configurator — see that folder's `ATTRIBUTION.md` for license and details. Its
   repo's README documents how to create or prepare new avatar models compatible with the
   renderer — check that if you want to add avatars beyond the ones bundled here.
-- **[HeadAudio](https://github.com/met4citizen/HeadAudio)** — computes lip-sync visemes directly
-  from the played audio signal in real time, instead of text-based timing estimation. No npm
-  package; vendored into `frontend/public/headaudio/` (see that folder's `ATTRIBUTION.md` for
-  license and details).
+- **[HeadAudio](https://github.com/met4citizen/HeadAudio)** (npm: `@met4citizen/headaudio`)
+  — computes lip-sync visemes directly from the played audio signal in real time, instead of
+  text-based timing estimation (see `frontend/src/components/TalkingHeadAvatar/`). Its pretrained
+  model was trained on English voices; recognition quality for German audio is unverified.
 
 ### Gestures
 

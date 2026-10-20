@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@met4citizen/headaudio": "0.1.0",
     "@met4citizen/talkinghead": "^1.7.0",
     "@soprotts/onnx-web": "0.3.0",
     "@tanstack/react-query": "^5.56.0",
