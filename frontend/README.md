@@ -23,13 +23,13 @@ See the [root README](../README.md) for how this fits into the rest of the app, 
 | Path | Contents |
 |---|---|
 | `src/api/` | Functions that call the backend HTTP API |
-| `src/components/` | Reusable UI pieces — small design-system components (`Button`, `Card`, `Table`, ...) and the avatar renderer (`TalkingHeadAvatar`, `Avatar`) |
+| `src/components/` | Reusable UI pieces — small design-system components (`Button`, `Card`, `PageHeader`, ...) and the avatar renderer (`TalkingHeadAvatar`, `Avatar`) |
 | `src/hooks/` | Reusable React hooks |
 | `src/i18n/` | Localization: English and German strings are found here in json |
 | `src/layouts/` | Page layout wrappers (e.g. the dashboard shell) |
 | `src/lib/` | Small standalone helper functions |
 | `src/pages/` | One folder per route — see [Pages](#pages) below |
-| `src/styles/` | Global styles |
+| `src/styles/` | Global styles, plus `dashboard.module.css` with patterns the dashboard pages share through CSS Modules `composes` (e.g. the content card) |
 | `src/types/` | Shared TypeScript types |
 | `src/vendor/` | Third-party code copied in rather than installed: `motion-engine/` (the avatar's gestures, see its `ATTRIBUTION.md`) |
 | `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), in-browser Sopro speech output for the latency test (`soproWorker.ts`, used through `src/lib/soproTts.ts`) and the microphone capture AudioWorklet |

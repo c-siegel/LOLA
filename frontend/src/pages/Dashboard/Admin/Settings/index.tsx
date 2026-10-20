@@ -5,6 +5,7 @@ import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
 import { HeadingWithInfo, ToggleWithInfo } from "@/components/InfoTip";
 import { Input } from "@/components/Input";
+import { PageHeader } from "@/components/PageHeader";
 import { adminApi, type SiteSettings } from "@/api/admin";
 import { errorMessage } from "@/api/client";
 import styles from "./AdminSettings.module.css";
@@ -124,10 +125,7 @@ export function AdminSettingsPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h2>{t("admin.settings.title")}</h2>
-        <p>{t("admin.settings.subtitle")}</p>
-      </div>
+      <PageHeader title={t("admin.settings.title")} subtitle={t("admin.settings.subtitle")} />
 
       <form className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.card}>

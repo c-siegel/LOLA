@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
 import { Textarea } from "@/components/Input";
+import { PageHeader } from "@/components/PageHeader";
 import { errorMessage } from "@/api/client";
 import { projectsApi } from "@/api/projects";
 import styles from "./MotionPrompt.module.css";
@@ -21,10 +22,7 @@ export function MotionPromptPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h2>{t("motionPrompt.title")}</h2>
-        <p>{t("motionPrompt.subtitle")}</p>
-      </div>
+      <PageHeader title={t("motionPrompt.title")} subtitle={t("motionPrompt.subtitle")} />
 
       {projectsQuery.isSuccess && projects.length === 0 && <Callout variant="info">{t("motionPrompt.noProject")}</Callout>}
 

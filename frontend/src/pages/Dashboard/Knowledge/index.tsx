@@ -11,6 +11,7 @@ import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
 import { HeadingWithInfo, LabelWithInfo } from "@/components/InfoTip";
 import { Input } from "@/components/Input";
+import { PageHeader } from "@/components/PageHeader";
 import { apiKeysApi } from "@/api/apiKeys";
 import { errorMessage } from "@/api/client";
 import {
@@ -78,9 +79,7 @@ export function KnowledgePage() {
 
 function Header() {
   const { t } = useTranslation();
-  return (
-    <HeadingWithInfo as="h2" className={styles.header} title={t("knowledge.title")} info={t("knowledge.subtitle")} />
-  );
+  return <PageHeader title={t("knowledge.title")} info={t("knowledge.subtitle")} />;
 }
 
 /** A labelled bar for how much of a limit is used — amber from 80 %, red when it's full. */

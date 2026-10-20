@@ -15,6 +15,7 @@ import { Callout } from "@/components/Callout";
 import { HeadingWithInfo } from "@/components/InfoTip";
 import { Input, Textarea } from "@/components/Input";
 import { AudioOnlySpeaker, TalkingHeadAvatar, type TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
+import { PageHeader } from "@/components/PageHeader";
 import { apiKeysApi } from "@/api/apiKeys";
 import { projectsApi } from "@/api/projects";
 import { voiceClipsApi } from "@/api/voiceClips";
@@ -408,7 +409,7 @@ export function LatencyLabPage() {
 
   return (
     <div className={styles.page}>
-      <HeadingWithInfo as="h2" className={styles.header} title={t("latencyLab.title")} info={t("latencyLab.subtitle")} />
+      <PageHeader title={t("latencyLab.title")} info={t("latencyLab.subtitle")} />
 
       <section className={styles.card}>
         <h3>{t("latencyLab.setupTitle")}</h3>

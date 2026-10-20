@@ -11,25 +11,8 @@
   gap: var(--space-6);
 }
 
-.header h2 {
-  margin: 0 0 var(--space-1);
-  font-size: 1.5rem;
-}
-
-.header p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-}
-
 .card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  composes: card from "../../../../styles/dashboard.module.css";
 }
 
 /* Sits directly under the field it explains, so the negative margin pulls it up out of the card's
