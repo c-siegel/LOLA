@@ -53,6 +53,10 @@ VOICE_REPO="kyutai/pocket-tts-without-voice-cloning"
 VOICE_REVISION="ab248779e0718743c013e20b2d812ace7c8f4bf7"
 VOICE_NAME="alba"
 VOICE_SHA="e34da39d613abe74a8a255426c816738372f085a83604c0c441845d7ae6c8192"
+# Kyutai's tokenizer.json, the same vocabulary as the export's tokenizer.model (identical token ids,
+# checked on umlauts, quotes and emoji) but readable by a small JavaScript tokenizer, so the browser
+# needs no SentencePiece binary. pocket-tts itself uses this file.
+TOKENIZER_JSON_SHA="2d77849811e3d1b6ae80e5b11b203f57e1847901104d8a0573b34f46f8dddb53"
 
 # file name, sha256
 FILES="
@@ -120,6 +124,8 @@ done
 
 install "voices/$VOICE_NAME.safetensors" "$VOICE_SHA" \
   "https://huggingface.co/$VOICE_REPO/resolve/$VOICE_REVISION/languages/german/embeddings/$VOICE_NAME.safetensors"
+install "tokenizer.json" "$TOKENIZER_JSON_SHA" \
+  "https://huggingface.co/$VOICE_REPO/resolve/$VOICE_REVISION/languages/german/tokenizer.json"
 
 # CC BY 4.0, section 3(a): creator and copyright notice, licence, source link, and what was
 # changed. Kept next to the files so it travels with every copy of them.
@@ -138,6 +144,8 @@ These model files are **© Kyutai Labs**, licensed under
   LOLA distributes these files unchanged; the voice-cloning encoder is not included. The graphs'
   weights are bit-identical to Kyutai's ungated release
   (https://huggingface.co/$VOICE_REPO, revision $VOICE_REVISION).
+- **Tokenizer \`tokenizer.json\`:** Kyutai's, unchanged, from
+  https://huggingface.co/$VOICE_REPO/tree/$VOICE_REVISION/languages/german (CC BY 4.0).
 - **Voice \`voices/$VOICE_NAME.safetensors\`:** Kyutai's predefined German voice state "$VOICE_NAME",
   unchanged, from https://huggingface.co/$VOICE_REPO/tree/$VOICE_REVISION/languages/german/embeddings
   (CC BY 4.0). Recorded by **Alba MacKenna**, released under CC BY 4.0
@@ -163,6 +171,7 @@ cat > "$TARGET/manifest.json.part" <<EOF
     "bundle": { "path": "bundle.json", "bytes": $(size bundle.json) },
     "bosBeforeVoice": { "path": "bos_before_voice.npy", "bytes": $(size bos_before_voice.npy) },
     "tokenizer": { "path": "tokenizer.model", "bytes": $(size tokenizer.model) },
+    "tokenizerJson": { "path": "tokenizer.json", "bytes": $(size tokenizer.json) },
     "textConditioner": { "path": "text_conditioner.onnx", "bytes": $(size text_conditioner.onnx) },
     "flowLmMain": { "path": "flow_lm_main_int8.onnx", "bytes": $(size flow_lm_main_int8.onnx) },
     "flowLmFlow": { "path": "flow_lm_flow_int8.onnx", "bytes": $(size flow_lm_flow_int8.onnx) },
