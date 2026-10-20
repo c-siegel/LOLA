@@ -3,7 +3,13 @@
 // ended, or the text was sent) — the moment from which a student waits.
 
 export type SttMode = "device" | "server-project" | "server-whisper" | "server-parakeet";
-export type TtsMode = "project" | "local" | "browser" | "none";
+/** "browser-pocket": Pocket TTS in this browser. */
+export type TtsMode = "project" | "local" | "browser-pocket" | "none";
+
+/** Modes in which this device speaks the reply (the server sends text only). */
+export function isBrowserTtsMode(mode: TtsMode): boolean {
+  return mode === "browser-pocket";
+}
 
 export interface LabConfig {
   sttMode: SttMode;
@@ -43,9 +49,9 @@ export interface TurnResult {
   llmFirstTokenMs: number | null;
   llmTotalMs: number | null;
   firstChunkTextReadyMs: number | null;
-  /** Synthesis time of the first chunk: server TTS, or Sopro in the browser until first audio. */
+  /** Synthesis time of the first chunk: server TTS, or the browser engine until first audio. */
   firstChunkTtsMs: number | null;
-  /** Summed synthesis time (server TTS, or Sopro's generation time). */
+  /** Summed synthesis time (server TTS, or the browser engine's generation time). */
   ttsTotalMs: number | null;
 
   /** Client: request sent → first chunk received. */
@@ -145,11 +151,3 @@ export function toCsv(results: TurnResult[], device: DeviceInfo): string {
   return [header.join(","), ...lines].join("\n");
 }
 
-export function downloadFile(content: string, filename: string, type: string) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}

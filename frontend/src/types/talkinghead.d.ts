@@ -25,6 +25,16 @@ declare module "@met4citizen/talkinghead" {
     mtAvatar: Record<string, { newvalue: number; needsUpdate: boolean }>;
     opt: { update?: (dt: number) => void; [key: string]: unknown };
     speakAudio(r: { audio: AudioBuffer }, opt?: Record<string, unknown>): void;
+    // Where TalkingHead's own playAudio() connects speech; it feeds audioSpeechGainNode, so audio
+    // played into it also reaches HeadAudio. Used by queueBuffer() in TalkingHeadAvatar.tsx, which
+    // also sets stateName and calls speakWithHands() the way startSpeaking() does.
+    audioAnalyzerNode: AnalyserNode;
+    stateName: string;
+    // Every sound passes through this convolver; setReverb(null) loads a dry impulse. See the
+    // constructor call in TalkingHeadAvatar.tsx for why `normalize` is switched off.
+    audioReverbNode: ConvolverNode;
+    setReverb(url?: string | null): Promise<void>;
+    speakWithHands(delay?: number, prob?: number): void;
     // Stops the currently playing audio source and clears the queued speech/animation backlog.
     stopSpeaking(): void;
     isSpeaking: boolean;

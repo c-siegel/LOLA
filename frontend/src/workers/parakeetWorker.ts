@@ -11,6 +11,7 @@ import * as ort from "onnxruntime-web/webgpu";
 // Imported as a URL so Vite emits the file and we can tell onnxruntime-web exactly where it is —
 // its own lookup (relative to the bundle) breaks once Vite has moved the bundle around.
 import ortWasmUrl from "onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url";
+import { loadModelFile, openModelCache, pruneModelCache, type ManifestFile } from "@/lib/modelFiles";
 
 ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
 // Multi-threaded WASM needs SharedArrayBuffer, which browsers only allow on a cross-origin-isolated
@@ -38,15 +39,6 @@ const MIN_DECODE_SECONDS = 0.3;
 const SILENT_SEGMENT_KEEP_SECONDS = 0.5;
 
 const MODEL_CACHE = "lola-stt-models";
-// A download that receives nothing for this long counts as failed, so the chat falls back to
-// server transcription instead of keeping students on the loading screen indefinitely (e.g. a
-// truncated file on the server, or a connection that silently hangs).
-const STALL_TIMEOUT_MS = 30_000;
-
-interface ManifestFile {
-  path: string;
-  bytes: number;
-}
 
 interface Manifest {
   version: string;
@@ -80,72 +72,11 @@ let encoder: ort.InferenceSession;
 let decoder: ort.InferenceSession;
 let vocab: string[] = [];
 
-/** Downloads one model file into a buffer of its known size, reporting bytes as they arrive.
- * Served from the Cache API on every visit after the first. */
-async function loadFile(url: string, bytes: number, cache: Cache | null, onBytes: (n: number) => void) {
-  const cached = await cache?.match(url);
-  if (cached) {
-    const buffer = new Uint8Array(await cached.arrayBuffer());
-    if (buffer.byteLength === bytes) {
-      onBytes(bytes);
-      return buffer;
-    }
-  }
-  const abort = new AbortController();
-  let stallTimer = setTimeout(() => abort.abort(), STALL_TIMEOUT_MS);
-  const resetStallTimer = () => {
-    clearTimeout(stallTimer);
-    stallTimer = setTimeout(() => abort.abort(), STALL_TIMEOUT_MS);
-  };
-  try {
-    // no-store: the Cache API below already keeps a copy — letting the HTTP cache keep a second
-    // one would double the disk space a ~380 MB model takes on the student's device.
-    const response = await fetch(url, { cache: "no-store", signal: abort.signal });
-    if (!response.ok || !response.body) throw new Error(`HTTP ${response.status} for ${url}`);
-    // tee() lets the Cache API write the file to disk while we read it, instead of holding a
-    // second full copy in memory (the encoder alone is 344 MB — iPads kill tabs for less).
-    const [ours, forCache] = cache ? response.body.tee() : [response.body, null];
-    const cacheWrite = forCache ? cache!.put(url, new Response(forCache)).catch(() => undefined) : null;
-
-    const buffer = new Uint8Array(bytes);
-    let offset = 0;
-    const reader = ours.getReader();
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      resetStallTimer();
-      if (offset + value.byteLength > bytes) throw new Error(`${url} is larger than the manifest says`);
-      buffer.set(value, offset);
-      offset += value.byteLength;
-      onBytes(value.byteLength);
-    }
-    if (offset !== bytes) throw new Error(`${url} is incomplete (${offset} of ${bytes} bytes)`);
-    await cacheWrite;
-    return buffer;
-  } catch (error) {
-    // A cut-off download can still have been stored in full by the Cache API (its stream ended
-    // normally, just too early) — remove it so the next visit doesn't trip over it again.
-    await cache?.delete(url).catch(() => undefined);
-    if (abort.signal.aborted) throw new Error(`Download of ${url} stalled for ${STALL_TIMEOUT_MS / 1000} s`);
-    throw error;
-  } finally {
-    clearTimeout(stallTimer);
-  }
-}
-
-async function openCache(): Promise<Cache | null> {
-  try {
-    return await caches.open(MODEL_CACHE);
-  } catch {
-    return null; // e.g. private browsing — still works, just downloads again next visit
-  }
-}
-
 async function init(modelUrl: string) {
   const manifestResponse = await fetch(new URL("manifest.json", modelUrl), { cache: "no-cache" });
   if (!manifestResponse.ok) throw new Error(`Model manifest not found (HTTP ${manifestResponse.status})`);
   const manifest = (await manifestResponse.json()) as Manifest;
-  const cache = await openCache();
+  const cache = await openModelCache(MODEL_CACHE);
 
   const entries = Object.values(manifest.files);
   const totalBytes = entries.reduce((sum, file) => sum + file.bytes, 0);
@@ -160,7 +91,7 @@ async function init(modelUrl: string) {
     }
   };
   const urlOf = (file: ManifestFile) => new URL(file.path, modelUrl).href;
-  const load = (file: ManifestFile) => loadFile(urlOf(file), file.bytes, cache, onBytes);
+  const load = (file: ManifestFile) => loadModelFile(urlOf(file), file.bytes, cache, onBytes);
 
   const wasm: ort.InferenceSession.SessionOptions = { executionProviders: ["wasm"] };
   // Small files first, so a broken setup fails fast instead of after the big download.
@@ -176,12 +107,7 @@ async function init(modelUrl: string) {
   });
 
   // Drop files from an older model version, so a version bump doesn't leave ~380 MB behind.
-  if (cache) {
-    const current = new Set(entries.map(urlOf));
-    for (const request of await cache.keys()) {
-      if (!current.has(request.url)) await cache.delete(request);
-    }
-  }
+  await pruneModelCache(cache, entries.map(urlOf));
 }
 
 function parseVocab(text: string): string[] {

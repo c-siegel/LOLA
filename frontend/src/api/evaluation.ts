@@ -3,7 +3,7 @@
 // deployment runs the evaluation service — see evaluationApi.status and
 // backend/app/features/evaluation/.
 
-import { API_BASE_URL, apiClient, filenameFromContentDisposition } from "./client";
+import { apiClient, downloadFile } from "./client";
 
 export const METRICS = [
   "faithfulness",
@@ -132,18 +132,6 @@ export interface RunDetail extends Run {
 
 export const ACTIVE_RUN_STATUSES: RunStatus[] = ["queued", "answering", "scoring"];
 
-async function download(path: string, fallbackName: string) {
-  const res = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
-  if (!res.ok) throw new Error("Download failed");
-  const filename = filenameFromContentDisposition(res.headers.get("Content-Disposition"), fallbackName);
-  const url = URL.createObjectURL(await res.blob());
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 export const evaluationApi = {
   status: () => apiClient.get<EvaluationStatus>("/providers/evaluation-status"),
 
@@ -169,7 +157,7 @@ export const evaluationApi = {
     formData.append("file", file, file.name);
     return apiClient.upload<{ imported: number; skipped: number }>(`/test-sets/${testSetId}/cases/import`, formData);
   },
-  exportCsv: (testSetId: string) => download(`/test-sets/${testSetId}/cases/export`, "test-set.csv"),
+  exportCsv: (testSetId: string) => downloadFile(`/test-sets/${testSetId}/cases/export`, "test-set.csv"),
   generate: (
     testSetId: string,
     data: { judgeApiKeyId: string; size: number; kind: QuestionKind; projectId?: string; objectives?: string },
@@ -183,5 +171,5 @@ export const evaluationApi = {
   cancelRun: (id: string) => apiClient.post<Run>(`/evaluation/runs/${id}/cancel`),
   removeRun: (id: string) => apiClient.delete<void>(`/evaluation/runs/${id}`),
   exportRun: (id: string, format: "csv" | "json") =>
-    download(`/evaluation/runs/${id}/export?format=${format}`, `evaluation.${format}`),
+    downloadFile(`/evaluation/runs/${id}/export?format=${format}`, `evaluation.${format}`),
 };

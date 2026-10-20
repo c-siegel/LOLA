@@ -61,6 +61,7 @@ function toDraft(project: Project): ConfiguratorDraft {
     sttServerEngine: project.sttServerEngine,
     sttEnabled: project.sttEnabled,
     sttBrowserEnabled: project.sttBrowserEnabled,
+    ttsBrowserEnabled: project.ttsBrowserEnabled,
     streamingEnabled: project.streamingEnabled,
     knowledgeMode: project.knowledgeMode,
     knowledgeTopK: project.knowledgeTopK,
@@ -105,6 +106,7 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.sttServerEngine !== project.sttServerEngine ||
     draft.sttEnabled !== project.sttEnabled ||
     draft.sttBrowserEnabled !== project.sttBrowserEnabled ||
+    draft.ttsBrowserEnabled !== project.ttsBrowserEnabled ||
     draft.streamingEnabled !== project.streamingEnabled ||
     draft.knowledgeMode !== project.knowledgeMode ||
     draft.knowledgeTopK !== project.knowledgeTopK ||
@@ -174,6 +176,7 @@ export function ConfiguratorPage() {
         sttServerEngine: data.sttServerEngine,
         sttEnabled: data.sttEnabled,
         sttBrowserEnabled: data.sttBrowserEnabled,
+        ttsBrowserEnabled: data.ttsBrowserEnabled,
         streamingEnabled: data.streamingEnabled,
         knowledgeMode: data.knowledgeMode,
         knowledgeTopK: data.knowledgeTopK,

@@ -17,6 +17,7 @@ How to use:
 """
 
 from collections.abc import Iterable
+from dataclasses import replace
 from functools import lru_cache
 
 from normt2s import Rule, RuleSet
@@ -33,9 +34,21 @@ def spell_out(term: str) -> str:
     return " ".join(char for char in term if char.isalnum())
 
 
+def _with_digits_read(rule: Rule) -> Rule:
+    """`rule`, renormalized if its spoken form has a digit of its own ("1 s" -> "1 Sekunde").
+
+    normt2s says a rule's output exactly as written, so that "1" would stay a digit next to
+    numbers read as words. A teacher who types a digit there means the number, and the word list
+    has no column for the flag, so it is derived here.
+    """
+    if any(char.isdigit() for char in rule.spoken.replace(NUMBER_PLACEHOLDER, "")):
+        return replace(rule, renormalize=True)
+    return rule
+
+
 @lru_cache(maxsize=256)
 def _compile(rules: tuple[Rule, ...]) -> RuleSet:
-    return RuleSet(rules)
+    return RuleSet(_with_digits_read(rule) for rule in rules)
 
 
 def compile_rules(rules: Iterable[Rule]) -> RuleSet:

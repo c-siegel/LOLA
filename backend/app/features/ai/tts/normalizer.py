@@ -33,8 +33,6 @@ _DEFAULT_LANGUAGE = "de"
 # silent instead of read out. Same shape as motion.py's catch-all, including not directly following
 # a word or colon, so code like "std::vector::size" stays.
 _MARKER_PATTERN = r"(?<![\w:])::[ \t]*[A-Za-z][\w -]{0,38}?[ \t]*::"
-# normt2s reads "·" only inside $...$, but LLMs write "F = m · a" in plain text too.
-_MULTIPLICATION_DOT = {"de": "mal", "en": "times"}
 
 # Chunk sizes for a streamed reply: the first chunk is short so the avatar starts speaking early,
 # later ones are longer so the voice doesn't stutter between many tiny clips, and a run without any
@@ -56,9 +54,7 @@ def _normalizer(language: str) -> Normalizer:
         if language not in _normalizers:
             # The chat renders Markdown, and LLMs write bare LaTeX ("\frac{1}{2}") without $...$.
             normalizer = Normalizer(language, markdown="strip", latex_bare="speak")
-            # The lookbehind hides the literal start a stream needs to never cut inside a marker.
-            normalizer.add_protected(_MARKER_PATTERN, spoken="", opener="::")
-            normalizer.add_symbol("·", _MULTIPLICATION_DOT[language])
+            normalizer.add_protected(_MARKER_PATTERN, spoken="")
             _normalizers[language] = normalizer
         return _normalizers[language]
 

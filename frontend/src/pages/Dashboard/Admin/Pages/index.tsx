@@ -6,6 +6,7 @@ import { Badge } from "@/components/Badge";
 import { Button, ButtonLink } from "@/components/Button";
 import { Callout } from "@/components/Callout";
 import { Input } from "@/components/Input";
+import { PageHeader } from "@/components/PageHeader";
 import { errorMessage } from "@/api/client";
 import { adminPagesApi, PAGE_LOCALES, type AdminPage } from "@/api/pages";
 import { pickTitle, usePageLocale } from "@/lib/pages";
@@ -60,10 +61,7 @@ export function AdminPagesPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h2>{t("adminPages.title")}</h2>
-        <p>{t("adminPages.subtitle")}</p>
-      </div>
+      <PageHeader title={t("adminPages.title")} subtitle={t("adminPages.subtitle")} />
 
       {pagesQuery.isError && <Callout variant="danger">{t("adminPages.loadError")}</Callout>}
 

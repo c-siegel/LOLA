@@ -1,4 +1,4 @@
-import { apiClient, API_BASE_URL, ApiError, filenameFromContentDisposition } from "./client";
+import { apiClient, downloadFile } from "./client";
 import i18n from "@/i18n";
 import type { ChatMessage, ChecklistCheck } from "@/types/chat";
 import type { Project, ProjectStats, ProjectUpdate, SystemPrompt } from "@/types/project";
@@ -36,20 +36,8 @@ export const projectsApi = {
     formData.append("audio", audio, "recording.webm");
     return apiClient.upload<{ text: string }>(`/projects/${id}/chat/transcriptions`, formData);
   },
-  // Downloads a project's configuration as a .yml file — bypasses apiClient like
-  // analyticsApi.exportConversations, since the response is a file, not JSON.
-  exportYaml: async (id: string, fallbackFilename: string) => {
-    const res = await fetch(`${API_BASE_URL}/projects/${id}/export`, { credentials: "include" });
-    if (!res.ok) throw new ApiError(res.status, await res.text());
-    const filename = filenameFromContentDisposition(res.headers.get("Content-Disposition"), fallbackFilename);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-  },
+  // Downloads a project's configuration as a .yml file.
+  exportYaml: (id: string, fallbackFilename: string) => downloadFile(`/projects/${id}/export`, fallbackFilename),
   // Creates a new draft project from a previously exported .yml file.
   importYaml: (file: File) => {
     const formData = new FormData();

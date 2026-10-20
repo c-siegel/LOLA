@@ -8,8 +8,8 @@ import { useTranslation } from "react-i18next";
 import { Loader2, Play, Trash2 } from "lucide-react";
 import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
-import { HeadingWithInfo } from "@/components/InfoTip";
 import { Input } from "@/components/Input";
+import { PageHeader } from "@/components/PageHeader";
 import { errorMessage } from "@/api/client";
 import { voiceClipsApi, type VoiceClip } from "@/api/voiceClips";
 import { numberLocale } from "@/lib/format";
@@ -24,7 +24,11 @@ type Source = "upload" | "record";
 export function VoicesPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const localTtsAvailable = useLocalTtsStatus().data?.available ?? false;
+  const localTts = useLocalTtsStatus().data;
+  const localTtsAvailable = localTts?.available ?? false;
+  // Clips only become voices when the sidecar can clone (its TTS_HF_TOKEN); the preview would
+  // otherwise play a preset and suggest the clip works.
+  const cloningOff = Boolean(localTts?.reachable && !localTts.cloning);
   const clipsQuery = useQuery({ queryKey: ["voice-clips"], queryFn: voiceClipsApi.list });
   const clips = clipsQuery.data ?? [];
 
@@ -43,9 +47,10 @@ export function VoicesPage() {
 
   return (
     <div className={styles.page}>
-      <HeadingWithInfo as="h2" className={styles.header} title={t("voices.title")} info={t("voices.subtitle")} />
+      <PageHeader title={t("voices.title")} info={t("voices.subtitle")} />
 
       {!localTtsAvailable && <Callout variant="warning">{t("voices.localTtsUnavailable")}</Callout>}
+      {cloningOff && <Callout variant="warning">{t("voices.cloningOff")}</Callout>}
 
       <AddVoiceClip />
 
@@ -80,7 +85,7 @@ export function VoicesPage() {
                 </Button>
               </div>
               <audio controls preload="none" src={clip.fileUrl} className={styles.audio} />
-              {localTtsAvailable && <VoicePreview clip={clip} />}
+              {localTtsAvailable && !cloningOff && <VoicePreview clip={clip} />}
             </li>
           ))}
         </ul>

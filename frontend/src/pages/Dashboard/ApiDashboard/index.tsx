@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
+import { PageHeader } from "@/components/PageHeader";
 import { apiKeysApi } from "@/api/apiKeys";
 import { errorMessage } from "@/api/client";
 import { numberLocale } from "@/lib/format";
@@ -93,10 +94,7 @@ export function ApiDashboardPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h2>{t("apiDashboard.title")}</h2>
-        <p>{t("apiDashboard.subtitle")}</p>
-      </div>
+      <PageHeader title={t("apiDashboard.title")} subtitle={t("apiDashboard.subtitle")} />
 
       <Callout variant="info">
         <span className={styles.calloutFull}>{t("apiDashboard.securityNoticeFull")}</span>

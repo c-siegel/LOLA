@@ -30,10 +30,10 @@ from sqlalchemy import delete, func
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.core.csv import csv_safe, strip_csv_guard
 from app.core.error_codes import ErrorCode
 from app.core.errors import DomainError
 from app.core.providers import GWDG_ARCANA_PROVIDER, KEY_TYPE_LLM, build_model_string, provider_label
-from app.features.analytics.csv_export import _csv_safe
 from app.features.api_keys.crypto import reveal_api_key
 from app.features.api_keys.resolve import effective_api_base, get_owned_key_of_type, resolve_llm_key
 from app.features.evaluation import cleanup, eval_client
@@ -101,21 +101,6 @@ class EvaluationServiceUnavailable(DomainError):
     detail = ErrorCode.EVALUATION_SERVICE_UNAVAILABLE
 
 
-class TestSetNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.EVALUATION_TEST_SET_NOT_FOUND
-
-
-class TestCaseNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.EVALUATION_TEST_CASE_NOT_FOUND
-
-
-class RunNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.EVALUATION_RUN_NOT_FOUND
-
-
 class EvaluationError(DomainError):
     status_code = 400
 
@@ -172,13 +157,6 @@ def case_counts(session: Session, test_set_ids: list[str]) -> dict[str, tuple[in
     return counts
 
 
-def get_owned_test_set(session: Session, user_id: str, test_set_id: str) -> EvalTestSet:
-    test_set = session.get(EvalTestSet, test_set_id)
-    if test_set is None or test_set.user_id != user_id:
-        raise TestSetNotFound()
-    return test_set
-
-
 def create_test_set(session: Session, user_id: str, kb: KnowledgeBase, name: str, language: str) -> EvalTestSet:
     test_set = EvalTestSet(
         user_id=user_id,
@@ -222,13 +200,6 @@ def list_cases(session: Session, test_set: EvalTestSet) -> list[EvalTestCase]:
 
 def _case_count(session: Session, test_set_id: str) -> int:
     return session.exec(select(func.count(EvalTestCase.id)).where(EvalTestCase.test_set_id == test_set_id)).one()
-
-
-def get_owned_case(session: Session, user_id: str, case_id: str) -> EvalTestCase:
-    case = session.get(EvalTestCase, case_id)
-    if case is None or case.user_id != user_id:
-        raise TestCaseNotFound()
-    return case
 
 
 def add_case(
@@ -307,13 +278,6 @@ def _decode_csv(data: bytes) -> str:
         return data.decode("cp1252", errors="replace")
 
 
-def _strip_csv_guard(value: str) -> str:
-    """Undo export_csv's formula guard, so an exported file imports unchanged."""
-    if len(value) > 1 and value[0] == "'" and value[1] in "=+-@\t\r":
-        return value[1:]
-    return value
-
-
 def import_csv(session: Session, test_set: EvalTestSet, data: bytes) -> tuple[int, int]:
     """Add the rows of a `question,reference,kind` CSV (the last two optional); returns
     (imported, skipped)."""
@@ -342,9 +306,9 @@ def import_csv(session: Session, test_set: EvalTestSet, data: bytes) -> tuple[in
     imported = skipped = 0
     try:
         for row in reader:
-            question = _strip_csv_guard(row[question_col]).strip() if question_col < len(row) else ""
+            question = strip_csv_guard(row[question_col]).strip() if question_col < len(row) else ""
             reference = (
-                _strip_csv_guard(row[reference_col]).strip() if reference_col is not None and reference_col < len(row) else ""
+                strip_csv_guard(row[reference_col]).strip() if reference_col is not None and reference_col < len(row) else ""
             )
             kind = _CSV_KINDS.get(row[kind_col].strip().lower(), "topic") if kind_col is not None and kind_col < len(row) else "topic"
             if not question or len(question) > MAX_QUESTION_CHARS or len(reference) > MAX_REFERENCE_CHARS or imported >= room:
@@ -374,7 +338,7 @@ def export_csv(session: Session, test_set: EvalTestSet) -> str:
     writer.writerow(["question", "reference", "kind"])
     for case in list_cases(session, test_set):
         if case.approved:
-            writer.writerow([_csv_safe(case.question), _csv_safe(case.reference or ""), case.kind])
+            writer.writerow([csv_safe(case.question), csv_safe(case.reference or ""), case.kind])
     return out.getvalue()
 
 
@@ -619,13 +583,6 @@ def list_runs(session: Session, user_id: str, project_id: str | None = None) -> 
     return list(session.exec(query.order_by(EvalRun.created_at.desc())))
 
 
-def get_owned_run(session: Session, user_id: str, run_id: str) -> EvalRun:
-    run = session.get(EvalRun, run_id)
-    if run is None or run.user_id != user_id:
-        raise RunNotFound()
-    return run
-
-
 def run_items(session: Session, run: EvalRun) -> list[EvalRunItem]:
     return list(session.exec(select(EvalRunItem).where(EvalRunItem.run_id == run.id).order_by(EvalRunItem.position)))
 
@@ -738,14 +695,14 @@ def export_run_csv(run: EvalRun, items: list[EvalRunItem]) -> str:
         ]
         writer.writerow(
             [
-                _csv_safe(item.question),
+                csv_safe(item.question),
                 item.kind,
-                _csv_safe(item.reference or ""),
-                _csv_safe(item.answer or ""),
+                csv_safe(item.reference or ""),
+                csv_safe(item.answer or ""),
                 *scores,
                 "" if item.retrieval_ms is None else round(item.retrieval_ms),
                 "" if item.llm_ms is None else round(item.llm_ms),
-                _csv_safe(sources),
+                csv_safe(sources),
                 item.error_code or "",
             ]
         )

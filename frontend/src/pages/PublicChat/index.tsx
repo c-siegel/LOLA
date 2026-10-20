@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Loader2, Mic, MessageCircle, Play, Send, Square, LogOut, Lock, User, X } from "lucide-react";
@@ -11,15 +11,11 @@ import { ChecklistCard } from "@/components/ChecklistCard";
 import { Input } from "@/components/Input";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SurveyEmbed } from "@/components/SurveyEmbed";
-import {
-  AudioOnlySpeaker,
-  TalkingHeadAvatar,
-  type TalkingHeadAvatarHandle,
-  type FpsTrackingResult,
-} from "@/components/TalkingHeadAvatar";
+import { AudioOnlySpeaker, TalkingHeadAvatar, type TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
 import { PublicChatLayout } from "@/layouts/PublicChatLayout";
 import { publicChatApi, type StreamChunkEvent, type StreamDoneEvent } from "@/api/publicChat";
 import { ParakeetSttEngine, type LoadProgress, type StreamingSession } from "@/lib/parakeetStt";
+import { PocketBrowserTts } from "@/lib/pocketTts";
 import { FALLBACK_SILENCE_RMS_THRESHOLD, calibrateSilenceThreshold, rms } from "@/lib/audioLevel";
 import { ApiError, errorMessage } from "@/api/client";
 import { setUnlockToken } from "@/lib/chatUnlockStorage";
@@ -32,46 +28,6 @@ import { ModelInfoButton } from "./ModelInfoButton";
 import styles from "./PublicChat.module.css";
 
 type Stage = "locked" | "name-gate" | "before-survey" | "chat" | "after-survey" | "done";
-
-// micStopAt: client timestamp (performance.now()) when the mic-stop button was clicked.
-// sttMs: speech-to-text time — the backend's own Whisper duration (server fallback), or how long
-// the on-device model took to finish after the mic stopped (see lib/parakeetStt.ts).
-interface SendLatency {
-  micStopAt: number;
-  sttMs: number | null;
-}
-
-// SendLatency plus the moment sendMessage() actually fired the /message request — added there
-// since that's the only place that knows it.
-interface MutationLatency extends SendLatency {
-  sendStartAt: number;
-}
-
-interface SendMessageResult {
-  reply: string;
-  llmMs: number | null;
-  ttsMs: number | null;
-}
-
-// Per-message speaking stats, tracked across both the streamed and plain paths (see mutationFn,
-// playStreamedChunk) for the ?latencyTest=1 log below: how long until the avatar first actually
-// spoke, how long it spoke in total, and how smoothly it animated while doing so.
-interface SpeakingStats {
-  firstSpeechAt: number | null;
-  speakingDurationMs: number;
-  fpsResult: FpsTrackingResult | null;
-}
-
-function newSpeakingStats(): SpeakingStats {
-  return { firstSpeechAt: null, speakingDurationMs: 0, fpsResult: null };
-}
-
-const round = (n: number) => Math.round(n);
-
-function wordCount(text: string): number {
-  const trimmed = text.trim();
-  return trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0;
-}
 
 // Same role as setTimeout, but resolves immediately once `signal` aborts instead of waiting out the
 // full duration — used for the playback pacing waits below, so interruptResponse() doesn't have to
@@ -183,35 +139,6 @@ function watchForSpeechPauses(stream: MediaStream, onPause: () => void): () => v
   };
 }
 
-// Logs a spoken-message-to-audible-reply latency breakdown for manual testing (?latencyTest=1,
-// see PublicChatPage). All durations come from a single clock per side (client performance.now()
-// vs. backend time.perf_counter()) — no cross-machine clock sync is needed since none of these
-// numbers are compared against each other, only summed/inspected independently.
-function logLatency(
-  latency: MutationLatency,
-  res: SendMessageResult,
-  replyReceivedAt: number,
-  audioReadyAt: number,
-  speaking: SpeakingStats,
-) {
-  const wps = speaking.speakingDurationMs > 0 ? wordCount(res.reply) / (speaking.speakingDurationMs / 1000) : null;
-  console.log("[Latency-Test] End of speech -> audio audible", {
-    totalMs: round(audioReadyAt - latency.micStopAt),
-    sttRoundTripMs: round(latency.sendStartAt - latency.micStopAt),
-    sttBackendMs: latency.sttMs != null ? round(latency.sttMs) : null,
-    replyRoundTripMs: round(replyReceivedAt - latency.sendStartAt),
-    llmBackendMs: res.llmMs != null ? round(res.llmMs) : null,
-    ttsBackendMs: res.ttsMs != null ? round(res.ttsMs) : null,
-    audioDecodeMs: round(audioReadyAt - replyReceivedAt),
-    timeToFirstSpeechMs: speaking.firstSpeechAt != null ? round(speaking.firstSpeechAt - latency.sendStartAt) : null,
-    speakingDurationMs: speaking.speakingDurationMs > 0 ? round(speaking.speakingDurationMs) : null,
-    wordsPerSecond: wps != null ? Math.round(wps * 10) / 10 : null,
-    avgFps: speaking.fpsResult?.avgFps != null ? Math.round(speaking.fpsResult.avgFps * 10) / 10 : null,
-    droppedFrames: speaking.fpsResult?.droppedFrames ?? null,
-    fpsSampleCount: speaking.fpsResult?.sampleCount ?? null,
-  });
-}
-
 /** Loading screen covering the chat while the on-device speech recognition model loads (the
  * chat and avatar already load underneath it). With `onStart`, loading is done and it shows a
  * "Start chat" button instead of the progress bar — see chatStartPending in PublicChatPage. */
@@ -266,11 +193,6 @@ export function PublicChatPage() {
   const { t } = useTranslation();
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const slug = projectSlug!;
-  const [searchParams] = useSearchParams();
-  // Unlocks ONLY the latency console log below (not auto-send itself) — otherwise every real
-  // visitor would get a technical timing breakdown in their browser console with every voice
-  // message, without asking for it. See frontend/README.md ("Debugging").
-  const latencyTestEnabled = searchParams.get("latencyTest") === "1";
 
   const queryClient = useQueryClient();
   const tutorQuery = useQuery({
@@ -406,22 +328,21 @@ export function PublicChatPage() {
   // new recording. Read once the final segment finishes, to decide whether to warn the student
   // their message may be missing words (or didn't send at all) — see transcribeSegment.
   const recordingHadFailureRef = useRef(false);
-  // null = no segment has reported an sttMs yet this recording, as opposed to a legitimate sum of
-  // exactly 0 — distinguishing the two matters so the final latency log reports null, not 0.
-  const segmentSttMsSumRef = useRef<number | null>(null);
   // Built once per page visit by the warm-up effect below and kept across recordings — loading
   // the model is the expensive part.
   const sttEngineRef = useRef<ParakeetSttEngine | null>(null);
+  // On-device speech output (Pocket TTS), loaded in the background by the effect below when the
+  // project offers it; until it's ready — or if it never gets there — the server speaks.
+  const deviceTtsRef = useRef<PocketBrowserTts | null>(null);
+  // performance.now() at which the audio queued on the device so far runs out — when the next
+  // piece will start playing (see speakOnDevice).
+  const deviceQueueEndRef = useRef(0);
   // The on-device recording in progress, if any (the server fallback uses mediaRecorderRef).
   const streamingSessionRef = useRef<StreamingSession | null>(null);
   // Whatever the student had already typed when the recording started — the live transcript is
   // shown after it in the composer.
   const inputBeforeRecordingRef = useRef("");
   const threadRef = useRef<HTMLDivElement>(null);
-  // Survives the chain toggleRecording -> recorder.onstop -> transcribeSegment, which runs over
-  // several async hops — the only way to pass the original "end of speech" time through to the
-  // latency log. { micStopAt } instead of a bare number, so later fields can be added.
-  const latencyRef = useRef<{ micStopAt: number } | null>(null);
 
   // One AbortController per in-flight turn, created in runSend() — read by mutationFn (passed into
   // the API calls) and by the playback code below (to cut a wait short) so interruptResponse() can
@@ -462,18 +383,8 @@ export function PublicChatPage() {
 
   // Serializes playback of streamed chunks: each chunk's decode+speak+wait is chained onto this
   // promise instead of firing independently, so chunk N+1 never starts before chunk N finishes —
-  // chunks can arrive over the wire faster than they can be spoken. Values from the "done" SSE
-  // event (see api/publicChat.ts) for the latency-test log below.
+  // chunks can arrive over the wire faster than they can be spoken.
   const playChainRef = useRef<Promise<void>>(Promise.resolve());
-  const lastStreamDoneRef = useRef<StreamDoneEvent | null>(null);
-  // Timestamp of the "done" SSE event (set in handleStreamDone), separate from lastStreamDoneRef's
-  // payload — needed for the ping log below, since by the time onSuccess runs for a streamed reply,
-  // playback has already finished and performance.now() would include speaking time too.
-  const streamDoneReceivedAtRef = useRef<number | null>(null);
-  // Reset at the top of every mutationFn call (the one point both the streamed and plain branches
-  // pass through) — so a message where speaking never actually starts (interrupted, null audio, LLM
-  // error) reports clean null/0 defaults instead of leaking the previous message's numbers.
-  const speakingStatsRef = useRef<SpeakingStats>(newSpeakingStats());
 
   function revealStreamedChunk(chunk: StreamChunkEvent) {
     avatarRef.current?.playMotions(chunk.motions);
@@ -498,6 +409,45 @@ export function PublicChatPage() {
     });
   }
 
+  /** Whether this message should be spoken on the device rather than by the server. */
+  function speaksOnDevice(): boolean {
+    return deviceTtsRef.current?.status === "ready";
+  }
+
+  /**
+   * Speaks `text` on the device: every generated piece is queued right behind the audio already
+   * queued (queueBuffer), so a reply plays without gaps while it's still being generated.
+   * `onStart` runs when this text's first piece becomes audible — the moment the server path
+   * reveals a chunk — or right away if nothing could be generated. Resolves once the text is
+   * fully generated and `onStart` has run (not when it has finished playing), so the next chunk
+   * is generated while this one plays.
+   */
+  async function speakOnDevice(text: string, onStart: () => void, signal: AbortSignal | undefined): Promise<void> {
+    const engine = deviceTtsRef.current;
+    let started: Promise<void> | null = null;
+    if (engine && text.trim()) {
+      try {
+        await engine.synthesize(text, tutor.spokenLanguage, (samples, sampleRate) => {
+          if (signal?.aborted) return;
+          const buffer = new AudioBuffer({ length: samples.length, numberOfChannels: 1, sampleRate });
+          buffer.copyToChannel(samples, 0);
+          const now = performance.now();
+          const startsAt = Math.max(now, deviceQueueEndRef.current);
+          deviceQueueEndRef.current = startsAt + buffer.duration * 1000;
+          avatarRef.current?.queueBuffer(buffer);
+          started ??= delay(startsAt - now, signal).then(() => {
+            if (!signal?.aborted) onStart();
+          });
+        }, signal);
+      } catch (error) {
+        // The text still goes out; only this part stays silent.
+        console.error("On-device speech output failed.", error);
+      }
+    }
+    if (started) await started;
+    else if (!signal?.aborted) onStart();
+  }
+
   async function playStreamedChunk(chunk: StreamChunkEvent): Promise<void> {
     // Already interrupted (see interruptResponse) — drop this chunk entirely: no text reveal, no
     // audio. Chunks already in flight when the student clicked stop still resolve and reach this
@@ -505,6 +455,10 @@ export function PublicChatPage() {
     const signal = abortControllerRef.current?.signal;
     if (signal?.aborted) return;
     if (chunk.index === 0) avatarRef.current?.stopThinking();
+    if (chunk.spoken !== undefined) {
+      await speakOnDevice(chunk.spoken, () => revealStreamedChunk(chunk), signal);
+      return;
+    }
     if (!chunk.audioBase64) {
       revealStreamedChunk(chunk);
       return;
@@ -529,13 +483,6 @@ export function PublicChatPage() {
       console.error("Audio chunk could not be played.", error);
       return;
     }
-    // Tracked only once playback actually started — not necessarily chunk 0, since that chunk's
-    // own audio could be null while a later one isn't.
-    if (speakingStatsRef.current.firstSpeechAt === null) {
-      speakingStatsRef.current.firstSpeechAt = performance.now();
-      avatarRef.current?.startFpsTracking();
-    }
-    speakingStatsRef.current.speakingDurationMs += audioBuffer.duration * 1000;
     // A timer, not a real playback-ended signal — can drift by a fraction of a second on a long
     // reply. Accepted trade-off: wiring a real "ended" callback through TalkingHead/HeadAudio
     // would be a much bigger change for a rarely-noticeable amount of drift. Resolves early if
@@ -548,8 +495,6 @@ export function PublicChatPage() {
   }
 
   function handleStreamDone(doneData: StreamDoneEvent) {
-    lastStreamDoneRef.current = doneData;
-    streamDoneReceivedAtRef.current = performance.now();
     // Queued onto the same chain so the exact final text only replaces the space-joined
     // approximation once every chunk has actually finished playing, not as soon as the SSE
     // stream itself ends (which happens as soon as the last chunk's TTS finishes, typically
@@ -564,29 +509,15 @@ export function PublicChatPage() {
         next[next.length - 1] = { ...next[next.length - 1], content: doneData.reply, checks: doneData.checks };
         return next;
       });
-      // Ends exactly when speaking does — every playStreamedChunk() call for this message has, by
-      // SSE ordering, already resolved by the time this runs (all "chunk" events precede "done").
-      speakingStatsRef.current.fpsResult = avatarRef.current?.stopFpsTracking() ?? null;
     });
   }
 
   const sendMutation = useMutation({
-    mutationFn: async ({
-      message,
-      history,
-    }: {
-      message: string;
-      history: ChatMessage[];
-      sendStartAt: number;
-      latency?: MutationLatency;
-    }) => {
-      speakingStatsRef.current = newSpeakingStats();
-      // Otherwise a stream that errors out after already playing >=1 chunk (receivedAnyChunk in
-      // sendMessageStream) returns normally without a "done" event, and onSuccess's streamed
-      // branch below would read this message's stats against the PREVIOUS message's doneData.
-      lastStreamDoneRef.current = null;
-      streamDoneReceivedAtRef.current = null;
+    mutationFn: async ({ message, history }: { message: string; history: ChatMessage[] }) => {
       const signal = abortControllerRef.current!.signal;
+      // Decided once per message: a model that finishes loading mid-reply waits for the next one.
+      const onDevice = speaksOnDevice();
+      deviceQueueEndRef.current = 0;
       if (tutor.streamingEnabled && tutor.ttsEnabled) {
         try {
           await publicChatApi.sendMessageStream(
@@ -595,6 +526,7 @@ export function PublicChatPage() {
             history,
             { onChunk: handleStreamChunk, onDone: handleStreamDone },
             signal,
+            onDevice,
           );
           await playChainRef.current;
           // playChainRef's own per-chunk delay() calls are a drifting estimate, not a real
@@ -612,77 +544,37 @@ export function PublicChatPage() {
           console.error("Streaming chat failed, falling back to a plain request.", error);
         }
       }
-      const res = await publicChatApi.sendMessage(slug, message, history, signal);
+      const res = await publicChatApi.sendMessage(slug, message, history, signal, onDevice);
       return { kind: "plain" as const, res };
     },
-    onSuccess: async (result, variables) => {
+    onSuccess: async (result) => {
       avatarRef.current?.stopThinking();
-      if (result.kind === "streamed") {
-        const doneData = lastStreamDoneRef.current;
-        const doneReceivedAt = streamDoneReceivedAtRef.current;
-        // The "ping": total time from firing the request to the full reply text being ready,
-        // regardless of whether this was a typed or spoken message. Logged separately from the
-        // more detailed voice-only breakdown below, since that one only fires for voice input.
-        if (latencyTestEnabled && doneReceivedAt != null) {
-          console.log("[Latency-Test] Ping (user input -> server answer, streamed)", {
-            totalMs: round(doneReceivedAt - variables.sendStartAt),
-          });
-        }
-        if (latencyTestEnabled && variables.latency && doneData) {
-          const speaking = speakingStatsRef.current;
-          const wps =
-            speaking.speakingDurationMs > 0 ? wordCount(doneData.reply) / (speaking.speakingDurationMs / 1000) : null;
-          console.log("[Latency-Test] End of speech -> audio audible (streamed)", {
-            sttRoundTripMs: round(variables.latency.sendStartAt - variables.latency.micStopAt),
-            sttBackendMs: variables.latency.sttMs != null ? round(variables.latency.sttMs) : null,
-            firstChunkTextReadyMs: doneData.firstChunkTextReadyMs != null ? round(doneData.firstChunkTextReadyMs) : null,
-            firstChunkMs: doneData.firstChunkMs != null ? round(doneData.firstChunkMs) : null,
-            llmBackendMs: doneData.llmMs != null ? round(doneData.llmMs) : null,
-            ttsBackendMs: doneData.ttsMs != null ? round(doneData.ttsMs) : null,
-            timeToFirstSpeechMs:
-              speaking.firstSpeechAt != null ? round(speaking.firstSpeechAt - variables.latency.sendStartAt) : null,
-            speakingDurationMs: speaking.speakingDurationMs > 0 ? round(speaking.speakingDurationMs) : null,
-            wordsPerSecond: wps != null ? Math.round(wps * 10) / 10 : null,
-            avgFps: speaking.fpsResult?.avgFps != null ? Math.round(speaking.fpsResult.avgFps * 10) / 10 : null,
-            droppedFrames: speaking.fpsResult?.droppedFrames ?? null,
-            fpsSampleCount: speaking.fpsResult?.sampleCount ?? null,
-          });
-        }
-        return;
-      }
+      if (result.kind === "streamed") return;
       const { res } = result;
-      const replyReceivedAt = performance.now();
-      if (latencyTestEnabled) {
-        console.log("[Latency-Test] Ping (user input -> server answer)", {
-          totalMs: round(replyReceivedAt - variables.sendStartAt),
-        });
-      }
       setMessages((prev) => [...prev, { role: "assistant", content: res.reply, checks: res.checks }]);
       // The whole reply arrives at once here, so its gestures play from the start rather than
       // at their sentence like in the streamed path.
       if (!abortControllerRef.current?.signal.aborted) avatarRef.current?.playMotions(res.motions);
-      let audioReadyAt = replyReceivedAt;
-      if (res.audioBase64 && !abortControllerRef.current?.signal.aborted) {
-        // Deliberately awaited (not fire-and-forget), so decode time and total speaking duration
-        // are both measurable for the latency log below. Visible side effect: isPending now stays
-        // true for the whole spoken reply, not just until the HTTP response arrives — confirmed by
-        // reading @tanstack/query-core directly, dispatch({type:"success"}) only runs after
-        // onSuccess resolves, so awaiting playback here was always going to extend it. This makes
-        // the plain path's busy-state duration match the streamed path, which already awaits full
-        // playback in mutationFn.
+      const replySignal = abortControllerRef.current?.signal;
+      if (res.spoken != null && !replySignal?.aborted) {
+        await speakOnDevice(res.spoken, () => undefined, replySignal);
+        // Generated doesn't mean played: wait until the queued audio has run out (see
+        // waitUntilIdle), then put the mouth back to idle like the server path below.
+        await avatarRef.current?.waitUntilIdle(replySignal);
+        avatarRef.current?.stopSpeaking();
+      } else if (res.audioBase64 && !abortControllerRef.current?.signal.aborted) {
+        // Deliberately awaited (not fire-and-forget): isPending then stays true for the whole
+        // spoken reply, not just until the HTTP response arrives (@tanstack/query-core only
+        // dispatches "success" once onSuccess resolves) — the same busy state as the streamed
+        // path, which already awaits full playback in mutationFn.
         try {
           const audioBuffer = await avatarRef.current?.decodeAudio(res.audioBase64);
-          audioReadyAt = performance.now();
           if (audioBuffer) {
             avatarRef.current?.speakBuffer(audioBuffer);
-            speakingStatsRef.current.firstSpeechAt = audioReadyAt;
-            speakingStatsRef.current.speakingDurationMs = audioBuffer.duration * 1000;
-            avatarRef.current?.startFpsTracking();
             await delay(audioBuffer.duration * 1000, abortControllerRef.current?.signal);
             // See waitUntilIdle's own doc comment — the duration-based delay() above is still just
             // an estimate of when TalkingHead's own playback actually ends.
             await avatarRef.current?.waitUntilIdle(abortControllerRef.current?.signal);
-            speakingStatsRef.current.fpsResult = avatarRef.current?.stopFpsTracking() ?? null;
             // See stopSpeaking's own doc comment — nothing else puts the mouth back to idle once
             // this reply's audio goes quiet.
             avatarRef.current?.stopSpeaking();
@@ -690,9 +582,6 @@ export function PublicChatPage() {
         } catch (error) {
           console.error("Audio could not be played.", error);
         }
-      }
-      if (latencyTestEnabled && variables.latency) {
-        logLatency(variables.latency, res, replyReceivedAt, audioReadyAt, speakingStatsRef.current);
       }
     },
     onError: (err) => {
@@ -725,9 +614,6 @@ export function PublicChatPage() {
       try {
         const initialPrompt = transcriptSoFarRef.current.slice(-MAX_INITIAL_PROMPT_CHARS) || undefined;
         const res = await publicChatApi.transcribe(slug, blob, initialPrompt);
-        if (res.sttMs != null) {
-          segmentSttMsSumRef.current = (segmentSttMsSumRef.current ?? 0) + res.sttMs;
-        }
         if (res.text) {
           transcriptSoFarRef.current = `${transcriptSoFarRef.current} ${res.text}`.trim();
           setInput((prev) => `${prev} ${res.text}`.trim());
@@ -746,8 +632,6 @@ export function PublicChatPage() {
       setIsFinalizingRecording(false);
       const fullText = transcriptSoFarRef.current;
       transcriptSoFarRef.current = "";
-      const micStopAt = latencyRef.current?.micStopAt;
-      const sttMs = segmentSttMsSumRef.current;
       // Surfaced the same way interruptResponse() reports an interruption — inline in the thread,
       // right where the student is looking, instead of a generic banner elsewhere on the page.
       // Fires whenever ANY segment of this recording failed, even one that wasn't the final one,
@@ -756,7 +640,7 @@ export function PublicChatPage() {
         setMessages((prev) => [...prev, { role: "system", content: t("publicChat.recordingFailed") }]);
       }
       if (fullText.trim()) {
-        sendMessage(fullText, micStopAt != null ? { micStopAt, sttMs } : undefined);
+        sendMessage(fullText);
       }
     }
   }
@@ -842,11 +726,10 @@ export function PublicChatPage() {
     setIsFinalizingRecording(true);
     avatarRef.current?.stopListening();
     setIsRecording(false);
-    const micStopAt = latencyRef.current?.micStopAt;
     try {
-      const { text, finalizeMs } = await session.stop();
+      const { text } = await session.stop();
       if (text.trim()) {
-        sendMessage(text, micStopAt != null ? { micStopAt, sttMs: finalizeMs } : undefined);
+        sendMessage(text);
       } else {
         setInput(inputBeforeRecordingRef.current);
       }
@@ -869,9 +752,6 @@ export function PublicChatPage() {
     avatarRef.current?.unlockAudio();
     // Already recording -> stop the recording
     if (isRecording) {
-      // Earliest unambiguous "end of speech" time (click handler) for the latency log —
-      // capturing it is practically free, so always, not only when latencyTestEnabled.
-      latencyRef.current = { micStopAt: performance.now() };
       if (streamingSessionRef.current) {
         void stopStreamingRecording(streamingSessionRef.current);
         return;
@@ -910,7 +790,6 @@ export function PublicChatPage() {
       recordingStreamRef.current = stream;
       avatarRef.current?.startListening(stream);
       transcriptSoFarRef.current = "";
-      segmentSttMsSumRef.current = null;
       finalRecorderRef.current = null;
       transcriptionChainRef.current = Promise.resolve();
       recordingHadFailureRef.current = false;
@@ -935,25 +814,19 @@ export function PublicChatPage() {
   // interrupt button will act on, and kicks off the mutation against an explicit history (rather
   // than reading the `messages` closure) — editMessage/regenerateFrom need a *truncated* history,
   // not "everything so far".
-  function runSend(text: string, history: ChatMessage[], latency?: SendLatency) {
+  function runSend(text: string, history: ChatMessage[]) {
     setRateLimited(false);
     avatarRef.current?.startThinking();
     abortControllerRef.current = new AbortController();
-    const sendStartAt = performance.now();
-    sendMutation.mutate({
-      message: text,
-      history: toApiHistory(history),
-      sendStartAt,
-      latency: latency ? { ...latency, sendStartAt } : undefined,
-    });
+    sendMutation.mutate({ message: text, history: toApiHistory(history) });
   }
 
-  function sendMessage(text: string, latency?: SendLatency) {
+  function sendMessage(text: string) {
     const trimmed = text.trim();
     if (!trimmed || sendMutation.isPending) return;
     // history = the conversation so far BEFORE this new message (messages is still the old state
     // value here; the setMessages below only takes effect on the next render).
-    runSend(trimmed, messages, latency);
+    runSend(trimmed, messages);
     setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
     setInput("");
   }
@@ -985,8 +858,8 @@ export function PublicChatPage() {
   function interruptResponse() {
     abortControllerRef.current?.abort();
     avatarRef.current?.stopSpeaking();
+    deviceQueueEndRef.current = 0;
     avatarRef.current?.stopMotion();
-    speakingStatsRef.current.fpsResult = avatarRef.current?.stopFpsTracking() ?? null;
     setMessages((prev) => [...prev, { role: "system", content: t("publicChat.responseInterrupted") }]);
   }
 
@@ -1083,6 +956,27 @@ export function PublicChatPage() {
         }
       });
   }, [tutorQuery.data, visitorNameProvided, t]);
+
+  // Loads the on-device speech output model once the visitor has passed any password/name gate
+  // (same reason as above). Unlike speech recognition it doesn't hold the chat back: replies are
+  // spoken by the server until the model is ready, and messages go out with speakOnDevice after.
+  useEffect(() => {
+    const tutor = tutorQuery.data;
+    if (!tutor?.ttsEnabled || !tutor.browserTtsModelUrl) return;
+    if (tutor.passwordProtected && !tutor.unlocked) return;
+    if (tutor.requireVisitorName && !visitorNameProvided) return;
+    if (deviceTtsRef.current) return;
+    const engine = new PocketBrowserTts();
+    deviceTtsRef.current = engine;
+    engine.load(tutor.browserTtsModelUrl, () => {}, tutor.browserTtsVoice).catch((error) => {
+      console.error("On-device speech output unavailable, the server speaks instead.", error);
+    });
+  }, [tutorQuery.data, visitorNameProvided]);
+
+  // Ends the speech output worker with the page, like the speech recognition one below.
+  useEffect(() => {
+    return () => deviceTtsRef.current?.dispose();
+  }, []);
 
   // Keeps keyboard focus and screen readers out of the chat while the loading screen covers it —
   // it's already rendered underneath so the avatar can load in parallel with the model. No deps:

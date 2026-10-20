@@ -17,7 +17,8 @@ from sqlmodel import Session, select
 from app.core.config import settings
 from app.features.ai.tts import local
 from app.features.media.models import VoiceClip
-from conftest import browser_url, create_project, login_as, make_user, new_client
+from app.features.media import voices_router
+from conftest import browser_url, create_project, login_as, make_user, new_client, publish
 
 SIDECAR_WAV = b"RIFF-fake-synthesized-wav"
 
@@ -147,6 +148,24 @@ def test_clips_are_private_to_their_owner(client, teacher, engine, sidecar) -> N
     assert other.delete(f"/voice-clips/{clip['id']}").status_code == 404
     assert new_client().get(browser_url(clip["fileUrl"])).status_code == 401
     assert client.get("/voice-clips").json()[0]["id"] == clip["id"]
+
+
+def test_a_clip_stays_private_when_a_published_project_speaks_with_it(client, teacher, sidecar) -> None:
+    # Unlike avatars and backgrounds, students only ever hear the cloned voice, never the file.
+    clip = upload(client, tone_wav(5)).json()
+    project = create_project(client, ttsEnabled=True, ttsVoiceClipId=clip["id"])
+    publish(client, project["id"])
+
+    response = new_client().get(browser_url(clip["fileUrl"]))
+    assert response.status_code == 401
+    assert client.get(browser_url(clip["fileUrl"])).status_code == 200
+
+
+def test_oversized_uploads_are_refused(client, teacher, monkeypatch) -> None:
+    monkeypatch.setattr(voices_router, "_MAX_UPLOAD_BYTES", 1024)
+    response = upload(client, tone_wav(5))
+    assert response.status_code == 400
+    assert response.json() == {"detail": "VOICE_CLIP_TOO_LARGE"}
 
 
 def test_project_speaks_with_its_clip_and_sends_it_to_the_sidecar_once(client, teacher, sidecar) -> None:

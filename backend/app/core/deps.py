@@ -30,6 +30,7 @@ from sqlmodel import Session, select
 
 from app.core.cookies import ACCESS_TOKEN_COOKIE
 from app.core.error_codes import ErrorCode
+from app.core.ownership import get_owned
 from app.core.security import decode_access_token
 from app.db.session import get_session
 from app.features.projects.models import Project
@@ -187,7 +188,7 @@ def get_owned_project(
         Project: The project object that belongs to the current user
     
     Raises:
-        HTTPException: 404 if project doesn't exist or doesn't belong to user
+        DomainError: 404 if project doesn't exist or doesn't belong to user (see core/ownership.py)
     
     Example:
         @router.put("/projects/{project_id}")
@@ -201,11 +202,7 @@ def get_owned_project(
             session.commit()
             return project
     """
-    # 404 instead of 403 for foreign projects to prevent IDOR enumeration
-    project = session.get(Project, project_id)
-    if project is None or project.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail=ErrorCode.PROJECT_NOT_FOUND)
-    return project
+    return get_owned(session, Project, project_id, current_user.id, ErrorCode.PROJECT_NOT_FOUND)
 
 
 def get_published_project(

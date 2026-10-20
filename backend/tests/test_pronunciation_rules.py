@@ -49,6 +49,16 @@ def test_compile_rules_is_cached_by_content() -> None:
     assert compile_rules([Rule("pH", "p H", case_sensitive=True)]) is not first
 
 
+def test_digits_in_the_spoken_form_are_read_as_numbers() -> None:
+    # normt2s says a rule's output as written; LOLA renormalizes a rule whose spoken form has a
+    # digit of its own, so "1 s" -> "1 Sekunde" doesn't leave a lone digit among number words.
+    rules = compile_rules([Rule("1 s", "1 Sekunde", case_sensitive=True), Rule("pH", "p H 7")])
+    assert all(rule.renormalize for rule in rules)
+    assert normalize_for_speech("in 1 s", "de", rules) == "in eine Sekunde"
+    plain = compile_rules([Rule("{number} m", "{number} Meter"), Rule("pH", "p H")])
+    assert not any(rule.renormalize for rule in plain)
+
+
 def test_lolas_limits_fit_within_normt2s() -> None:
     # A full word list of longest terms must compile — normt2s raises past its own (higher) limits.
     rules = [Rule(f"{i:03d}" + "x" * (MAX_TERM_LENGTH - 3), "y") for i in range(MAX_ENTRIES_PER_LANGUAGE)]

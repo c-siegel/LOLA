@@ -24,14 +24,22 @@ until you export them (CSV or JSON, with the device in every row).
 | Speech recognition | On this device (Parakeet via WebGPU — load it first under "Device"), or on the server: as the project is set up, Whisper, or Parakeet |
 | Language model | As the project is set up, or any of your other LLM keys |
 | Streaming | On: the avatar starts after the first sentence. Off: after the whole reply |
-| Speech output | As the project is set up, the local TTS server (Sopro), Sopro in this browser, or none |
+| Speech output | As the project is set up, the local TTS server (Pocket TTS), Pocket TTS in this browser, or none |
 | Avatar | The 3D avatar (also measures its frame rate and lost WebGL contexts), or audio only |
 
-**Sopro in the browser** downloads Sopro's ONNX model from Hugging Face by default (enter a
-self-hosted copy under "Model address" to avoid that third-party request) and clones the voice of
-one of your voice clips or an uploaded file. It uses WebGPU on computers and the CPU (WASM) on
-tablets and phones. This is an experiment to see whether in-browser speech output is fast enough
-on a device — the public chat doesn't use it.
+**Pocket TTS in the browser** loads Kyutai's German Pocket TTS model (int8, ~126 MB) from this
+server — fetch it first with `scripts/fetch-tts-model.sh` — and speaks with the preset voice
+"alba". German only, no voice cloning; it runs on the CPU (WASM, one thread). This is an experiment
+to see whether in-browser speech output is fast enough on a device — the public chat doesn't use
+it.
+
+## Speech recognition only
+
+Under "Device", **Measure speech recognition only** runs the loaded on-device model by itself — on
+the microphone or an audio file, without a project, LLM or TTS — and shows the time to the first
+live text, each re-decode (last / average / max), and the time from stop to the final text. That's
+the device check in [stt-device-test.md](stt-device-test.md). To compare another build of the
+model, open the page with `?sttModel=<model folder URL>`.
 
 ## Comparable runs
 
@@ -58,7 +66,7 @@ on a device — the public chat doesn't use it.
 |---|---|
 | STT until final text | the transcript takes long after speaking ends (device: finalizing; server: upload + transcription) |
 | LLM first token | the model itself is slow to start — try another model or provider |
-| TTS first sentence | speech synthesis is slow — compare server TTS, local TTS and Sopro |
+| TTS first sentence | speech synthesis is slow — compare server TTS, local TTS and Pocket TTS in the browser |
 | Request → first chunk | network + LLM + server TTS together, as this device sees it |
 | Pauses in the speech | the next sentence wasn't synthesized before the previous one finished — streaming can't keep up |
 | Avatar FPS / context losses | the GPU is overloaded (e.g. on-device speech recognition plus the avatar on an iPad) |

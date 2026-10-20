@@ -21,13 +21,14 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import DomainError
+from app.core.ownership import find_owned
 from app.core.providers import KEY_TYPE_TTS
 from app.core.rate_limit import enforce_tts_preview_rate_limit
 from app.features.ai.tts import VoiceReference, synthesize_speech
 from app.features.ai.tts.normalizer import normalize_for_speech
 from app.features.api_keys.crypto import scrub_key_from_text
 from app.features.api_keys.resolve import get_owned_key_of_type
-from app.features.media.service import get_owned_voice_clip
+from app.features.media.models import VoiceClip
 from app.features.pronunciation.schemas import PronunciationPreviewIn, PronunciationPreviewOut
 from app.features.pronunciation.service import rules_for
 
@@ -70,7 +71,7 @@ def preview(session: Session, user_id: str, data: PronunciationPreviewIn) -> Pro
         raise TtsNotConfigured()
     voice_clip = None
     if api_key is None and data.voice_clip_id:
-        clip = get_owned_voice_clip(session, user_id, data.voice_clip_id)
+        clip = find_owned(session, VoiceClip, data.voice_clip_id, user_id)
         if clip is None:
             raise VoiceClipNotFound()
         voice_clip = VoiceReference(sha256=clip.sha256, path=clip.file_path)

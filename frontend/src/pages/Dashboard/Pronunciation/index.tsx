@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Callout } from "@/components/Callout";
 import { Button } from "@/components/Button";
+import { PageHeader } from "@/components/PageHeader";
 import { errorMessage } from "@/api/client";
 import { pronunciationApi, type PronunciationEntryInput } from "@/api/pronunciation";
 import type { SpokenLanguage } from "@/types/project";
@@ -26,10 +27,7 @@ export function PronunciationPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h2>{t("pronunciation.title")}</h2>
-        <p>{t("pronunciation.subtitle")}</p>
-      </div>
+      <PageHeader title={t("pronunciation.title")} subtitle={t("pronunciation.subtitle")} />
 
       <div className={styles.languageTabs} role="tablist" aria-label={t("pronunciation.language")}>
         {(["de", "en"] as const).map((value) => (

@@ -28,9 +28,9 @@ raise `DomainError`s (`app/core/errors.py`) instead of HTTP exceptions.
 |---|---|
 | `app/main.py` | Builds the app (`create_app()`): middleware, error handling, lifespan, `/health` |
 | `app/api_router.py` | Mounts every feature's router under `/api/v1` (`app/core/urls.py`); the order matters for overlapping paths — see [API Reference](#api-reference) below |
-| `app/core/` | Cross-cutting setup: settings (`config.py`), auth dependencies (`deps.py`), cookies, domain errors, middleware, public URLs (`urls.py`), the LLM/TTS/STT provider registry (`providers.py`), rate limiting, security helpers |
+| `app/core/` | Cross-cutting setup: settings (`config.py`), auth dependencies (`deps.py`), ownership checks (`ownership.py`), the CSV formula guard (`csv.py`), cookies, domain errors, middleware, public URLs (`urls.py`), the LLM/TTS/STT provider registry (`providers.py`), rate limiting, security helpers |
 | `app/db/` | Database session/engine setup; `base.py` imports every feature's models for Alembic |
-| `app/storage/` | Shared upload handling: content sniffing, saving/deleting files, cached file responses |
+| `app/storage/` | Shared upload handling: size-capped reads (`read_upload`), content sniffing, saving/deleting files, cached file responses |
 | `app/tasks/` | Background work: the periodic data-retention purge, and retrying deletes the knowledge service missed while it was down |
 | `app/features/auth/` | Register, login, logout, password reset |
 | `app/features/users/` | Own profile (`/me`), account deletion, admin account management (`/admin/users`) |
@@ -67,7 +67,7 @@ the frontend uses them as-is.
 | Public | No login needed. |
 | Public, rate-limited | No login, but capped per IP/email (`app/core/rate_limit.py`) against brute-forcing or spam. |
 | Login required | Needs the `access_token` cookie set by `/auth/login` or `/auth/register` (`app/core/deps.py::get_current_user`). |
-| Login required, own resource | Same, but also 404s (not 403) if the resource belongs to someone else — this hides whether it even exists, an IDOR (Insecure Direct Object Reference) defense. |
+| Login required, own resource | Same, but also 404s (not 403) if the resource belongs to someone else — this hides whether it even exists, an IDOR (Insecure Direct Object Reference) defense. Checked by `app/core/ownership.py::get_owned` (or `find_owned`, which returns `None` instead). |
 | Admin only | Login required, and the account's `is_admin` flag must be set (`get_current_admin`). |
 | Owner, or public if published | 404 unless you own the resource — *or* it's attached to a published project, in which case anonymous visitors can fetch it too (e.g. an avatar file the public chat needs to display). |
 | Visitor, rate-limited | No login — a published project's public chat. Visitors are tracked by an anonymous `ah_visitor_id` cookie, not a `User` account, and every route here is rate-limited per visitor. |
@@ -160,8 +160,8 @@ back. The browser sends them back on its history entries, so the server can repl
 |---|---|---|
 | `GET /public/{slug}` | Visitor, rate-limited | Load a published project's public info and record the visit. |
 | `POST /public/{slug}/unlock` | Visitor, rate-limited | Verify a chat password and issue an unlock token for this project + visitor. |
-| `POST /public/{slug}/messages` | Visitor, rate-limited | Send a chat message and get the full reply (text + optional audio) back at once. |
-| `POST /public/{slug}/messages/stream` | Visitor, rate-limited | Same, but streamed as SSE (Server-Sent Events): sentence-sized chunks, each with its own audio, as soon as ready. |
+| `POST /public/{slug}/messages` | Visitor, rate-limited | Send a chat message and get the full reply (text + optional audio) back at once. With `speakOnDevice: true` (only honoured where the project offers on-device speech output, see `browserTtsModelUrl` in `GET /public/{slug}`) the server skips its TTS and returns the reply's spoken form as `spoken` instead. |
+| `POST /public/{slug}/messages/stream` | Visitor, rate-limited | Same, but streamed as SSE (Server-Sent Events): sentence-sized chunks, each with its own audio — or, with `speakOnDevice`, its spoken form as `spoken` — as soon as ready. |
 | `POST /public/{slug}/transcriptions` | Visitor, rate-limited | Transcribe a visitor's voice message. |
 
 ### Avatar library — `app/features/media/avatars_router.py` (prefix `/avatars`)
@@ -194,7 +194,9 @@ content-sniffing validation as the avatar library.
 ### Voice library — `app/features/media/voices_router.py` (prefix `/voice-clips`)
 
 Each teacher's private voice clips for local voice cloning (local TTS only — a project picks one
-via `ttsVoiceClipId`). Uploads are content-sniffed, need a consent confirmation, must be 3–30 s
+via `ttsVoiceClipId`). Cloning needs the sidecar's `TTS_HF_TOKEN` (see
+[local-tts/README.md](../local-tts/README.md#voice-cloning)); without it the sidecar speaks with
+the project's preset voice (`ttsVoice`) instead. Uploads are content-sniffed, need a consent confirmation, must be 3–30 s
 long, and are stored as normalized 24 kHz mono WAV whatever format came in.
 
 | Method & path | Auth | Description |
@@ -215,7 +217,9 @@ whitespace), `{number}` stands for a number and is carried over into the spoken 
 apply in one longest-first pass, and they run after Markdown is stripped and before numbers,
 units and math become words. That built-in normalization is done by
 [normt2s](https://github.com/c-siegel/normt2s), configured in `app/features/ai/tts/normalizer.py`;
-the output of a rule is not normalized again. At most 500 terms per language.
+the output of a rule is said as written, except that a rule whose spoken form contains a digit of
+its own ("1 s" → "1 Sekunde") is normalized again, so the digit is read as a word (see
+`compile_rules`). At most 500 terms per language.
 
 | Endpoint | Auth | Description |
 |---|---|---|
@@ -266,8 +270,9 @@ duplicating that data. Keys are encrypted at rest.
 | Method & path | Router | Auth | Description |
 |---|---|---|---|
 | `GET /providers` | `providers_router.py` | Login required | List all supported providers and their config. |
-| `GET /providers/local-tts-status` | `providers_router.py` | Login required | Whether this deployment's local-TTS sidecar is enabled. |
+| `GET /providers/local-tts-status` | `providers_router.py` | Login required | Whether this deployment's local-TTS sidecar is enabled, and — if it answers — whether it clones voices, its languages and its voices (presets, plus donated voices with cloning) for the configurator's picker. Cached for a minute. |
 | `GET /providers/browser-stt-status` | `providers_router.py` | Login required | Whether on-device (WebGPU) transcription is enabled for this deployment. |
+| `GET /providers/browser-tts-status` | `providers_router.py` | Login required | Whether on-device speech output is offered (`BROWSER_TTS_ENABLED`) and the language of its model. |
 | `GET /providers/server-stt-status` | `providers_router.py` | Login required | The deployment's default server STT engine and whether a project may pick Parakeet instead (its model files are present). |
 | `GET /api-keys` | `router.py` | Login required | List the current user's stored keys, with how many projects use each one. |
 | `POST /api-keys` | `router.py` | Login required | Store a new API key. |
@@ -392,11 +397,11 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 | `features/ai/tts/` | Text-to-speech (TTS) synthesis | `synthesize_speech(text, tts_voice, api_key_record, language, pronunciation=None)` — normalizes the text for speech (with the teacher's word list, if given), routes to the right provider, or the local-TTS sidecar for `api_key_record=None`, and returns `(audio_bytes, content_type)`. Raises `VoiceRequiredError` if the provider needs a voice that wasn't given.<br>`get_tts_client(api_key_record)` — the provider client itself. |
 | `features/ai/tts/normalizer.py` | Making text speakable (via normt2s) | `normalize_for_speech(text, language, pronunciation=None, applied=None)` — Markdown stripped, numbers, units and math as words, the teacher's word list applied.<br>`speech_stream(language, pronunciation=None)` — a stream for a live LLM reply: `feed_pieces(delta)`/`flush_piece()` release `Piece(raw, spoken)` at sentence ends. |
 | `features/ai/tts/pronunciation.py` | Compiling a teacher's word list | `compile_rules(rules)` → a cached normt2s `RuleSet` of `normt2s.Rule(term, spoken, whole_word, case_sensitive)`. `spell_out(term)`, `placeholder_count(text)`. |
-| `features/pronunciation/service.py` | Managing the word list | `list_entries(...)`, `create_entry(...)`, `update_entry(...)`, `delete_entry(...)`, `get_owned_entry(...)`.<br>`rules_for(session, user_id, language)` — what to pass as `synthesize_speech(..., pronunciation=)`.<br>`import_text(...)`, `export_csv(...)`. |
+| `features/pronunciation/service.py` | Managing the word list | `list_entries(...)`, `create_entry(...)`, `update_entry(...)`, `delete_entry(...)`.<br>`rules_for(session, user_id, language)` — what to pass as `synthesize_speech(..., pronunciation=)`.<br>`import_text(...)`, `export_csv(...)`. |
 | `features/pronunciation/presets.py` | Preset packs | `all_packs()`, `get_pack(id, language)`, `apply_pack(...)`, `remove_pack(...)`, `applied_count(...)`. |
 | `features/ai/stt/` | Speech-to-text (STT) transcription | `transcribe_audio(audio_bytes, language, initial_prompt, api_key_record)` — locally via faster-whisper or Parakeet (`Settings.stt_engine`), or a cloud provider if configured.<br>`get_stt_client(api_key_record)` → `.transcribe(...)`; a SAIA client also has `.test()`.<br>`capacity.transcription_slot()` — limits concurrent local transcriptions. |
 | `features/chat/pipeline.py` | One chat turn for the public and preview chat | `prepare_chat(session, project)` — resolve keys and snapshot the project.<br>`reply_turn(context, turn)` — LLM → save → TTS.<br>`stream_turn(context, turn)` — `(event, data)` pairs for the SSE stream. |
-| `features/api_keys/resolve.py` | Which of a project's API keys to use | `resolve_llm_key(session, project)`, `resolve_tts_key(...)`, `resolve_stt_key(...)`.<br>`get_user_api_key(...)`, `get_key_by_id(...)`, `get_owned_key_of_type(...)` — lookups.<br>`provider_from_model(llm_model)`, `browser_stt_model_url_for(project)`, `effective_api_base(key)`. |
+| `features/api_keys/resolve.py` | Which of a project's API keys to use | `resolve_llm_key(session, project)`, `resolve_tts_key(...)`, `resolve_stt_key(...)`.<br>`get_user_api_key(...)`, `get_owned_key_of_type(...)` — lookups.<br>`provider_from_model(llm_model)`, `browser_stt_model_url_for(project)`, `effective_api_base(key)`. |
 | `features/api_keys/service.py` | Managing stored keys | `list_keys_with_usage(session, user_id)`, `create_key(...)`, `update_key(...)`, `delete_key(...)`, `run_key_test(session, key)`. |
 | `features/api_keys/crypto.py` | Encrypting and masking stored API keys | `store_api_key(plaintext)` / `reveal_api_key(ciphertext)`.<br>`mask_key(plaintext)` — e.g. `"••••••••1234"`.<br>`scrub_key_from_text(text, encrypted_api_key)` — redact a key out of error text before it's shown or logged. |
 | `features/auth/service.py` | Authentication helpers | `register_user(session, name, email, password)`, `authenticate_user(session, email, password)`, `user_to_out(user)`. The auth cookie itself is set by `core/cookies.py::set_auth_cookie`. |
@@ -405,7 +410,7 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 | `features/projects/publish.py` | Publishing projects | `publish_project(session, project)` — assigns a fresh share-link slug.<br>`unpublish_project(session, project)` — the old slug is never reused. |
 | `features/projects/start_audio.py` | Cached start-prompt audio | `generate_start_audio(session, project)`, `servable_start_audio(session, project_id, user)`. |
 | `features/projects/export.py` | Project YAML export/import | `export_project_yaml(project)`, `parse_project_yaml(raw)`, `import_project(session, user_id, data)`. |
-| `features/media/service.py` | Avatar, background and voice libraries | `create_avatar(...)`, `set_avatar_thumbnail(...)`, `delete_avatar(...)`, the background equivalents, and `is_used_by_published_project(session, column, item_id, owner_id)`.<br>`list_voice_clips(...)`, `get_owned_voice_clip(...)`, `create_voice_clip(...)`, `delete_voice_clip(session, clip)`, `voice_reference_for_project(session, project)`. |
+| `features/media/service.py` | Avatar, background and voice libraries | `create_avatar(...)`, `set_avatar_thumbnail(...)`, `delete_avatar(...)`, the background equivalents, `get_viewable(...)` — an avatar or background for its owner, or for anyone once a published project uses it (never voice clips), built on `is_used_by_published_project(session, column, item_id, owner_id)`.<br>`list_voice_clips(...)`, `create_voice_clip(...)`, `delete_voice_clip(session, clip)`, `voice_reference_for_project(session, project)`. |
 | `features/media/voice_audio.py` | Voice clip validation | `normalize_voice_clip(content)` → (WAV bytes, duration) — sniffs, decodes and resamples an upload, enforcing 3–30 s. |
 | `features/analytics/service.py` | Analytics queries behind the dashboard | `get_stats(...)`, `get_project_overview(...)`, `get_sessions_paginated(...)`, `get_session_ids(...)`, `get_timeseries_data(...)`.<br>`get_conversation_detail(...)`, `get_conversations_for_export(...)`, `delete_conversations(...)`. |
 | `features/analytics/csv_export.py` | Conversation CSV/ZIP export | `build_export(rows)`, `build_conversation_csv(conversation, project)`, `conversation_export_filename(...)`. |
@@ -455,10 +460,10 @@ A few backend behaviors worth knowing about if you're deploying or extending thi
 - **Data retention** (`app/tasks/retention.py`) is enforced both at startup and
   periodically (every 6 hours, see `app/main.py`) for as long as the process runs, not just once
   per restart.
-- **Conversation exports are CSV-injection-safe** (`app/features/analytics/csv_export.py`): a
-  visitor name or message starting with `=`, `+`, `-`, or `@` is escaped before being written to
-  the exported CSV/ZIP, so it can't turn into a live spreadsheet formula when a teacher opens it.
-  The pronunciation word-list export does the same (and its import strips the escape again).
+- **CSV exports are CSV-injection-safe** (`app/core/csv.py`): a visitor name, message, word-list
+  term or evaluation question starting with `=`, `+`, `-`, or `@` is escaped before being written
+  to the exported CSV/ZIP, so it can't turn into a live spreadsheet formula when a teacher opens
+  it. The word-list and evaluation-question imports strip the escape again.
 - **Pronunciation rules are never regular expressions.** Teachers' terms are escaped before they
   are compiled (`app/features/ai/tts/pronunciation.py`), so a word list can't inject a pattern or
   cause catastrophic backtracking; the only syntax is the `{number}` placeholder.
@@ -467,7 +472,8 @@ A few backend behaviors worth knowing about if you're deploying or extending thi
 
 The public chat endpoints in `app/features/chat/public_router.py` time themselves with `time.perf_counter()`
 and ride the results along as extra fields in their normal JSON responses — there's no separate
-metrics endpoint or database, just numbers the frontend console-logs for debugging. `None` always
+metrics endpoint or database. The public chat doesn't use them; the dashboard's latency test reads
+the same fields from its own routes. `None` always
 means a stage didn't run at all (e.g. TTS disabled or no key configured), never "it was instant".
 
 | Endpoint | Field(s) | What it measures |
@@ -482,12 +488,10 @@ means a stage didn't run at all (e.g. TTS disabled or no key configured), never 
 | (SSE `chunk` events) | `textReadyMs`, `ttsMs`, `sentMs` | Per chunk: when its text was handed to TTS, how long its synthesis took (`null` without TTS), and when it was sent — all since the request started. |
 | `POST /{slug}/transcriptions` | `sttMs` | Wall-clock time inside the STT (speech-to-text) call — local Whisper or Parakeet, or the cloud provider. |
 
-How to use: open the public chat page with `?latencyTest=1` appended to the URL — the frontend logs
-these numbers to the browser console, combined with client-side timings (network round trip, audio
-decode/playback, time to first spoken word). See [frontend/README.md](../frontend/README.md#debugging)
-for the full breakdown and what each logged field means. The dashboard's latency test page
-(`/dashboard/latency`, routes `/projects/{id}/latency-test/*` above) shows the same numbers per
-message and compares configurations; the `chunk` and `done` fields are the same there.
+How to use: the dashboard's latency test page (`/dashboard/latency`, routes
+`/projects/{id}/latency-test/*` above) combines these numbers with client-side timings (network
+round trip, time to first audio, playback) per message and compares configurations; the `chunk`
+and `done` fields are the same there. See [docs/latency-test.md](../docs/latency-test.md).
 
 ## Tests
 

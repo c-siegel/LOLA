@@ -15,6 +15,8 @@ from pathlib import Path
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.core.errors import DomainError
+from app.core.ownership import find_owned
 from app.features.ai.tts.local import VoiceReference, forget_voice
 from app.features.media.models import AvatarModel, BackgroundImage, VoiceClip
 from app.features.projects.models import Project
@@ -37,23 +39,34 @@ def is_used_by_published_project(session: Session, column, item_id: str, owner_i
     return session.exec(query).first() is not None
 
 
+def get_viewable(
+    session: Session,
+    model: type[AvatarModel | BackgroundImage],
+    item_id: str,
+    user: User | None,
+    column,
+    error_code: str,
+) -> AvatarModel | BackgroundImage:
+    """An avatar or background for its file route: to its owner, or to anyone (students in the
+    public chat) once a published project of the owner uses it in `column`.
+
+    Everything else is a 404, as if it didn't exist (IDOR defense, see core/ownership.py). Voice
+    clips deliberately don't go through here — they are never served publicly.
+    """
+    item = session.get(model, item_id)
+    if item is not None and (
+        (user is not None and item.user_id == user.id)
+        or is_used_by_published_project(session, column, item_id, item.user_id)
+    ):
+        return item
+    raise DomainError(error_code, status_code=404)
+
+
 # ==================== AVATARS ====================
 
 
 def list_avatars(session: Session, user_id: str) -> list[AvatarModel]:
     return list(session.exec(select(AvatarModel).where(AvatarModel.user_id == user_id)).all())
-
-
-def get_avatar(session: Session, avatar_id: str) -> AvatarModel | None:
-    return session.get(AvatarModel, avatar_id)
-
-
-def get_owned_avatar(session: Session, user_id: str, avatar_id: str) -> AvatarModel | None:
-    """The avatar if it exists and belongs to `user_id`, else None."""
-    avatar = get_avatar(session, avatar_id)
-    if avatar is None or avatar.user_id != user_id:
-        return None
-    return avatar
 
 
 def create_avatar(session: Session, user_id: str, name: str, content: bytes) -> AvatarModel:
@@ -99,18 +112,6 @@ def list_backgrounds(session: Session, user_id: str) -> list[BackgroundImage]:
     return list(session.exec(select(BackgroundImage).where(BackgroundImage.user_id == user_id)).all())
 
 
-def get_background(session: Session, background_id: str) -> BackgroundImage | None:
-    return session.get(BackgroundImage, background_id)
-
-
-def get_owned_background(session: Session, user_id: str, background_id: str) -> BackgroundImage | None:
-    """The background if it exists and belongs to `user_id`, else None."""
-    background = get_background(session, background_id)
-    if background is None or background.user_id != user_id:
-        return None
-    return background
-
-
 def create_background(session: Session, user_id: str, name: str, content: bytes, extension: str) -> BackgroundImage:
     """Store an already-validated image (extension taken from its sniffed content) and its library entry."""
     file_path = save_file(Path(settings.background_upload_dir) / user_id, f"{uuid.uuid4()}{extension}", content)
@@ -137,14 +138,6 @@ def delete_background(session: Session, background: BackgroundImage) -> None:
 def list_voice_clips(session: Session, user_id: str) -> list[VoiceClip]:
     query = select(VoiceClip).where(VoiceClip.user_id == user_id).order_by(VoiceClip.created_at)
     return list(session.exec(query).all())
-
-
-def get_owned_voice_clip(session: Session, user_id: str, clip_id: str) -> VoiceClip | None:
-    """The clip if it exists and belongs to `user_id`, else None."""
-    clip = session.get(VoiceClip, clip_id)
-    if clip is None or clip.user_id != user_id:
-        return None
-    return clip
 
 
 def create_voice_clip(session: Session, user_id: str, name: str, wav: bytes, duration_seconds: float) -> VoiceClip:
@@ -194,5 +187,5 @@ def voice_reference_for_project(session: Session, project: Project) -> VoiceRefe
     """
     if not project.tts_voice_clip_id:
         return None
-    clip = get_owned_voice_clip(session, project.user_id, project.tts_voice_clip_id)
+    clip = find_owned(session, VoiceClip, project.tts_voice_clip_id, project.user_id)
     return VoiceReference(sha256=clip.sha256, path=clip.file_path) if clip else None

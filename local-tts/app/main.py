@@ -1,9 +1,9 @@
 """
 Local TTS Sidecar — HTTP API
 
-A small FastAPI wrapper around sopro (see app/synthesis.py), run as its own optional Docker
-container next to the main backend (see docker/local-tts.Dockerfile) so the backend image never
-needs PyTorch. The backend calls POST /synthesize instead of running the model in-process,
+A small FastAPI wrapper around Kyutai's Pocket TTS (see app/synthesis.py), run as its own optional
+Docker container next to the main backend (see docker/local-tts.Dockerfile) so the backend image
+never needs PyTorch. The backend calls POST /synthesize instead of running the model in-process,
 mirroring how it already calls out to cloud TTS providers.
 
 Custom voices: the backend owns teachers' voice clips and sends one here (PUT /voices/{sha256})
@@ -15,6 +15,9 @@ How to use:
     # served via: uvicorn app.main:app --host 0.0.0.0 --port 8080
 """
 
+import threading
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -24,33 +27,59 @@ from app.synthesis import (
     InvalidVoiceError,
     UnsupportedLanguageError,
     VoiceNotStoredError,
+    cloning_available,
     delete_voice,
+    load_all,
     store_voice,
     synthesize,
 )
+from app.voices import voice_catalog
 
-app = FastAPI(title="LOLA Local TTS")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # In the background: /health answers right away, and a request that arrives before its model is
+    # ready simply waits for it (see synthesis.model).
+    threading.Thread(target=load_all, name="load-models", daemon=True).start()
+    yield
+
+
+app = FastAPI(title="LOLA Local TTS", lifespan=lifespan)
 
 
 class SynthesizeRequest(BaseModel):
     text: str
     language: str = "de"
-    # SHA-256 of a custom reference clip stored via PUT /voices; None uses the language's default.
+    # A preset or "donation:<name>" from GET /voices; anything else falls back to the default.
+    voice: str | None = Field(default=None, max_length=100)
+    # SHA-256 of a custom reference clip stored via PUT /voices; takes precedence over `voice`.
     voice_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 @app.get("/health")
 def health() -> dict:
-    """Liveness check — deliberately doesn't force a model load, so it stays fast even before
-    the first real synthesis request (the model loads lazily, see app/synthesis.py::_model)."""
+    """Liveness check — deliberately doesn't wait for a model load, so it stays fast even while
+    the models are still downloading."""
     return {"status": "ok"}
+
+
+@app.get("/voices")
+def voices() -> dict:
+    """What this instance can speak: its languages, whether voice cloning works (teachers' clips
+    and donated voices), and the voices a request may name."""
+    cloning = cloning_available()
+    return {
+        "languages": settings.language_codes,
+        "cloning": cloning,
+        "voices": voice_catalog(cloning, settings.donated_voice_names),
+    }
 
 
 @app.post("/synthesize")
 def synthesize_endpoint(body: SynthesizeRequest) -> Response:
     """Generate speech for `body.text` in `body.language`, returning a WAV file."""
     try:
-        audio_bytes = synthesize(body.text, body.language, body.voice_sha256)
+        audio_bytes = synthesize(body.text, body.language, body.voice, body.voice_sha256)
     except VoiceNotStoredError as exc:
         raise HTTPException(status_code=404, detail="VOICE_NOT_STORED") from exc
     except UnsupportedLanguageError as exc:

@@ -12,6 +12,7 @@ import {
   keyDisplayName,
   modelLabel,
   useBrowserSttStatus,
+  useBrowserTtsStatus,
   useLocalTtsStatus,
   useProviders,
   useServerSttStatus,
@@ -30,6 +31,11 @@ const NO_MODEL_SELECTED = "";
 // their values can never collide with a key id.
 const STT_ENGINE_PREFIX = "engine:";
 const STT_SERVER_ENGINES: SttServerEngine[] = ["whisper", "parakeet"];
+
+// Same idea for the local voice: a sidecar voice (draft.ttsVoice, a preset or "donation:<name>")
+// or one of the teacher's clips (draft.ttsVoiceClipId).
+const LOCAL_VOICE_PREFIX = "voice:";
+const LOCAL_CLIP_PREFIX = "clip:";
 
 // Upper bounds of the two sampling parameters — the backend checks the same values again
 // (MAX_TEMPERATURE/MAX_TOP_P in backend/app/features/projects/schemas.py), so a value set via
@@ -61,6 +67,27 @@ export function Step2Technical({ draft, onChange }: StepProps) {
   });
   const voiceClips = voiceClipsQuery.data ?? [];
   const usesLocalTts = localTtsAvailable && draft.ttsApiKeyId === null;
+  // What the sidecar speaks (Pocket TTS): preset voices always, donated voices and the teacher's
+  // own clips only when it can clone voices.
+  const localTts = localTtsStatusQuery.data;
+  const cloning = localTts?.cloning ?? false;
+  const presetVoices = (localTts?.voices ?? []).filter((voice) => voice.kind === "preset");
+  const donatedVoices = (localTts?.voices ?? []).filter((voice) => voice.kind === "donation");
+  const localVoiceValue = draft.ttsVoiceClipId
+    ? LOCAL_CLIP_PREFIX + draft.ttsVoiceClipId
+    : localTts?.voices.some((voice) => voice.id === draft.ttsVoice)
+      ? LOCAL_VOICE_PREFIX + draft.ttsVoice
+      : "";
+  function handleLocalVoiceChoice(value: string) {
+    if (value.startsWith(LOCAL_CLIP_PREFIX)) {
+      onChange({ ttsVoiceClipId: value.slice(LOCAL_CLIP_PREFIX.length), ttsVoice: "" });
+    } else {
+      onChange({ ttsVoiceClipId: null, ttsVoice: value.slice(LOCAL_VOICE_PREFIX.length) });
+    }
+  }
+  const browserTtsStatus = useBrowserTtsStatus().data;
+  const browserTtsAvailable = browserTtsStatus?.available ?? false;
+  const browserTtsSpeaksLanguage = browserTtsStatus?.language === draft.spokenLanguage;
   const browserSttStatusQuery = useBrowserSttStatus();
   const browserSttAvailable = browserSttStatusQuery.data?.available ?? false;
   const specs = providersQuery.data ?? [];
@@ -226,18 +253,65 @@ export function Step2Technical({ draft, onChange }: StepProps) {
                   <select
                     id="tts-voice-clip"
                     className={styles.select}
-                    value={draft.ttsVoiceClipId ?? ""}
-                    onChange={(e) => onChange({ ttsVoiceClipId: e.target.value || null })}
+                    value={localVoiceValue}
+                    onChange={(e) => handleLocalVoiceChoice(e.target.value)}
                   >
                     <option value="">{t("configurator.step2.voiceClipDefault")}</option>
-                    {voiceClips.map((clip) => (
-                      <option key={clip.id} value={clip.id}>
-                        {clip.name}
-                      </option>
-                    ))}
+                    {presetVoices.length > 0 && (
+                      <optgroup label={t("configurator.step2.localVoicePresets")}>
+                        {presetVoices.map((voice) => (
+                          <option key={voice.id} value={LOCAL_VOICE_PREFIX + voice.id}>
+                            {voice.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {donatedVoices.length > 0 && (
+                      <optgroup label={t("configurator.step2.localVoiceDonations")}>
+                        {donatedVoices.map((voice) => (
+                          <option key={voice.id} value={LOCAL_VOICE_PREFIX + voice.id}>
+                            {voice.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {/* Without cloning a clip can't speak, but a project that already uses one
+                        keeps showing it (see the note below) instead of silently switching. */}
+                    {voiceClips.length > 0 && (cloning || draft.ttsVoiceClipId) && (
+                      <optgroup label={t("configurator.step2.localVoiceClips")}>
+                        {voiceClips.map((clip) => (
+                          <option
+                            key={clip.id}
+                            value={LOCAL_CLIP_PREFIX + clip.id}
+                            disabled={!cloning && clip.id !== draft.ttsVoiceClipId}
+                          >
+                            {clip.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
+                  {localTts && !localTts.reachable && <p className={styles.hint}>{t("configurator.step2.localTtsUnreachable")}</p>}
+                  {localTts?.reachable && !cloning && (
+                    <p className={styles.hint}>{t("configurator.step2.cloningOff")}</p>
+                  )}
+                  {localTts?.reachable && !localTts.languages.includes(draft.spokenLanguage) && (
+                    <Callout variant="warning">{t("configurator.step2.localTtsLanguageMissing")}</Callout>
+                  )}
                 </>
               )}
+            </>
+          )}
+          {browserTtsAvailable && (
+            <>
+              <ToggleWithInfo
+                title={t("configurator.step2.ttsBrowserTitle")}
+                checked={draft.ttsBrowserEnabled}
+                onChange={(e) => onChange({ ttsBrowserEnabled: e.target.checked })}
+                info={t("configurator.step2.ttsBrowserText")}
+                disabled={!browserTtsSpeaksLanguage}
+              />
+              {!browserTtsSpeaksLanguage && <p className={styles.hint}>{t("configurator.step2.ttsBrowserLanguage")}</p>}
             </>
           )}
         </div>

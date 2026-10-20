@@ -18,6 +18,7 @@ from sqlmodel import Session, select
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import DomainError
+from app.core.ownership import find_owned
 from app.core.providers import KEY_TYPE_LLM, KEY_TYPE_STT, KEY_TYPE_TTS, build_model_string
 from app.core.security import hash_password
 from app.features.api_keys.models import UserApiKey
@@ -25,7 +26,7 @@ from app.features.api_keys.resolve import get_owned_key_of_type
 from app.features.chat.models import Conversation, ProjectAccess
 from app.features.evaluation import cleanup as evaluation_cleanup
 from app.features.knowledge.models import KnowledgeBase
-from app.features.media.service import get_owned_avatar, get_owned_background
+from app.features.media.models import AvatarModel, BackgroundImage
 from app.features.projects.models import Project
 from app.features.projects.schemas import ProjectUpdate
 from app.storage.files import unlink_quietly
@@ -67,8 +68,8 @@ def sync_llm_model(session: Session, project: Project) -> None:
     additionally kept denormalized because analytics (features/analytics/service.py) and the project
     cards can then avoid a join. Done centrally here so the two never drift apart.
     """
-    key = session.get(UserApiKey, project.llm_api_key_id) if project.llm_api_key_id else None
-    if key is None or key.user_id != project.user_id or not key.model_id:
+    key = find_owned(session, UserApiKey, project.llm_api_key_id, project.user_id) if project.llm_api_key_id else None
+    if key is None or not key.model_id:
         project.llm_model = None
         return
     project.llm_model = build_model_string(key.provider, key.model_id)
@@ -173,13 +174,12 @@ def _check_references(session: Session, user_id: str, data: ProjectUpdate) -> No
         _require_owned_key_of_type(session, user_id, data.stt_api_key_id, KEY_TYPE_STT)
     # Same for library assets — a foreign avatar/background would also be served to the
     # project's public chat visitors (see media/service.py::is_used_by_published_project).
-    if data.avatar_model_id and get_owned_avatar(session, user_id, data.avatar_model_id) is None:
+    if data.avatar_model_id and find_owned(session, AvatarModel, data.avatar_model_id, user_id) is None:
         raise UnknownAvatar()
-    if data.avatar_background_id and get_owned_background(session, user_id, data.avatar_background_id) is None:
+    if data.avatar_background_id and find_owned(session, BackgroundImage, data.avatar_background_id, user_id) is None:
         raise UnknownBackground()
     for kb_id in data.knowledge_base_ids or []:
-        kb = session.get(KnowledgeBase, kb_id)
-        if kb is None or kb.user_id != user_id:
+        if find_owned(session, KnowledgeBase, kb_id, user_id) is None:
             raise UnknownKnowledgeBase()
 
 

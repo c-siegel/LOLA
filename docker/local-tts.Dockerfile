@@ -11,13 +11,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && gosu nobody true
 
-# CPU-only torch, installed BEFORE sopro and pinned to the dedicated CPU wheel index. Plain
-# "pip install sopro" resolves torch from PyPI's default index, which is the CUDA build — on a
+# CPU-only torch, installed BEFORE pocket-tts and pinned to the dedicated CPU wheel index. Plain
+# "pip install pocket-tts" resolves torch from PyPI's default index, which is the CUDA build — on a
 # CPU-only host that pulls several GB of unused NVIDIA/cuDNN/NCCL libraries for nothing, and (as
 # found while validating this service — see the project's local-TTS plan, Phase 0) can exhaust a
-# small tmpfs /tmp mid-download. Once this is installed, sopro's own "torch>=2.3" requirement is
+# small tmpfs /tmp mid-download. Once this is installed, pocket-tts' own torch requirement is
 # already satisfied and pip won't touch it again.
-RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 COPY local-tts/pyproject.toml ./pyproject.toml
 COPY local-tts/app ./app

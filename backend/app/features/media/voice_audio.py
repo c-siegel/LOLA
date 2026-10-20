@@ -22,8 +22,8 @@ from app.core.error_codes import ErrorCode
 from app.core.errors import DomainError
 
 TARGET_SAMPLE_RATE = 24000
-# The voice-cloning model needs a few seconds to pick up a voice, and gains nothing from more than
-# ~20 s (see local-tts/voices/README.md); 30 s leaves room for a pause or two.
+# The voice-cloning model (Pocket TTS in local-tts/) needs a few seconds to pick up a voice and
+# reads at most the first 30 s of a clip.
 MIN_SECONDS = 3.0
 MAX_SECONDS = 30.0
 

@@ -116,22 +116,42 @@ user/group has access (as on a TrueNAS dataset).
 
 ## Local text-to-speech (optional)
 
-The `tts-local` service runs the local text-to-speech engine (see [local-tts/](../local-tts/)):
-speech output for projects without a cloud TTS key, including voices cloned from teachers' own
-clips (Dashboard → Voices). It's off unless you switch it on, because it needs a few GB of RAM
-and keeps CPU cores busy while it speaks. To enable it, add to the root `.env`:
+The `tts-local` service runs the local text-to-speech engine, Kyutai's Pocket TTS (see
+[local-tts/](../local-tts/)): speech output for projects without a cloud TTS key, with preset
+voices and — given a Hugging Face token — voices cloned from teachers' own clips (Dashboard →
+Voices). It's off unless you switch it on, because it needs ~0.7 GB of RAM per language and keeps
+CPU cores busy while it speaks. To enable it, add to the root `.env`:
 
 ```bash
 COMPOSE_PROFILES=local-tts   # makes `docker compose up` also start the tts-local service
 LOCAL_TTS_ENABLED=true       # makes the backend use it
+# Optional:
+TTS_LANGUAGES=de,en          # which Pocket TTS models to load (de en fr it es pt nl)
+TTS_HF_TOKEN=hf_...          # voice cloning, see local-tts/README.md#voice-cloning
 ```
 
 and run the usual `docker compose -f docker/docker-compose.yml --env-file .env up -d`. Its data
-lives in `<LOLA_DATA_DIR>/local-tts/`: the downloaded model (~600 MB, fetched on first use),
-optional default voices in `voices/<language>.wav` (see
-[local-tts/voices/README.md](../local-tts/voices/README.md)), and a cache of teachers' clips. The
-very first speech request after a start also loads the model, which can take over a minute;
-after that, a sentence takes a second or two.
+lives in `<LOLA_DATA_DIR>/local-tts/`: the downloaded models (~220 MB per language, fetched on
+the first start) and a cache of teachers' clips and cloned voices. The models load in the
+background right after the container starts (about 20 s per language); after that, a sentence
+starts within a fraction of a second. An older `voices/` folder there (default clips for the
+previous engine, Sopro) is no longer read and can be deleted.
+
+## On-device speech output (optional)
+
+Projects can let the visitor's own device speak the replies (Kyutai's Pocket TTS in the browser,
+German only); the project's server TTS stays the fallback for devices that can't load the model.
+Each device downloads the model once (~99 MB). To offer it, add to the root `.env`:
+
+```bash
+COMPOSE_PROFILES=browser-tts   # or e.g. local-tts,browser-tts — starts the tts-model service
+BROWSER_TTS_ENABLED=true       # lets teachers switch it on per project in the configurator
+```
+
+The one-off `tts-model` service downloads the model into `<LOLA_DATA_DIR>/models/pocket-tts-de/`
+(~270 MB with all 23 preset voices, plus gzip copies, checksum-verified, with the CC BY 4.0
+`NOTICE.md`), then exits; like `stt-model`, it only downloads what's missing on later starts. Each
+device fetches only the model and its project's voice.
 
 ## Knowledge bases (optional)
 

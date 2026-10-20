@@ -2,7 +2,7 @@
 // turns live microphone audio into growing partial text while the student speaks. The model runs
 // in workers/parakeetWorker.ts; this file is the main-thread side. Used by
 // pages/PublicChat/index.tsx (which falls back to the backend's /transcriptions route whenever
-// this isn't "ready") and by the device test page (pages/SttTest).
+// this isn't "ready") and by the latency test (pages/Dashboard/LatencyLab).
 
 import type { WorkerInbound, WorkerOutbound } from "@/workers/parakeetWorker";
 import pcmCaptureWorkletUrl from "@/workers/pcmCapture.worklet.ts?worker&url";

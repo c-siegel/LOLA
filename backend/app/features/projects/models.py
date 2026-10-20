@@ -113,6 +113,13 @@ class Project(SQLModel, table=True):
     # enabled (see Settings.browser_stt_enabled), see
     # features/api_keys/resolve.py::browser_stt_model_url_for. On by default; False opts out.
     stt_browser_enabled: bool = True
+    # Whether the visitor's device speaks the replies (Pocket TTS in the browser) instead of the
+    # server — only takes effect with tts_enabled, when the deployment offers it
+    # (Settings.browser_tts_enabled) and for its language, see
+    # features/api_keys/resolve.py::browser_tts_model_url_for. The server TTS (tts_api_key_id or
+    # the local sidecar) stays the fallback for devices that can't load the model. Off by default:
+    # every visitor's device has to download the model first.
+    tts_browser_enabled: bool = False
     # What the public chat page shows (see schemas.py::ChatLayout): "avatar_chat" (avatar + open
     # chat), "avatar_chat_collapsed" (chat starts collapsed but can be expanded), "avatar_only"
     # (voice only, no chat column) or "chat_only" (no 3D avatar is loaded at all).

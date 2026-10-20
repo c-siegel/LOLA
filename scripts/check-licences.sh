@@ -1,6 +1,7 @@
 #!/bin/sh
 # Licence gate: fails if any installed Python package isn't under one of the permissive licences
-# below. Run it inside an environment that has exactly one component installed (backend/, rag/ or rag-eval/)
+# below. Run it inside an environment that has exactly one component installed (backend/, rag/,
+# rag-eval/ or local-tts/)
 # plus pip-licenses — CI does this for every release (see .github/workflows/docker-publish.yml):
 #
 #   pip install pip-licenses && sh scripts/check-licences.sh
@@ -17,8 +18,10 @@ ALLOWED="MIT;BSD;Apache;ISC;PSF;Python Software Foundation;Mozilla Public Licens
 # classifier), which pip-licenses can't match:
 #   tiktoken         MIT (licence text in the package metadata)
 #   py_rust_stemmers MIT (github.com/qdrant/py-rust-stemmers; a fastembed dependency)
+#   pocket-tts       MIT (licence file in the wheel, no metadata; local-tts/'s engine — its model
+#                    weights are CC BY 4.0, credited on the Credits page)
 # Plus our own packages and the CI-only tooling that runs this check.
-REVIEWED="tiktoken py_rust_stemmers py-rust-stemmers lola-backend lola-rag lola-rag-eval pip-licenses prettytable wcwidth tomli"
+REVIEWED="tiktoken py_rust_stemmers py-rust-stemmers pocket-tts pocket_tts lola-backend lola-rag lola-rag-eval lola-local-tts pip-licenses prettytable wcwidth tomli"
 
 # shellcheck disable=SC2086
 pip-licenses --partial-match --allow-only="$ALLOWED" --ignore-packages $REVIEWED >/dev/null

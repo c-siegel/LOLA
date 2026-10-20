@@ -3,8 +3,8 @@ Bootstrap Admin Account
 
 An idempotent startup step that creates or promotes an admin account from ADMIN_EMAIL/
 ADMIN_PASSWORD (see core/config.py) — the way a self-hoster gets their first admin without
-touching the database by hand. Run automatically by docker/backend-entrypoint.sh right after
-migrations; for a non-Docker deploy, run it manually the same way.
+touching the database by hand. Run automatically right after migrations by
+docker/backend-entrypoint.sh and scripts/dev.py; for any other deploy, run it manually the same way.
 
 What does it do?
 - Neither ADMIN_EMAIL nor ADMIN_PASSWORD set: does nothing (most instances, most of the time).
