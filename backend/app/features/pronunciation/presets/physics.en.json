@@ -1,7 +1,7 @@
 {
   "id": "physics",
   "language": "en",
-  "version": 2,
+  "version": 3,
   "caseSensitive": true,
   "entries": [
     {
@@ -9,32 +9,8 @@
       "spoken": "{number} seconds"
     },
     {
-      "term": "{number} min",
-      "spoken": "{number} minutes"
-    },
-    {
-      "term": "{number} h",
-      "spoken": "{number} hours"
-    },
-    {
-      "term": "{number} m",
-      "spoken": "{number} meters"
-    },
-    {
-      "term": "{number} g",
-      "spoken": "{number} grams"
-    },
-    {
       "term": "{number} t",
       "spoken": "{number} tonnes"
-    },
-    {
-      "term": "1 t",
-      "spoken": "1 tonne"
-    },
-    {
-      "term": "{number} l",
-      "spoken": "{number} liters"
     },
     {
       "term": "{number} L",
@@ -61,48 +37,20 @@
       "spoken": "{number} amperes"
     },
     {
-      "term": "1 A",
-      "spoken": "1 ampere"
-    },
-    {
       "term": "{number} K",
       "spoken": "{number} kelvins"
-    },
-    {
-      "term": "1 K",
-      "spoken": "1 kelvin"
     },
     {
       "term": "{number} C",
       "spoken": "{number} coulombs"
     },
     {
-      "term": "1 C",
-      "spoken": "1 coulomb"
-    },
-    {
       "term": "{number} F",
       "spoken": "{number} farads"
     },
     {
-      "term": "1 F",
-      "spoken": "1 farad"
-    },
-    {
       "term": "{number} T",
       "spoken": "{number} teslas"
-    },
-    {
-      "term": "1 T",
-      "spoken": "1 tesla"
-    },
-    {
-      "term": "{number} Ω",
-      "spoken": "{number} ohms"
-    },
-    {
-      "term": "{number} bar",
-      "spoken": "{number} bars"
     },
     {
       "term": "km",
@@ -301,10 +249,6 @@
       "spoken": "{number} megajoules"
     },
     {
-      "term": "1 MJ",
-      "spoken": "one megajoule"
-    },
-    {
       "term": "eV",
       "spoken": "electron volts"
     },
@@ -318,39 +262,39 @@
     },
     {
       "term": "keV",
-      "spoken": "kilo electron volts"
+      "spoken": "kiloelectron volts"
     },
     {
       "term": "{number} keV",
-      "spoken": "{number} kilo electron volts"
+      "spoken": "{number} kiloelectron volts"
     },
     {
       "term": "1 keV",
-      "spoken": "one kilo electron volt"
+      "spoken": "one kiloelectron volt"
     },
     {
       "term": "MeV",
-      "spoken": "mega electron volts"
+      "spoken": "megaelectron volts"
     },
     {
       "term": "{number} MeV",
-      "spoken": "{number} mega electron volts"
+      "spoken": "{number} megaelectron volts"
     },
     {
       "term": "1 MeV",
-      "spoken": "one mega electron volt"
+      "spoken": "one megaelectron volt"
     },
     {
       "term": "GeV",
-      "spoken": "giga electron volts"
+      "spoken": "gigaelectron volts"
     },
     {
       "term": "{number} GeV",
-      "spoken": "{number} giga electron volts"
+      "spoken": "{number} gigaelectron volts"
     },
     {
       "term": "1 GeV",
-      "spoken": "one giga electron volt"
+      "spoken": "one gigaelectron volt"
     },
     {
       "term": "kW",
@@ -433,20 +377,12 @@
       "spoken": "{number} microamperes"
     },
     {
-      "term": "1 µA",
-      "spoken": "one microampere"
-    },
-    {
       "term": "μA",
       "spoken": "microamperes"
     },
     {
       "term": "{number} μA",
       "spoken": "{number} microamperes"
-    },
-    {
-      "term": "1 μA",
-      "spoken": "one microampere"
     },
     {
       "term": "kΩ",
@@ -465,20 +401,12 @@
       "spoken": "{number} megaohms"
     },
     {
-      "term": "1 MΩ",
-      "spoken": "one megaohm"
-    },
-    {
       "term": "µF",
       "spoken": "microfarads"
     },
     {
       "term": "{number} µF",
       "spoken": "{number} microfarads"
-    },
-    {
-      "term": "1 µF",
-      "spoken": "one microfarad"
     },
     {
       "term": "μF",
@@ -489,20 +417,12 @@
       "spoken": "{number} microfarads"
     },
     {
-      "term": "1 μF",
-      "spoken": "one microfarad"
-    },
-    {
       "term": "nF",
       "spoken": "nanofarads"
     },
     {
       "term": "{number} nF",
       "spoken": "{number} nanofarads"
-    },
-    {
-      "term": "1 nF",
-      "spoken": "one nanofarad"
     },
     {
       "term": "pF",
@@ -513,20 +433,12 @@
       "spoken": "{number} picofarads"
     },
     {
-      "term": "1 pF",
-      "spoken": "one picofarad"
-    },
-    {
       "term": "mT",
       "spoken": "milliteslas"
     },
     {
       "term": "{number} mT",
       "spoken": "{number} milliteslas"
-    },
-    {
-      "term": "1 mT",
-      "spoken": "one millitesla"
     },
     {
       "term": "µT",
@@ -537,10 +449,6 @@
       "spoken": "{number} microteslas"
     },
     {
-      "term": "1 µT",
-      "spoken": "one microtesla"
-    },
-    {
       "term": "μT",
       "spoken": "microteslas"
     },
@@ -549,40 +457,20 @@
       "spoken": "{number} microteslas"
     },
     {
-      "term": "1 μT",
-      "spoken": "one microtesla"
-    },
-    {
       "term": "Hz",
       "spoken": "hertz"
-    },
-    {
-      "term": "{number} Hz",
-      "spoken": "{number} hertz"
     },
     {
       "term": "kHz",
       "spoken": "kilohertz"
     },
     {
-      "term": "{number} kHz",
-      "spoken": "{number} kilohertz"
-    },
-    {
       "term": "MHz",
       "spoken": "megahertz"
     },
     {
-      "term": "{number} MHz",
-      "spoken": "{number} megahertz"
-    },
-    {
       "term": "GHz",
       "spoken": "gigahertz"
-    },
-    {
-      "term": "{number} GHz",
-      "spoken": "{number} gigahertz"
     },
     {
       "term": "Pa",
@@ -601,10 +489,6 @@
       "spoken": "{number} hectopascals"
     },
     {
-      "term": "1 hPa",
-      "spoken": "one hectopascal"
-    },
-    {
       "term": "kPa",
       "spoken": "kilopascals"
     },
@@ -621,20 +505,12 @@
       "spoken": "{number} megapascals"
     },
     {
-      "term": "1 MPa",
-      "spoken": "one megapascal"
-    },
-    {
       "term": "mbar",
       "spoken": "millibars"
     },
     {
       "term": "{number} mbar",
       "spoken": "{number} millibars"
-    },
-    {
-      "term": "1 mbar",
-      "spoken": "one millibar"
     },
     {
       "term": "mol",
@@ -661,20 +537,12 @@
       "spoken": "{number} becquerels"
     },
     {
-      "term": "1 Bq",
-      "spoken": "one becquerel"
-    },
-    {
       "term": "kBq",
       "spoken": "kilobecquerels"
     },
     {
       "term": "{number} kBq",
       "spoken": "{number} kilobecquerels"
-    },
-    {
-      "term": "1 kBq",
-      "spoken": "one kilobecquerel"
     },
     {
       "term": "Gy",
@@ -685,20 +553,12 @@
       "spoken": "{number} grays"
     },
     {
-      "term": "1 Gy",
-      "spoken": "one gray"
-    },
-    {
       "term": "Sv",
       "spoken": "sieverts"
     },
     {
       "term": "{number} Sv",
       "spoken": "{number} sieverts"
-    },
-    {
-      "term": "1 Sv",
-      "spoken": "one sievert"
     },
     {
       "term": "mSv",
@@ -709,10 +569,6 @@
       "spoken": "{number} millisieverts"
     },
     {
-      "term": "1 mSv",
-      "spoken": "one millisievert"
-    },
-    {
       "term": "µSv",
       "spoken": "microsieverts"
     },
@@ -721,20 +577,12 @@
       "spoken": "{number} microsieverts"
     },
     {
-      "term": "1 µSv",
-      "spoken": "one microsievert"
-    },
-    {
       "term": "μSv",
       "spoken": "microsieverts"
     },
     {
       "term": "{number} μSv",
       "spoken": "{number} microsieverts"
-    },
-    {
-      "term": "1 μSv",
-      "spoken": "one microsievert"
     },
     {
       "term": "dB",
@@ -901,74 +749,6 @@
       "spoken": "{number} degrees Celsius"
     },
     {
-      "term": "α",
-      "spoken": "alpha"
-    },
-    {
-      "term": "β",
-      "spoken": "beta"
-    },
-    {
-      "term": "γ",
-      "spoken": "gamma"
-    },
-    {
-      "term": "ε",
-      "spoken": "epsilon"
-    },
-    {
-      "term": "η",
-      "spoken": "eta"
-    },
-    {
-      "term": "θ",
-      "spoken": "theta"
-    },
-    {
-      "term": "λ",
-      "spoken": "lambda"
-    },
-    {
-      "term": "μ",
-      "spoken": "mu"
-    },
-    {
-      "term": "ν",
-      "spoken": "nu"
-    },
-    {
-      "term": "π",
-      "spoken": "pi"
-    },
-    {
-      "term": "ρ",
-      "spoken": "rho"
-    },
-    {
-      "term": "σ",
-      "spoken": "sigma"
-    },
-    {
-      "term": "τ",
-      "spoken": "tau"
-    },
-    {
-      "term": "φ",
-      "spoken": "phi"
-    },
-    {
-      "term": "ϕ",
-      "spoken": "phi"
-    },
-    {
-      "term": "Φ",
-      "spoken": "phi"
-    },
-    {
-      "term": "ω",
-      "spoken": "omega"
-    },
-    {
       "term": "v₀",
       "spoken": "v naught"
     },
@@ -1045,39 +825,13 @@
       "spoken": "mu naught"
     },
     {
-      "term": "Δ",
-      "spoken": "delta",
-      "wholeWord": false
-    },
-    {
       "term": "∆",
       "spoken": "delta",
       "wholeWord": false
     },
     {
-      "term": "ℏ",
-      "spoken": "h bar"
-    },
-    {
-      "term": "∝",
-      "spoken": "is proportional to"
-    },
-    {
-      "term": "∞",
-      "spoken": "infinity"
-    },
-    {
       "term": "→",
       "spoken": "yields"
-    },
-    {
-      "term": "⇒",
-      "spoken": "implies"
-    },
-    {
-      "term": "√",
-      "spoken": "the square root of",
-      "wholeWord": false
     },
     {
       "term": "²",
@@ -1088,14 +842,6 @@
       "term": "³",
       "spoken": "cubed",
       "wholeWord": false
-    },
-    {
-      "term": "‰",
-      "spoken": "per mille"
-    },
-    {
-      "term": "½",
-      "spoken": "one half"
     },
     {
       "term": "°C",
@@ -1128,30 +874,6 @@
     {
       "term": "Epot",
       "spoken": "E pot"
-    },
-    {
-      "term": "U-235",
-      "spoken": "uranium 235"
-    },
-    {
-      "term": "U-238",
-      "spoken": "uranium 238"
-    },
-    {
-      "term": "C-14",
-      "spoken": "carbon 14"
-    },
-    {
-      "term": "Co-60",
-      "spoken": "cobalt 60"
-    },
-    {
-      "term": "I-131",
-      "spoken": "iodine 131"
-    },
-    {
-      "term": "Cs-137",
-      "spoken": "cesium 137"
     },
     {
       "term": "LED",
