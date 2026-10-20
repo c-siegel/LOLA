@@ -101,21 +101,6 @@ class EvaluationServiceUnavailable(DomainError):
     detail = ErrorCode.EVALUATION_SERVICE_UNAVAILABLE
 
 
-class TestSetNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.EVALUATION_TEST_SET_NOT_FOUND
-
-
-class TestCaseNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.EVALUATION_TEST_CASE_NOT_FOUND
-
-
-class RunNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.EVALUATION_RUN_NOT_FOUND
-
-
 class EvaluationError(DomainError):
     status_code = 400
 
@@ -172,13 +157,6 @@ def case_counts(session: Session, test_set_ids: list[str]) -> dict[str, tuple[in
     return counts
 
 
-def get_owned_test_set(session: Session, user_id: str, test_set_id: str) -> EvalTestSet:
-    test_set = session.get(EvalTestSet, test_set_id)
-    if test_set is None or test_set.user_id != user_id:
-        raise TestSetNotFound()
-    return test_set
-
-
 def create_test_set(session: Session, user_id: str, kb: KnowledgeBase, name: str, language: str) -> EvalTestSet:
     test_set = EvalTestSet(
         user_id=user_id,
@@ -222,13 +200,6 @@ def list_cases(session: Session, test_set: EvalTestSet) -> list[EvalTestCase]:
 
 def _case_count(session: Session, test_set_id: str) -> int:
     return session.exec(select(func.count(EvalTestCase.id)).where(EvalTestCase.test_set_id == test_set_id)).one()
-
-
-def get_owned_case(session: Session, user_id: str, case_id: str) -> EvalTestCase:
-    case = session.get(EvalTestCase, case_id)
-    if case is None or case.user_id != user_id:
-        raise TestCaseNotFound()
-    return case
 
 
 def add_case(
@@ -617,13 +588,6 @@ def list_runs(session: Session, user_id: str, project_id: str | None = None) -> 
     if project_id:
         query = query.where(EvalRun.project_id == project_id)
     return list(session.exec(query.order_by(EvalRun.created_at.desc())))
-
-
-def get_owned_run(session: Session, user_id: str, run_id: str) -> EvalRun:
-    run = session.get(EvalRun, run_id)
-    if run is None or run.user_id != user_id:
-        raise RunNotFound()
-    return run
 
 
 def run_items(session: Session, run: EvalRun) -> list[EvalRunItem]:

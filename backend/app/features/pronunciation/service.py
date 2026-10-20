@@ -47,11 +47,6 @@ _FALSE = {"0", "false", "no", "nein", "falsch", "n", ""}
 _CSV_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
 
 
-class EntryNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.PRONUNCIATION_ENTRY_NOT_FOUND
-
-
 class DuplicateEntry(DomainError):
     status_code = 409
     detail = ErrorCode.PRONUNCIATION_ENTRY_DUPLICATE
@@ -67,14 +62,6 @@ def list_entries(session: Session, user_id: str, language: str | None = None) ->
     if language is not None:
         query = query.where(PronunciationEntry.language == language)
     return list(session.exec(query.order_by(PronunciationEntry.term)))
-
-
-def get_owned_entry(session: Session, user_id: str, entry_id: str) -> PronunciationEntry:
-    # 404 rather than 403 for someone else's entry, so IDs can't be probed (IDOR defense).
-    entry = session.get(PronunciationEntry, entry_id)
-    if entry is None or entry.user_id != user_id:
-        raise EntryNotFound()
-    return entry
 
 
 def _find_term(session: Session, user_id: str, language: str, term: str) -> PronunciationEntry | None:

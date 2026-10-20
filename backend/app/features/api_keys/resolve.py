@@ -17,6 +17,7 @@ How to use:
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.core.ownership import find_owned
 from app.core.providers import KEY_TYPE_LLM, KEY_TYPE_STT, KEY_TYPE_TTS, get_provider
 from app.core.urls import site_url
 from app.features.api_keys.models import UserApiKey
@@ -35,13 +36,6 @@ def get_user_api_key(
     return session.exec(query.order_by(UserApiKey.added_at)).first()
 
 
-def get_key_by_id(session: Session, user_id: str, key_id: str) -> UserApiKey | None:
-    """Look up one of a user's own keys by its ID."""
-    return session.exec(
-        select(UserApiKey).where(UserApiKey.user_id == user_id).where(UserApiKey.id == key_id)
-    ).first()
-
-
 def get_owned_key_of_type(session: Session, user_id: str, key_id: str, key_type: str) -> UserApiKey | None:
     """Load a key, but only if it belongs to the user AND is of the expected type.
 
@@ -49,7 +43,7 @@ def get_owned_key_of_type(session: Session, user_id: str, key_id: str, key_type:
     way round) — both fields point at the same table, and the foreign-key constraint alone
     doesn't distinguish what the key is meant for.
     """
-    key = get_key_by_id(session, user_id, key_id)
+    key = find_owned(session, UserApiKey, key_id, user_id)
     if key is not None and key.key_type == key_type:
         return key
     return None

@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.core.ownership import find_owned
 from app.core.providers import GWDG_ARCANA_PROVIDER
 from app.features.knowledge import rag_client
 from app.features.knowledge.models import KnowledgeBase, KnowledgeDocument
@@ -77,8 +78,8 @@ def prepare_knowledge(session: Session, project: Project, llm_provider: str | No
         return None
     groups: dict[str, tuple[list[str], dict]] = {}
     for kb_id in project.knowledge_base_ids:
-        kb = session.get(KnowledgeBase, kb_id)
-        if kb is None or kb.user_id != project.user_id:
+        kb = find_owned(session, KnowledgeBase, kb_id, project.user_id)
+        if kb is None:
             continue
         try:
             config = embedding_config(session, kb)

@@ -57,16 +57,6 @@ class KnowledgeServiceUnavailable(DomainError):
     detail = ErrorCode.KNOWLEDGE_SERVICE_UNAVAILABLE
 
 
-class KnowledgeBaseNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.KNOWLEDGE_BASE_NOT_FOUND
-
-
-class KnowledgeDocumentNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.KNOWLEDGE_DOCUMENT_NOT_FOUND
-
-
 class KnowledgeError(DomainError):
     """A refused action with its own code (limit reached, duplicate, rejected file, …)."""
 
@@ -91,14 +81,6 @@ def list_knowledge_bases(session: Session, user_id: str) -> list[KnowledgeBase]:
             select(KnowledgeBase).where(KnowledgeBase.user_id == user_id).order_by(KnowledgeBase.created_at)
         )
     )
-
-
-def get_owned_knowledge_base(session: Session, user_id: str, kb_id: str) -> KnowledgeBase:
-    kb = session.get(KnowledgeBase, kb_id)
-    # 404 rather than 403 for someone else's KB, so IDs can't be probed (same as voice clips).
-    if kb is None or kb.user_id != user_id:
-        raise KnowledgeBaseNotFound()
-    return kb
 
 
 def document_stats(session: Session, kb_ids: list[str]) -> dict[str, tuple[int, int]]:
@@ -317,13 +299,6 @@ def refresh_statuses(session: Session, documents: list[KnowledgeDocument]) -> No
         document.updated_at = _now()
         session.add(document)
     session.commit()
-
-
-def get_owned_document(session: Session, user_id: str, document_id: str) -> KnowledgeDocument:
-    document = session.get(KnowledgeDocument, document_id)
-    if document is None or document.user_id != user_id:
-        raise KnowledgeDocumentNotFound()
-    return document
 
 
 def upload_document(

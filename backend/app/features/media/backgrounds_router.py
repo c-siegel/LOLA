@@ -13,6 +13,7 @@ from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_current_user_optional, get_session
 from app.core.error_codes import ErrorCode
+from app.core.ownership import get_owned
 from app.core.urls import background_file_url
 from app.features.media import service as media
 from app.features.media.models import BackgroundImage
@@ -97,7 +98,5 @@ def delete_background(
     session: Session = Depends(get_session),
 ):
     """Delete a background image."""
-    background = media.get_owned_background(session, current_user.id, background_id)
-    if background is None:
-        raise HTTPException(status_code=404, detail=ErrorCode.BACKGROUND_NOT_FOUND)
+    background = get_owned(session, BackgroundImage, background_id, current_user.id, ErrorCode.BACKGROUND_NOT_FOUND)
     media.delete_background(session, background)

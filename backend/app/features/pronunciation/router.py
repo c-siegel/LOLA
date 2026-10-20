@@ -12,6 +12,8 @@ from fastapi.responses import Response
 from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_session
+from app.core.error_codes import ErrorCode
+from app.core.ownership import get_owned
 from app.features.pronunciation import presets, preview, service
 from app.features.pronunciation.models import PronunciationEntry
 from app.features.pronunciation.schemas import (
@@ -74,7 +76,7 @@ def update_entry(
     session: Session = Depends(get_session),
 ):
     """Change a term, its spoken form or its options (the language stays)."""
-    entry = service.get_owned_entry(session, current_user.id, entry_id)
+    entry = get_owned(session, PronunciationEntry, entry_id, current_user.id, ErrorCode.PRONUNCIATION_ENTRY_NOT_FOUND)
     return _to_out(service.update_entry(session, entry, data))
 
 
@@ -85,7 +87,8 @@ def delete_entry(
     session: Session = Depends(get_session),
 ):
     """Remove a term from the word list."""
-    service.delete_entry(session, service.get_owned_entry(session, current_user.id, entry_id))
+    entry = get_owned(session, PronunciationEntry, entry_id, current_user.id, ErrorCode.PRONUNCIATION_ENTRY_NOT_FOUND)
+    service.delete_entry(session, entry)
 
 
 @router.post("/import", response_model=PronunciationImportResult)

@@ -61,16 +61,16 @@ There is no linter/formatter config and no CI on pull requests — CI only runs 
   `service.py`, `schemas.py`, `models.py`. Routers stay thin; logic goes in the service.
 - `backend/app/features/ai/{llm,tts,stt}/` — provider implementations behind a `base.py`
   interface. Adding a provider: [backend/README.md#adding-an-ai-provider](backend/README.md#adding-an-ai-provider)
-- `backend/app/core/` — config, auth deps, rate limiting, errors. `backend/alembic/versions/` — migrations.
+- `backend/app/core/` — config, auth deps, ownership checks, rate limiting, errors. `backend/alembic/versions/` — migrations.
 - `frontend/src/` — `api/` (one module per backend area), `components/`, `layouts/`, `hooks/`,
   `lib/`, `types/`, `i18n/locales/{de,en}.json`.
 
 ## Rules
 
 **Data and security**
-- Teachers only ever see their own projects, keys, voice clips and conversations. Use the existing
-  ownership dependencies (e.g. `get_owned_project`) on every route that loads a teacher's resource;
-  admin routes check the admin role.
+- Teachers only ever see their own projects, keys, voice clips and conversations. Load a teacher's
+  resource through the existing ownership checks (`get_owned_project`, or `get_owned`/`find_owned`
+  from `app/core/ownership.py`) on every route; admin routes check the admin role.
 - The public chat is unauthenticated: only published projects, password protection and rate limits
   must hold.
 - Provider API keys are stored encrypted and are never returned to the client, logged, or exported.

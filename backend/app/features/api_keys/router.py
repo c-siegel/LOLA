@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_session
+from app.core.error_codes import ErrorCode
+from app.core.ownership import get_owned
 from app.features.api_keys import service
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.schemas import ApiKeyCreate, ApiKeyOut, ApiKeyTestResult, ApiKeyUpdate
@@ -61,7 +63,7 @@ def update_key(
     session: Session = Depends(get_session),
 ):
     """Update a stored API key; re-syncs any projects that use it as their LLM source."""
-    key = service.get_owned_key(session, current_user.id, key_id)
+    key = get_owned(session, UserApiKey, key_id, current_user.id, ErrorCode.API_KEY_NOT_FOUND)
     return _to_out(service.update_key(session, key, data))
 
 
@@ -72,7 +74,7 @@ def delete_key(
     session: Session = Depends(get_session),
 ):
     """Delete a stored API key; projects using it fall back to "no key configured"."""
-    service.delete_key(session, service.get_owned_key(session, current_user.id, key_id))
+    service.delete_key(session, get_owned(session, UserApiKey, key_id, current_user.id, ErrorCode.API_KEY_NOT_FOUND))
     return None
 
 
@@ -85,6 +87,6 @@ def test_key(
     """Try the stored key against its provider and record whether it works."""
     # Tests the already-stored key (the frontend doesn't send the plaintext here, see
     # frontend/src/api/apiKeys.ts::test) — not a freshly-submitted one.
-    key = service.get_owned_key(session, current_user.id, key_id)
+    key = get_owned(session, UserApiKey, key_id, current_user.id, ErrorCode.API_KEY_NOT_FOUND)
     message = service.run_key_test(session, key)
     return ApiKeyTestResult(status=key.status, message=message)
