@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Mic, MessageCircle, Play, Send, Square, LogOut, Lock, User, X } from "lucide-react";
+import { Loader2, Mic, MessageCircle, Play, Send, Square, LogOut, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
 import { ChatBubble, TypingBubble } from "@/components/ChatBubble";
 import { ChecklistCard } from "@/components/ChecklistCard";
-import { Input } from "@/components/Input";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SurveyEmbed } from "@/components/SurveyEmbed";
 import { AudioOnlySpeaker, TalkingHeadAvatar, type TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
@@ -17,13 +16,13 @@ import { publicChatApi, type StreamChunkEvent, type StreamDoneEvent } from "@/ap
 import { ParakeetSttEngine, type LoadProgress, type StreamingSession } from "@/lib/parakeetStt";
 import { PocketBrowserTts } from "@/lib/pocketTts";
 import { FALLBACK_SILENCE_RMS_THRESHOLD, calibrateSilenceThreshold, rms } from "@/lib/audioLevel";
-import { ApiError, errorMessage } from "@/api/client";
-import { setUnlockToken } from "@/lib/chatUnlockStorage";
+import { ApiError } from "@/api/client";
 import { doneStepIds } from "@/lib/checklist";
-import { getVisitorName, setVisitorName } from "@/lib/visitorNameStorage";
+import { getVisitorName } from "@/lib/visitorNameStorage";
 import { useAutoResizeTextarea } from "@/hooks/useAutoResizeTextarea";
 import type { ChatMessage } from "@/types/chat";
 import type { ChatLayout } from "@/types/project";
+import { NameGate, PasswordGate, gatePassed, isLocked } from "./Gate";
 import { ModelInfoButton } from "./ModelInfoButton";
 import styles from "./PublicChat.module.css";
 
@@ -194,44 +193,14 @@ export function PublicChatPage() {
   const { projectSlug } = useParams<{ projectSlug: string }>();
   const slug = projectSlug!;
 
-  const queryClient = useQueryClient();
   const tutorQuery = useQuery({
     queryKey: ["public-chat", slug],
     queryFn: () => publicChatApi.loadTutor(slug),
     retry: false,
   });
 
-  const [passwordInput, setPasswordInput] = useState("");
-  const unlockMutation = useMutation({
-    mutationFn: (password: string) => publicChatApi.unlock(slug, password),
-    onSuccess: (res) => {
-      setUnlockToken(slug, res.unlockToken);
-      setPasswordInput("");
-      // Refetches loadTutor with the now-stored token attached, which flips `unlocked` and
-      // reveals the real stage instead of the lock screen.
-      queryClient.invalidateQueries({ queryKey: ["public-chat", slug] });
-    },
-  });
-
-  function handleUnlockSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (!passwordInput.trim() || unlockMutation.isPending) return;
-    unlockMutation.mutate(passwordInput);
-  }
-
-  // Nothing to verify server-side (see PublicProject.requireVisitorName's comment in
-  // api/publicChat.ts) — storing the trimmed name and flipping this flag is the whole flow, no
-  // mutation/round-trip needed like the password unlock above.
-  const [visitorNameInput, setVisitorNameInput] = useState("");
+  // The password/name screens themselves live in Gate.tsx.
   const [visitorNameProvided, setVisitorNameProvided] = useState(() => Boolean(getVisitorName(slug)));
-
-  function handleVisitorNameSubmit(event: FormEvent) {
-    event.preventDefault();
-    const trimmed = visitorNameInput.trim();
-    if (!trimmed) return;
-    setVisitorName(slug, trimmed);
-    setVisitorNameProvided(true);
-  }
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Replayed from the messages rather than kept separately, so an edited or regenerated message
@@ -910,7 +879,7 @@ export function PublicChatPage() {
   // Not while password-locked: that response carries no layout yet (it'd always read as the default).
   useEffect(() => {
     const tutor = tutorQuery.data;
-    if (tutor && chatOpen === null && !(tutor.passwordProtected && !tutor.unlocked)) {
+    if (tutor && chatOpen === null && !isLocked(tutor)) {
       setChatOpen(tutor.chatLayout !== "avatar_chat_collapsed");
     }
   }, [tutorQuery.data, chatOpen]);
@@ -931,8 +900,7 @@ export function PublicChatPage() {
   useEffect(() => {
     const tutor = tutorQuery.data;
     if (!tutor?.sttEnabled || !tutor.browserSttModelUrl) return;
-    if (tutor.passwordProtected && !tutor.unlocked) return;
-    if (tutor.requireVisitorName && !visitorNameProvided) return;
+    if (!gatePassed(tutor, visitorNameProvided)) return;
     if (sttEngineRef.current?.modelUrl === tutor.browserSttModelUrl) return;
     sttEngineRef.current?.dispose();
     const engine = new ParakeetSttEngine(tutor.browserSttModelUrl);
@@ -963,8 +931,7 @@ export function PublicChatPage() {
   useEffect(() => {
     const tutor = tutorQuery.data;
     if (!tutor?.ttsEnabled || !tutor.browserTtsModelUrl) return;
-    if (tutor.passwordProtected && !tutor.unlocked) return;
-    if (tutor.requireVisitorName && !visitorNameProvided) return;
+    if (!gatePassed(tutor, visitorNameProvided)) return;
     if (deviceTtsRef.current) return;
     const engine = new PocketBrowserTts();
     deviceTtsRef.current = engine;
@@ -1014,12 +981,11 @@ export function PublicChatPage() {
   // manual survey/chat choice made before either was satisfied can't have happened yet anyway
   // (see below: the header's End-chat button and everything past these gates only render later).
   // First stage depends on project: with survey it starts there, else withthe chat
-  const stage: Stage =
-    tutor.passwordProtected && !tutor.unlocked
-      ? "locked"
-      : tutor.requireVisitorName && !visitorNameProvided
-        ? "name-gate"
-        : (manualStage ?? (tutor.surveyBeforeUrl ? "before-survey" : "chat"));
+  const stage: Stage = isLocked(tutor)
+    ? "locked"
+    : tutor.requireVisitorName && !visitorNameProvided
+      ? "name-gate"
+      : (manualStage ?? (tutor.surveyBeforeUrl ? "before-survey" : "chat"));
   inChatStageRef.current = stage === "chat";
   // "Avatar only" needs voice both ways — without either there'd be no way to ask or no way to hear
   // the answer, so such a project falls back to avatar + chat (the Configurator warns about it).
@@ -1170,51 +1136,9 @@ export function PublicChatPage() {
         </div>
       </header>
 
-      {stage === "locked" && (
-        <div className={styles.centered}>
-          <form className={styles.lockedForm} onSubmit={handleUnlockSubmit}>
-            <Lock size={28} />
-            <p className={styles.lockedText}>{t("publicChat.locked.description")}</p>
-            <Input
-              label={t("publicChat.locked.passwordLabel")}
-              type="password"
-              autoComplete="off"
-              required
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-            />
-            {unlockMutation.isError && (
-              <Callout variant="danger">
-                {errorMessage(unlockMutation.error, t("publicChat.locked.genericError"))}
-              </Callout>
-            )}
-            <Button type="submit" variant="accent" fullWidth disabled={unlockMutation.isPending}>
-              {t("publicChat.locked.submit")}
-            </Button>
-          </form>
-        </div>
-      )}
+      {stage === "locked" && <PasswordGate slug={slug} />}
 
-      {stage === "name-gate" && (
-        <div className={styles.centered}>
-          <form className={styles.lockedForm} onSubmit={handleVisitorNameSubmit}>
-            <User size={28} />
-            <p className={styles.lockedText}>{t("publicChat.nameGate.description")}</p>
-            <Input
-              label={t("publicChat.nameGate.nameLabel")}
-              type="text"
-              autoComplete="off"
-              required
-              maxLength={100}
-              value={visitorNameInput}
-              onChange={(e) => setVisitorNameInput(e.target.value)}
-            />
-            <Button type="submit" variant="accent" fullWidth>
-              {t("publicChat.nameGate.submit")}
-            </Button>
-          </form>
-        </div>
-      )}
+      {stage === "name-gate" && <NameGate slug={slug} onProvided={() => setVisitorNameProvided(true)} />}
 
       {stage === "before-survey" && tutor.surveyBeforeUrl && (
         <SurveyEmbed
