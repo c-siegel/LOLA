@@ -206,7 +206,8 @@ python3 scripts/dev.py         # start everything; Ctrl+C stops all of it
 On Windows, use `py -3.11 scripts/dev.py …` instead of `python3 scripts/dev.py …`. You don't need
 to activate a virtual environment.
 
-It starts the backend (migrations first, then auto-reload) and the frontend. It also starts each
+It starts the backend (migrations and the admin bootstrap from `ADMIN_EMAIL`/`ADMIN_PASSWORD`
+first, then auto-reload) and the frontend. It also starts each
 optional service that `.env` switches on: the knowledge service (`RAG_ENABLED`), answer-quality
 evaluation (`RAG_EVALUATION_ENABLED`) and local text-to-speech (`LOCAL_TTS_ENABLED`). Ports come
 from the matching `*_URL` variables. Their output is interleaved, each line prefixed with the
@@ -254,8 +255,8 @@ python -m uvicorn app.main:app --reload
 To get your first admin account (dashboard access to manage other accounts, site settings, the
 public pages' texts — imprint, privacy policy, landing page, accessibility statement — ...),
 either set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env` and run
-`python -m app.cli.bootstrap_admin` from `backend/` (same idempotent step Deploy B runs
-automatically on every container start), or promote an existing account by hand in the database.
+`python -m app.cli.bootstrap_admin` from `backend/` (same idempotent step `scripts/dev.py` and
+Deploy B run automatically on every start), or promote an existing account by hand in the database.
 
 **2. Frontend** (full details: [frontend/README.md](frontend/README.md))
 ```bash
@@ -457,10 +458,10 @@ The avatar rendering and lip-sync are built on two MIT-licensed libraries by the
   every project's configurator — see that folder's `ATTRIBUTION.md` for license and details. Its
   repo's README documents how to create or prepare new avatar models compatible with the
   renderer — check that if you want to add avatars beyond the ones bundled here.
-- **[HeadAudio](https://github.com/met4citizen/HeadAudio)** — computes lip-sync visemes directly
-  from the played audio signal in real time, instead of text-based timing estimation. No npm
-  package; vendored into `frontend/public/headaudio/` (see that folder's `ATTRIBUTION.md` for
-  license and details).
+- **[HeadAudio](https://github.com/met4citizen/HeadAudio)** (npm: `@met4citizen/headaudio`)
+  — computes lip-sync visemes directly from the played audio signal in real time, instead of
+  text-based timing estimation (see `frontend/src/components/TalkingHeadAvatar/`). Its pretrained
+  model was trained on English voices; recognition quality for German audio is unverified.
 
 ### Gestures
 

@@ -1,7 +1,7 @@
 {
   "id": "physics",
   "language": "de",
-  "version": 1,
+  "version": 2,
   "caseSensitive": true,
   "entries": [
     {
@@ -9,32 +9,12 @@
       "spoken": "{number} Sekunden"
     },
     {
-      "term": "1 s",
-      "spoken": "1 Sekunde"
-    },
-    {
       "term": "{number} min",
       "spoken": "{number} Minuten"
     },
     {
-      "term": "1 min",
-      "spoken": "1 Minute"
-    },
-    {
       "term": "{number} h",
       "spoken": "{number} Stunden"
-    },
-    {
-      "term": "1 h",
-      "spoken": "1 Stunde"
-    },
-    {
-      "term": "{number} m",
-      "spoken": "{number} Meter"
-    },
-    {
-      "term": "{number} g",
-      "spoken": "{number} Gramm"
     },
     {
       "term": "{number} t",
@@ -42,11 +22,7 @@
     },
     {
       "term": "1 t",
-      "spoken": "1 Tonne"
-    },
-    {
-      "term": "{number} l",
-      "spoken": "{number} Liter"
+      "spoken": "eine Tonne"
     },
     {
       "term": "{number} L",
@@ -73,28 +49,44 @@
       "spoken": "{number} Ampere"
     },
     {
+      "term": "1 A",
+      "spoken": "ein Ampere"
+    },
+    {
       "term": "{number} K",
       "spoken": "{number} Kelvin"
+    },
+    {
+      "term": "1 K",
+      "spoken": "ein Kelvin"
     },
     {
       "term": "{number} C",
       "spoken": "{number} Coulomb"
     },
     {
+      "term": "1 C",
+      "spoken": "ein Coulomb"
+    },
+    {
       "term": "{number} F",
       "spoken": "{number} Farad"
+    },
+    {
+      "term": "1 F",
+      "spoken": "ein Farad"
     },
     {
       "term": "{number} T",
       "spoken": "{number} Tesla"
     },
     {
-      "term": "{number} Ω",
-      "spoken": "{number} Ohm"
+      "term": "1 T",
+      "spoken": "ein Tesla"
     },
     {
-      "term": "{number} bar",
-      "spoken": "{number} Bar"
+      "term": "{number} Ω",
+      "spoken": "{number} Ohm"
     },
     {
       "term": "km",
@@ -357,8 +349,20 @@
       "spoken": "Newtonmeter"
     },
     {
+      "term": "{number} Nm",
+      "spoken": "{number} Newtonmeter"
+    },
+    {
+      "term": "1 Nm",
+      "spoken": "ein Newtonmeter"
+    },
+    {
       "term": "N·m",
       "spoken": "Newtonmeter"
+    },
+    {
+      "term": "1 N·m",
+      "spoken": "ein Newtonmeter"
     },
     {
       "term": "m/s",
@@ -485,6 +489,10 @@
       "spoken": "Radiant pro Sekunde"
     },
     {
+      "term": "1 rad/s",
+      "spoken": "ein Radiant pro Sekunde"
+    },
+    {
       "term": "{number} rad/s",
       "spoken": "{number} Radiant pro Sekunde"
     },
@@ -507,10 +515,6 @@
     {
       "term": "{number} °C",
       "spoken": "{number} Grad Celsius"
-    },
-    {
-      "term": "{number}°",
-      "spoken": "{number} Grad"
     },
     {
       "term": "α",
@@ -641,10 +645,6 @@
       "spoken": "N null"
     },
     {
-      "term": "N_0",
-      "spoken": "N null"
-    },
-    {
       "term": "λ₀",
       "spoken": "Lambda null"
     },
@@ -671,22 +671,6 @@
       "spoken": "h quer"
     },
     {
-      "term": "≈",
-      "spoken": "ungefähr gleich"
-    },
-    {
-      "term": "≠",
-      "spoken": "ungleich"
-    },
-    {
-      "term": "≤",
-      "spoken": "kleiner gleich"
-    },
-    {
-      "term": "≥",
-      "spoken": "größer gleich"
-    },
-    {
       "term": "∝",
       "spoken": "proportional zu"
     },
@@ -705,11 +689,6 @@
     {
       "term": "√",
       "spoken": "Wurzel aus",
-      "wholeWord": false
-    },
-    {
-      "term": "²",
-      "spoken": "Quadrat",
       "wholeWord": false
     },
     {

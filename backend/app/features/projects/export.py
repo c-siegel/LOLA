@@ -22,6 +22,7 @@ import yaml
 from pydantic import ValidationError
 from sqlmodel import Session
 
+from app.core.ownership import find_owned
 from app.features.media.models import AvatarModel, BackgroundImage, VoiceClip
 from app.features.projects.models import Project
 from app.features.projects.schemas import ProjectExportData
@@ -99,18 +100,6 @@ def _upgrade_v1(fields: dict) -> dict:
     return fields
 
 
-def _owned(
-    session: Session, model: type[AvatarModel | BackgroundImage | VoiceClip], user_id: str, item_id: str | None
-) -> str | None:
-    """Keep a library reference only if it still points at one of this user's own uploads —
-    dropped instead of failing the import, e.g. when importing a colleague's export whose avatar
-    isn't in this account's library, so the project just falls back to the default look."""
-    if not item_id:
-        return None
-    item = session.get(model, item_id)
-    return item_id if item is not None and item.user_id == user_id else None
-
-
 def import_project(session: Session, user_id: str, data: ProjectExportData) -> Project:
     """Create a new project for `user_id` from a parsed export.
 
@@ -119,9 +108,16 @@ def import_project(session: Session, user_id: str, data: ProjectExportData) -> P
     silently broken/misleading until the educator re-configures them anyway.
     """
     fields = data.model_dump()
-    fields["avatar_model_id"] = _owned(session, AvatarModel, user_id, fields["avatar_model_id"])
-    fields["avatar_background_id"] = _owned(session, BackgroundImage, user_id, fields["avatar_background_id"])
-    fields["tts_voice_clip_id"] = _owned(session, VoiceClip, user_id, fields["tts_voice_clip_id"])
+    # Keep a library reference only if it still points at one of this user's own uploads —
+    # dropped instead of failing the import, e.g. when importing a colleague's export whose avatar
+    # isn't in this account's library, so the project just falls back to the default look.
+    for field, model in (
+        ("avatar_model_id", AvatarModel),
+        ("avatar_background_id", BackgroundImage),
+        ("tts_voice_clip_id", VoiceClip),
+    ):
+        if fields[field] and find_owned(session, model, fields[field], user_id) is None:
+            fields[field] = None
     # Knowledge bases aren't part of an export, so an imported project has none attached — it
     # must not claim to answer from material it doesn't have.
     fields["knowledge_mode"] = "off"

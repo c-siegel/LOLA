@@ -47,22 +47,6 @@ _WEAK_JWT_SECRETS = frozenset(
     }
 )
 
-# The rule names of features/ai/tts/verbalizer.py. Listed here rather than imported because that
-# package imports these settings; tests/test_speech_verbalizer.py keeps the two in sync.
-TTS_VERBALIZER_RULE_NAMES = frozenset(
-    {"abbreviations", "dates", "times", "ranges", "currency", "units", "ordinals", "powers", "numbers"}
-)
-
-
-def _parse_verbalizer_rules(value: str) -> frozenset[str]:
-    names = {name.strip().lower() for name in value.split(",")} - {""}
-    if names == {"all"}:
-        return TTS_VERBALIZER_RULE_NAMES
-    if names <= {"none"}:
-        return frozenset()
-    return frozenset(names)
-
-
 class Settings(BaseSettings):
     
     # Pydantic configuration: read from the shared root .env file, ignore extra environment variables
@@ -278,8 +262,8 @@ class Settings(BaseSettings):
     # ==================== ADMIN BOOTSTRAP SETTINGS ====================
 
     # Set both together to create (or promote) an admin account on startup — see
-    # app/cli/bootstrap_admin.py, run from docker/backend-entrypoint.sh. Safe to remove from your
-    # .env after the first successful run; the bootstrap is idempotent either way.
+    # app/cli/bootstrap_admin.py, run from docker/backend-entrypoint.sh and scripts/dev.py. Safe to
+    # remove from your .env after the first successful run; the bootstrap is idempotent either way.
 
     admin_email: str | None = None
     """
@@ -404,31 +388,6 @@ class Settings(BaseSettings):
 
     local_tts_request_timeout_seconds: float = 30.0
     """How long to wait for the local-TTS sidecar before giving up on one synthesis request."""
-
-    # ==================== SPEECH TEXT NORMALIZATION ====================
-
-    tts_verbalizer: str = "all"
-    """
-    Which rules write numbers, dates, prices, units and abbreviations out as words before text goes
-    to any TTS engine (see features/ai/tts/verbalizer.py): "all", "none", or a comma-separated list
-    of names from TTS_VERBALIZER_RULE_NAMES, e.g. "numbers,currency". German only for now. "none"
-    gives exactly the speech text from before this existed.
-    """
-
-    @field_validator("tts_verbalizer")
-    @classmethod
-    def _known_verbalizer_rules(cls, value: str) -> str:
-        unknown = _parse_verbalizer_rules(value) - TTS_VERBALIZER_RULE_NAMES
-        if unknown:
-            raise ValueError(
-                f"Unknown TTS_VERBALIZER rule(s): {', '.join(sorted(unknown))}. Use \"all\", \"none\" or "
-                f"a comma-separated list of: {', '.join(sorted(TTS_VERBALIZER_RULE_NAMES))}."
-            )
-        return value
-
-    @property
-    def tts_verbalizer_rules(self) -> frozenset[str]:
-        return _parse_verbalizer_rules(self.tts_verbalizer)
 
     # ==================== BROWSER SPEECH-TO-TEXT (WEBGPU) SETTINGS ====================
 

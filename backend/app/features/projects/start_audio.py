@@ -18,7 +18,7 @@ from app.features.api_keys.crypto import scrub_key_from_text
 from app.features.api_keys.resolve import resolve_tts_key
 from app.features.media.service import voice_reference_for_project
 from app.features.projects.models import Project
-from app.features.pronunciation.service import matcher_for
+from app.features.pronunciation.service import rules_for
 from app.features.users.models import User
 from app.storage.files import save_file, unlink_quietly
 
@@ -57,7 +57,7 @@ def generate_start_audio(session: Session, project: Project) -> Project:
             api_key,
             project.spoken_language,
             voice_clip=voice_reference_for_project(session, project) if api_key is None else None,
-            pronunciation=matcher_for(session, project.user_id, project.spoken_language),
+            pronunciation=rules_for(session, project.user_id, project.spoken_language),
         )
     except Exception as exc:
         # The educator's own context — the concrete (key-scrubbed) provider message helps them

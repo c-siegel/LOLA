@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, func, select
 
+from app.core.ownership import find_owned
 from app.features.analytics.schemas import (
     AnalyticsStatsOut,
     ConversationDetailOut,
@@ -44,8 +45,8 @@ def get_conversation_detail(session: Session, user_id: str, conversation_id: str
     conversation = session.get(Conversation, conversation_id)
     if conversation is None:
         return None
-    project = session.get(Project, conversation.project_id)
-    if project is None or project.user_id != user_id:
+    project = find_owned(session, Project, conversation.project_id, user_id)
+    if project is None:
         return None
     messages = json.loads(conversation.messages_json)
     names = document_names(session, [s["documentId"] for m in messages for s in m.get("sources") or []])

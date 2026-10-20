@@ -222,7 +222,11 @@ def start(names: list[str]) -> None:
         sys.exit(f"Not set up yet: {', '.join(missing)}. Run: python scripts/dev.py setup {' '.join(missing)}")
 
     if "backend" in names:
-        run([str(venv_python(BY_NAME["backend"])), "-m", "alembic", "upgrade", "head"], ROOT / "backend")
+        backend_python = str(venv_python(BY_NAME["backend"]))
+        run([backend_python, "-m", "alembic", "upgrade", "head"], ROOT / "backend")
+        # Same idempotent step docker/backend-entrypoint.sh runs, so ADMIN_EMAIL/ADMIN_PASSWORD
+        # in .env work for local development too.
+        run([backend_python, "-m", "app.cli.bootstrap_admin"], ROOT / "backend")
 
     color = sys.stdout.isatty()
     if color and IS_WINDOWS:

@@ -17,6 +17,7 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.core.deps import get_current_user, get_session
 from app.core.error_codes import ErrorCode
+from app.core.ownership import get_owned
 from app.core.rate_limit import enforce_knowledge_upload_rate_limit
 from app.features.knowledge import bibtex, metadata, rag_client, service, sources
 from app.features.knowledge.limits import current_limits
@@ -83,10 +84,6 @@ def _document_out(session: Session, document: KnowledgeDocument) -> KnowledgeDoc
     return _documents_out(session, [document])[0]
 
 
-def _owned_kb(kb_id: str, user: User, session: Session) -> KnowledgeBase:
-    return service.get_owned_knowledge_base(session, user.id, kb_id)
-
-
 @router.get("/providers/rag-status", response_model=KnowledgeStatusOut)
 def rag_status(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """Whether this deployment offers knowledge bases, and the limits the upload form shows."""
@@ -137,7 +134,8 @@ def update_knowledge_base(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    kb = service.update_knowledge_base(session, _owned_kb(kb_id, current_user, session), data.name, data.description)
+    kb = get_owned(session, KnowledgeBase, kb_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND)
+    kb = service.update_knowledge_base(session, kb, data.name, data.description)
     return _kb_out(session, kb, service.document_stats(session, [kb.id]))
 
 
@@ -147,7 +145,8 @@ def delete_knowledge_base(
 ):
     """Delete a knowledge base with its documents — including their indexed text in the
     knowledge service. Projects that used it simply lose the link."""
-    service.delete_knowledge_base(session, _owned_kb(kb_id, current_user, session))
+    kb = get_owned(session, KnowledgeBase, kb_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND)
+    service.delete_knowledge_base(session, kb)
 
 
 @router.get(
@@ -155,7 +154,8 @@ def delete_knowledge_base(
 )
 def list_documents(kb_id: str, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """The KB's documents with their current indexing status (polled while any is in progress)."""
-    return _documents_out(session, service.list_documents(session, _owned_kb(kb_id, current_user, session)))
+    kb = get_owned(session, KnowledgeBase, kb_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND)
+    return _documents_out(session, service.list_documents(session, kb))
 
 
 @router.post(
@@ -179,7 +179,7 @@ def upload_document(
     A plain `def`: hashing and forwarding a file of up to the size limit shouldn't block the
     event loop.
     """
-    kb = _owned_kb(kb_id, current_user, session)
+    kb = get_owned(session, KnowledgeBase, kb_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND)
     if not consent:
         raise KnowledgeError(ErrorCode.KNOWLEDGE_UPLOAD_CONSENT_REQUIRED)
     limits = current_limits(session)
@@ -214,8 +214,12 @@ def retry_document(
 ):
     """Index a failed document again — no re-upload needed while the knowledge service still has
     the original (see KnowledgeDocumentOut.retryable)."""
-    document = service.get_owned_document(session, current_user.id, document_id)
-    kb = _owned_kb(document.knowledge_base_id, current_user, session)
+    document = get_owned(
+        session, KnowledgeDocument, document_id, current_user.id, ErrorCode.KNOWLEDGE_DOCUMENT_NOT_FOUND
+    )
+    kb = get_owned(
+        session, KnowledgeBase, document.knowledge_base_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND
+    )
     limits = current_limits(session)
     # Indexing again costs the same as an upload, so it counts against the same limit.
     enforce_knowledge_upload_rate_limit(current_user.id, limits.upload_rate_per_10min)
@@ -226,7 +230,10 @@ def retry_document(
 def delete_document(
     document_id: str, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)
 ):
-    service.delete_document(session, service.get_owned_document(session, current_user.id, document_id))
+    document = get_owned(
+        session, KnowledgeDocument, document_id, current_user.id, ErrorCode.KNOWLEDGE_DOCUMENT_NOT_FOUND
+    )
+    service.delete_document(session, document)
 
 
 @router.post(
@@ -239,7 +246,8 @@ def search_knowledge_base(
     session: Session = Depends(get_session),
 ):
     """The passages a student's question would retrieve — lets the teacher check the KB."""
-    passages = service.search(session, _owned_kb(kb_id, current_user, session), data.query)
+    kb = get_owned(session, KnowledgeBase, kb_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND)
+    passages = service.search(session, kb, data.query)
     return [KnowledgePassageOut(**p) for p in passages]
 
 
@@ -255,7 +263,9 @@ def update_document_metadata(
     """Replace the teacher's own source details for a document. Fields left empty fall back to
     the linked bibliography entry and the file's header. Never re-indexes: metadata only goes
     into the prompt."""
-    document = service.get_owned_document(session, current_user.id, document_id)
+    document = get_owned(
+        session, KnowledgeDocument, document_id, current_user.id, ErrorCode.KNOWLEDGE_DOCUMENT_NOT_FOUND
+    )
     return _document_out(session, sources.update_metadata(session, document, data.model_dump()))
 
 
@@ -269,7 +279,7 @@ def import_bibliography(
     session: Session = Depends(get_session),
 ):
     """Replace the knowledge base's bibliography with a BibTeX file and link documents to it."""
-    kb = _owned_kb(kb_id, current_user, session)
+    kb = get_owned(session, KnowledgeBase, kb_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND)
     enforce_knowledge_upload_rate_limit(current_user.id, current_limits(session).upload_rate_per_10min)
     data = file.file.read(bibtex.MAX_BIB_BYTES + 1)
     try:
@@ -284,11 +294,13 @@ def import_bibliography(
     "/knowledge-bases/{kb_id}/bibliography", response_model=list[BibEntryOut], dependencies=[Depends(_enabled)]
 )
 def list_bibliography(kb_id: str, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    return [BibEntryOut(**entry) for entry in sources.list_bibliography(session, _owned_kb(kb_id, current_user, session))]
+    kb = get_owned(session, KnowledgeBase, kb_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND)
+    return [BibEntryOut(**entry) for entry in sources.list_bibliography(session, kb)]
 
 
 @router.delete("/knowledge-bases/{kb_id}/bibliography", status_code=204, dependencies=[Depends(_enabled)])
 def delete_bibliography(
     kb_id: str, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)
 ):
-    sources.delete_bibliography(session, _owned_kb(kb_id, current_user, session))
+    kb = get_owned(session, KnowledgeBase, kb_id, current_user.id, ErrorCode.KNOWLEDGE_BASE_NOT_FOUND)
+    sources.delete_bibliography(session, kb)

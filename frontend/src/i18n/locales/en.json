@@ -721,11 +721,11 @@
     "howTo": {
       "title": "How it works",
       "term": "Term: how the word is written in the text, e.g. “pH” or “km/h”. Spoken as: how the speech output should say it, e.g. “p H”.",
-      "number": "Placeholder {number}: stands for any number like 5 or 1.5. “{number} m” → “{number} meters” reads “1.5 m” as “1.5 meters” but leaves a lone “m” (e.g. the mass) alone.",
+      "number": "Placeholder {number}: stands for any number like 5 or 1.5. “{number} m” → “{number} meters” reads “1.5 m” as “one point five meters” but leaves a lone “m” (e.g. the mass) alone.",
       "wholeWord": "Whole word only (default): “N” isn't replaced inside the word “Newton”. Units glued to a number like “10kg” are still recognized.",
       "caseSensitive": "Match case: “m” (meter) and “M” (mega) stay different terms.",
       "spellOut": "Read letter by letter: for abbreviations like “GPT”.",
-      "order": "Longer terms win (“km/h” before “km”). After that, the built-in rules for decimals and math symbols apply."
+      "order": "Longer terms win (“km/h” before “km”). Your terms apply before the built-in rules that put numbers, units, dates, abbreviations and math symbols into words. What you enter under “Spoken as” is said exactly as written — only numbers in it, including {number}, are read as words."
     },
     "addTitle": "Add a term",
     "term": "Term (as written)",

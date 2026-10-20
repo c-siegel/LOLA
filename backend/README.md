@@ -28,7 +28,7 @@ raise `DomainError`s (`app/core/errors.py`) instead of HTTP exceptions.
 |---|---|
 | `app/main.py` | Builds the app (`create_app()`): middleware, error handling, lifespan, `/health` |
 | `app/api_router.py` | Mounts every feature's router under `/api/v1` (`app/core/urls.py`); the order matters for overlapping paths — see [API Reference](#api-reference) below |
-| `app/core/` | Cross-cutting setup: settings (`config.py`), auth dependencies (`deps.py`), cookies, domain errors, middleware, public URLs (`urls.py`), the LLM/TTS/STT provider registry (`providers.py`), rate limiting, security helpers |
+| `app/core/` | Cross-cutting setup: settings (`config.py`), auth dependencies (`deps.py`), ownership checks (`ownership.py`), cookies, domain errors, middleware, public URLs (`urls.py`), the LLM/TTS/STT provider registry (`providers.py`), rate limiting, security helpers |
 | `app/db/` | Database session/engine setup; `base.py` imports every feature's models for Alembic |
 | `app/storage/` | Shared upload handling: content sniffing, saving/deleting files, cached file responses |
 | `app/tasks/` | Background work: the periodic data-retention purge, and retrying deletes the knowledge service missed while it was down |
@@ -67,7 +67,7 @@ the frontend uses them as-is.
 | Public | No login needed. |
 | Public, rate-limited | No login, but capped per IP/email (`app/core/rate_limit.py`) against brute-forcing or spam. |
 | Login required | Needs the `access_token` cookie set by `/auth/login` or `/auth/register` (`app/core/deps.py::get_current_user`). |
-| Login required, own resource | Same, but also 404s (not 403) if the resource belongs to someone else — this hides whether it even exists, an IDOR (Insecure Direct Object Reference) defense. |
+| Login required, own resource | Same, but also 404s (not 403) if the resource belongs to someone else — this hides whether it even exists, an IDOR (Insecure Direct Object Reference) defense. Checked by `app/core/ownership.py::get_owned` (or `find_owned`, which returns `None` instead). |
 | Admin only | Login required, and the account's `is_admin` flag must be set (`get_current_admin`). |
 | Owner, or public if published | 404 unless you own the resource — *or* it's attached to a published project, in which case anonymous visitors can fetch it too (e.g. an avatar file the public chat needs to display). |
 | Visitor, rate-limited | No login — a published project's public chat. Visitors are tracked by an anonymous `ah_visitor_id` cookie, not a `User` account, and every route here is rate-limited per visitor. |
@@ -214,16 +214,12 @@ It applies to everything their projects speak in that language — chat replies 
 streamed), the start audio and voice-clip previews — but never changes the displayed text. Rules
 are plain text, not regular expressions: a term matches literally (a space matches any
 whitespace), `{number}` stands for a number and is carried over into the spoken form, all rules
-apply in one longest-first pass, and they run after Markdown is stripped and before the built-in
-decimal/symbol rules (`app/features/ai/tts/normalizer.py`). At most 500 terms per language.
-
-After the teacher's list, German text also goes through the verbalizer
-(`app/features/ai/tts/verbalizer.py`), which writes numbers, dates, times, prices, units and common
-abbreviations out as words for every TTS engine — "Am 3. Oktober 1990" becomes "Am dritten Oktober
-neunzehnhundertneunzig". `TTS_VERBALIZER` switches it: `all` (default), `none`, or a comma-separated
-list of rules (`abbreviations`, `dates`, `times`, `ranges`, `currency`, `units`, `ordinals`,
-`powers`, `numbers`); an unknown name stops the app at startup. A teacher's term wins over the
-verbalizer because it runs first, and the test box shows the result of both.
+apply in one longest-first pass, and they run after Markdown is stripped and before numbers,
+units and math become words. That built-in normalization is done by
+[normt2s](https://github.com/c-siegel/normt2s), configured in `app/features/ai/tts/normalizer.py`;
+the output of a rule is said as written, except that a rule whose spoken form contains a digit of
+its own ("1 s" → "1 Sekunde") is normalized again, so the digit is read as a word (see
+`compile_rules`). At most 500 terms per language.
 
 | Endpoint | Auth | Description |
 |---|---|---|
@@ -398,12 +394,13 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 |---|---|---|
 | `features/ai/llm/` | LLM chat completion (litellm, plus a direct integration for GWDG Arcana) | `get_llm_client(api_key_record)` → `.complete(request)`, `.stream(request)`, `.test()`.<br>`complete(api_key_record, ChatRequest(...))` — one-shot reply.<br>`stream(api_key_record, ChatRequest(...))` — text deltas, falling back to a plain call if streaming fails before the first delta. |
 | `features/ai/tts/` | Text-to-speech (TTS) synthesis | `synthesize_speech(text, tts_voice, api_key_record, language, pronunciation=None)` — normalizes the text for speech (with the teacher's word list, if given), routes to the right provider, or the local-TTS sidecar for `api_key_record=None`, and returns `(audio_bytes, content_type)`. Raises `VoiceRequiredError` if the provider needs a voice that wasn't given.<br>`get_tts_client(api_key_record)` — the provider client itself. |
-| `features/ai/tts/pronunciation.py` | Matching a teacher's word list | `compile_rules(rules)` → a cached `PronunciationMatcher`; `.apply(text, applied=None)` rewrites the text in one longest-first pass. `PronunciationRule(term, spoken, whole_word, case_sensitive)`, `spell_out(term)`. |
-| `features/pronunciation/service.py` | Managing the word list | `list_entries(...)`, `create_entry(...)`, `update_entry(...)`, `delete_entry(...)`, `get_owned_entry(...)`.<br>`matcher_for(session, user_id, language)` — what to pass as `synthesize_speech(..., pronunciation=)`.<br>`import_text(...)`, `export_csv(...)`. |
+| `features/ai/tts/normalizer.py` | Making text speakable (via normt2s) | `normalize_for_speech(text, language, pronunciation=None, applied=None)` — Markdown stripped, numbers, units and math as words, the teacher's word list applied.<br>`speech_stream(language, pronunciation=None)` — a stream for a live LLM reply: `feed_pieces(delta)`/`flush_piece()` release `Piece(raw, spoken)` at sentence ends. |
+| `features/ai/tts/pronunciation.py` | Compiling a teacher's word list | `compile_rules(rules)` → a cached normt2s `RuleSet` of `normt2s.Rule(term, spoken, whole_word, case_sensitive)`. `spell_out(term)`, `placeholder_count(text)`. |
+| `features/pronunciation/service.py` | Managing the word list | `list_entries(...)`, `create_entry(...)`, `update_entry(...)`, `delete_entry(...)`.<br>`rules_for(session, user_id, language)` — what to pass as `synthesize_speech(..., pronunciation=)`.<br>`import_text(...)`, `export_csv(...)`. |
 | `features/pronunciation/presets.py` | Preset packs | `all_packs()`, `get_pack(id, language)`, `apply_pack(...)`, `remove_pack(...)`, `applied_count(...)`. |
 | `features/ai/stt/` | Speech-to-text (STT) transcription | `transcribe_audio(audio_bytes, language, initial_prompt, api_key_record)` — locally via faster-whisper or Parakeet (`Settings.stt_engine`), or a cloud provider if configured.<br>`get_stt_client(api_key_record)` → `.transcribe(...)`; a SAIA client also has `.test()`.<br>`capacity.transcription_slot()` — limits concurrent local transcriptions. |
 | `features/chat/pipeline.py` | One chat turn for the public and preview chat | `prepare_chat(session, project)` — resolve keys and snapshot the project.<br>`reply_turn(context, turn)` — LLM → save → TTS.<br>`stream_turn(context, turn)` — `(event, data)` pairs for the SSE stream. |
-| `features/api_keys/resolve.py` | Which of a project's API keys to use | `resolve_llm_key(session, project)`, `resolve_tts_key(...)`, `resolve_stt_key(...)`.<br>`get_user_api_key(...)`, `get_key_by_id(...)`, `get_owned_key_of_type(...)` — lookups.<br>`provider_from_model(llm_model)`, `browser_stt_model_url_for(project)`, `effective_api_base(key)`. |
+| `features/api_keys/resolve.py` | Which of a project's API keys to use | `resolve_llm_key(session, project)`, `resolve_tts_key(...)`, `resolve_stt_key(...)`.<br>`get_user_api_key(...)`, `get_owned_key_of_type(...)` — lookups.<br>`provider_from_model(llm_model)`, `browser_stt_model_url_for(project)`, `effective_api_base(key)`. |
 | `features/api_keys/service.py` | Managing stored keys | `list_keys_with_usage(session, user_id)`, `create_key(...)`, `update_key(...)`, `delete_key(...)`, `run_key_test(session, key)`. |
 | `features/api_keys/crypto.py` | Encrypting and masking stored API keys | `store_api_key(plaintext)` / `reveal_api_key(ciphertext)`.<br>`mask_key(plaintext)` — e.g. `"••••••••1234"`.<br>`scrub_key_from_text(text, encrypted_api_key)` — redact a key out of error text before it's shown or logged. |
 | `features/auth/service.py` | Authentication helpers | `register_user(session, name, email, password)`, `authenticate_user(session, email, password)`, `user_to_out(user)`. The auth cookie itself is set by `core/cookies.py::set_auth_cookie`. |
@@ -412,7 +409,7 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 | `features/projects/publish.py` | Publishing projects | `publish_project(session, project)` — assigns a fresh share-link slug.<br>`unpublish_project(session, project)` — the old slug is never reused. |
 | `features/projects/start_audio.py` | Cached start-prompt audio | `generate_start_audio(session, project)`, `servable_start_audio(session, project_id, user)`. |
 | `features/projects/export.py` | Project YAML export/import | `export_project_yaml(project)`, `parse_project_yaml(raw)`, `import_project(session, user_id, data)`. |
-| `features/media/service.py` | Avatar, background and voice libraries | `create_avatar(...)`, `set_avatar_thumbnail(...)`, `delete_avatar(...)`, the background equivalents, and `is_used_by_published_project(session, column, item_id, owner_id)`.<br>`list_voice_clips(...)`, `get_owned_voice_clip(...)`, `create_voice_clip(...)`, `delete_voice_clip(session, clip)`, `voice_reference_for_project(session, project)`. |
+| `features/media/service.py` | Avatar, background and voice libraries | `create_avatar(...)`, `set_avatar_thumbnail(...)`, `delete_avatar(...)`, the background equivalents, and `is_used_by_published_project(session, column, item_id, owner_id)`.<br>`list_voice_clips(...)`, `create_voice_clip(...)`, `delete_voice_clip(session, clip)`, `voice_reference_for_project(session, project)`. |
 | `features/media/voice_audio.py` | Voice clip validation | `normalize_voice_clip(content)` → (WAV bytes, duration) — sniffs, decodes and resamples an upload, enforcing 3–30 s. |
 | `features/analytics/service.py` | Analytics queries behind the dashboard | `get_stats(...)`, `get_project_overview(...)`, `get_sessions_paginated(...)`, `get_session_ids(...)`, `get_timeseries_data(...)`.<br>`get_conversation_detail(...)`, `get_conversations_for_export(...)`, `delete_conversations(...)`. |
 | `features/analytics/csv_export.py` | Conversation CSV/ZIP export | `build_export(rows)`, `build_conversation_csv(conversation, project)`, `conversation_export_filename(...)`. |
@@ -422,7 +419,7 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 | `features/pages/service.py` | Admin-editable public pages | `list_pages(session)` (creates the built-in rows on first use), `get_public_page(session, slug)`, `footer_pages(session)`.<br>`create_page(...)`, `update_page(...)`, `save_translation(session, author, page, locale, data)`, `reset_translation(...)`, `delete_page(...)`, `history(...)` — every change is recorded as a `SitePageRevision`. |
 | `features/chat/motion.py` | Avatar gestures the LLM marks as `::name::` in its reply (projects with `motion_enabled`) | `MOTIONS` — the ten offered gestures (must match `frontend/src/vendor/motion-engine/motions.json`).<br>`MOTION_PROMPT` — default gesture instructions, appended to the system prompt; a project's own `motion_prompt` replaces it (`effective_motion_prompt`, `compose_system_prompt`). `GET /projects/{id}/system-prompt` returns the assembled prompt.<br>`extract_markers(text)` — cleaned text plus each gesture's and each plan tick's position. |
 | `features/chat/checklist.py` | Conversation plan the LLM ticks off with `::done_N::` / `::undone_N::` (projects with `checklist_enabled`) | `checklist_for(project)` — the plan, or None when it is off or empty.<br>`replay(checks_per_message)` — the step IDs done after the history's ticks.<br>`checklist_prompt(checklist, done_ids)` — the plan for the system prompt, with a one-line status. |
-| `features/chat/streaming.py` | Splitting streamed LLM text into speakable sentence chunks | `SentenceChunker` — `feed()`/`flush()` for a live stream.<br>`chunk_text(text)` for an already-complete string; `sse_event(event, data)` for one SSE frame. |
+| `features/chat/streaming.py` | SSE framing for streamed replies | `sse_event(event, data)` for one SSE frame. The reply is split into chunks by `normalizer.py::speech_stream`. |
 | `features/chat/unlock.py` | Chat password verification | `verify_chat_password(project, password)`, `issue_unlock_token(project, visitor_id)`.<br>`is_unlocked(...)` / `assert_unlocked(...)` — check vs. raise variants. |
 | `features/chat/visitor_name.py`, `visitor_log.py` | Visitor name and visit logging | `clean_visitor_name(...)`, `assert_visitor_name_provided(...)`, `log_access(session, project_id, visitor_id)`. |
 | `features/auth/email.py` | Transactional email | `send_password_reset_email(to_email, reset_link)`. |

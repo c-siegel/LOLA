@@ -15,21 +15,22 @@ How to use:
 import base64
 import logging
 
+from normt2s import Rule
 from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.error_codes import ErrorCode
 from app.core.errors import DomainError
+from app.core.ownership import find_owned
 from app.core.providers import KEY_TYPE_TTS
 from app.core.rate_limit import enforce_tts_preview_rate_limit
 from app.features.ai.tts import VoiceReference, synthesize_speech
 from app.features.ai.tts.normalizer import normalize_for_speech
-from app.features.ai.tts.pronunciation import PronunciationRule
 from app.features.api_keys.crypto import scrub_key_from_text
 from app.features.api_keys.resolve import get_owned_key_of_type
-from app.features.media.service import get_owned_voice_clip
+from app.features.media.models import VoiceClip
 from app.features.pronunciation.schemas import PronunciationPreviewIn, PronunciationPreviewOut
-from app.features.pronunciation.service import matcher_for
+from app.features.pronunciation.service import rules_for
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +52,9 @@ class TtsNotConfigured(DomainError):
 
 def preview(session: Session, user_id: str, data: PronunciationPreviewIn) -> PronunciationPreviewOut:
     """The spoken form of `data.text` (and, with data.synthesize, its audio)."""
-    matcher = matcher_for(session, user_id, data.language)
-    applied: list[PronunciationRule] = []
-    spoken_text = normalize_for_speech(data.text, data.language, matcher, applied)
+    rules = rules_for(session, user_id, data.language)
+    applied: list[Rule] = []
+    spoken_text = normalize_for_speech(data.text, data.language, rules, applied)
     result = PronunciationPreviewOut(spoken_text=spoken_text, applied_terms=[rule.term for rule in applied])
     if not data.synthesize:
         return result
@@ -70,7 +71,7 @@ def preview(session: Session, user_id: str, data: PronunciationPreviewIn) -> Pro
         raise TtsNotConfigured()
     voice_clip = None
     if api_key is None and data.voice_clip_id:
-        clip = get_owned_voice_clip(session, user_id, data.voice_clip_id)
+        clip = find_owned(session, VoiceClip, data.voice_clip_id, user_id)
         if clip is None:
             raise VoiceClipNotFound()
         voice_clip = VoiceReference(sha256=clip.sha256, path=clip.file_path)
@@ -83,7 +84,7 @@ def preview(session: Session, user_id: str, data: PronunciationPreviewIn) -> Pro
             data.language,
             voice_clip=voice_clip,
             local_timeout_seconds=settings.voice_preview_timeout_seconds,
-            pronunciation=matcher,
+            pronunciation=rules,
         )
     except Exception as exc:
         logger.warning("Pronunciation preview TTS failed (user_id=%s): %s", user_id, type(exc).__name__)

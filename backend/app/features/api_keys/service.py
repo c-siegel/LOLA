@@ -11,14 +11,12 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.core.error_codes import ErrorCode
-from app.core.errors import DomainError
 from app.core.providers import KEY_TYPE_EMBEDDING, KEY_TYPE_STT, KEY_TYPE_TTS
 from app.features.ai.llm import get_llm_client
 from app.features.ai.stt import get_stt_client
 from app.features.ai.tts import VoiceRequiredError, synthesize_speech
 from app.features.api_keys.crypto import mask_key, scrub_key_from_text, store_api_key
 from app.features.api_keys.models import UserApiKey
-from app.features.api_keys.resolve import get_key_by_id
 from app.features.api_keys.schemas import ApiKeyCreate, ApiKeyUpdate
 from app.features.evaluation.cleanup import detach_judge_key
 from app.features.knowledge.models import KnowledgeBase
@@ -29,19 +27,6 @@ from app.features.projects.service import sync_llm_model
 # Max length of the error message sent back to the frontend — provider errors from litellm can
 # contain entire request dumps, which would be unreadable in the UI callout.
 _MAX_ERROR_LENGTH = 300
-
-
-class ApiKeyNotFound(DomainError):
-    status_code = 404
-    detail = ErrorCode.API_KEY_NOT_FOUND
-
-
-def get_owned_key(session: Session, user_id: str, key_id: str) -> UserApiKey:
-    """One of `user_id`'s own keys; raises ApiKeyNotFound (HTTP 404) otherwise."""
-    key = get_key_by_id(session, user_id, key_id)
-    if key is None:
-        raise ApiKeyNotFound()
-    return key
 
 
 def list_keys_with_usage(session: Session, user_id: str) -> list[tuple[UserApiKey, int]]:

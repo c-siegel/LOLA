@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
 import { Input } from "@/components/Input";
+import { PageHeader } from "@/components/PageHeader";
 import { adminApi, type AdminUser } from "@/api/admin";
 import { errorMessage } from "@/api/client";
 import styles from "./Users.module.css";
@@ -69,10 +70,7 @@ export function AdminUsersPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h2>{t("admin.users.title")}</h2>
-        <p>{t("admin.users.subtitle")}</p>
-      </div>
+      <PageHeader title={t("admin.users.title")} subtitle={t("admin.users.subtitle")} />
 
       <div className={styles.card}>
         <div className={styles.tableScroll}>

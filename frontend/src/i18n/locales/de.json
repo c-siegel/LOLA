@@ -721,11 +721,11 @@
     "howTo": {
       "title": "So funktioniert's",
       "term": "Begriff: wie das Wort im Text steht, z. B. „pH“ oder „km/h“. Gesprochen: wie die Sprachausgabe es sagen soll, z. B. „p H“.",
-      "number": "Platzhalter {number}: steht für eine beliebige Zahl wie 5 oder 1,5. „{number} m“ → „{number} Meter“ liest „1,5 m“ als „1,5 Meter“, lässt ein einzelnes „m“ (z. B. die Masse) aber unverändert.",
+      "number": "Platzhalter {number}: steht für eine beliebige Zahl wie 5 oder 1,5. „{number} m“ → „{number} Meter“ liest „1,5 m“ als „eins Komma fünf Meter“, lässt ein einzelnes „m“ (z. B. die Masse) aber unverändert.",
       "wholeWord": "Nur ganzes Wort (Standard): „N“ wird nicht im Wort „Newton“ ersetzt. Einheiten direkt an einer Zahl wie „10kg“ werden trotzdem erkannt.",
       "caseSensitive": "Groß-/Kleinschreibung beachten: „m“ (Meter) und „M“ (Mega) bleiben verschiedene Begriffe.",
       "spellOut": "Buchstabieren: liest Abkürzungen wie „GPT“ Buchstabe für Buchstabe.",
-      "order": "Längere Begriffe haben Vorrang („km/h“ vor „km“). Danach greifen die eingebauten Regeln für Kommazahlen und Rechenzeichen."
+      "order": "Längere Begriffe haben Vorrang („km/h“ vor „km“). Deine Begriffe greifen vor den eingebauten Regeln, die Zahlen, Einheiten, Datumsangaben, Abkürzungen und Rechenzeichen in Worte fassen. Was du unter „Gesprochen“ einträgst, wird genau so gesprochen – nur Zahlen darin, auch {number}, werden in Worten gelesen."
     },
     "addTitle": "Begriff hinzufügen",
     "term": "Begriff (wie er im Text steht)",

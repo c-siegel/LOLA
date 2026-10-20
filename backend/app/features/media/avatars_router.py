@@ -15,6 +15,7 @@ from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_current_user_optional, get_session
 from app.core.error_codes import ErrorCode
+from app.core.ownership import find_owned, get_owned
 from app.core.urls import avatar_file_url, avatar_thumbnail_url
 from app.features.media import service as media
 from app.features.media.models import AvatarModel
@@ -103,9 +104,7 @@ async def set_avatar_thumbnail(
     # frontend/src/lib/avatarThumbnail.ts) — not an arbitrary user-uploaded image, so the same
     # owner-only check as the model upload itself is enough (no public access needed here, the
     # avatar library is a user-only context).
-    avatar = media.get_owned_avatar(session, current_user.id, avatar_id)
-    if avatar is None:
-        raise HTTPException(status_code=404, detail=ErrorCode.AVATAR_NOT_FOUND)
+    avatar = get_owned(session, AvatarModel, avatar_id, current_user.id, ErrorCode.AVATAR_NOT_FOUND)
 
     content = await file.read(_MAX_THUMBNAIL_BYTES + 1)
     if len(content) > _MAX_THUMBNAIL_BYTES:
@@ -123,7 +122,7 @@ def get_avatar_thumbnail(
     session: Session = Depends(get_session),
 ):
     """Serve an avatar's thumbnail image."""
-    avatar = media.get_owned_avatar(session, current_user.id, avatar_id)
+    avatar = find_owned(session, AvatarModel, avatar_id, current_user.id)
     if avatar is None or not avatar.thumbnail_path:
         raise HTTPException(status_code=404, detail=ErrorCode.AVATAR_THUMBNAIL_NOT_FOUND)
     return immutable_file_response(avatar.thumbnail_path, "image/png")
@@ -136,7 +135,5 @@ def delete_avatar_model(
     session: Session = Depends(get_session),
 ):
     """Delete an avatar model and its thumbnail file."""
-    avatar = media.get_owned_avatar(session, current_user.id, avatar_id)
-    if avatar is None:
-        raise HTTPException(status_code=404, detail=ErrorCode.AVATAR_NOT_FOUND)
+    avatar = get_owned(session, AvatarModel, avatar_id, current_user.id, ErrorCode.AVATAR_NOT_FOUND)
     media.delete_avatar(session, avatar)

@@ -221,7 +221,7 @@ def test_preview_shows_the_spoken_text_without_synthesizing(client, teacher, fak
     add(client, "pH", "p H", caseSensitive=True)
     response = client.post("/pronunciation/preview", json={"text": "**pH** bei 1,5", "language": "de"})
     assert response.status_code == 200
-    # The preview shows what the TTS engine really gets, numbers written out included (verbalizer.py).
+    # The preview shows what the TTS engine really gets, numbers written out included (normt2s).
     assert response.json() == {
         "spokenText": "p H bei eins Komma fünf",
         "appliedTerms": ["pH"],
