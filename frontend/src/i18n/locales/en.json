@@ -718,7 +718,7 @@
       "wholeWord": "Whole word only (default): “N” isn't replaced inside the word “Newton”. Units glued to a number like “10kg” are still recognized.",
       "caseSensitive": "Match case: “m” (meter) and “M” (mega) stay different terms.",
       "spellOut": "Read letter by letter: for abbreviations like “GPT”.",
-      "order": "Longer terms win (“km/h” before “km”). Your terms apply before the built-in rules that put numbers, units, dates, abbreviations and math symbols into words. What you enter under “Spoken as” is said exactly as written — only {number} is filled in as a number in words."
+      "order": "Longer terms win (“km/h” before “km”). Your terms apply before the built-in rules that put numbers, units, dates, abbreviations and math symbols into words. What you enter under “Spoken as” is said exactly as written — only numbers in it, including {number}, are read as words."
     },
     "addTitle": "Add a term",
     "term": "Term (as written)",

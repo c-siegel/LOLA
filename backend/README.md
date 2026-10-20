@@ -215,7 +215,9 @@ whitespace), `{number}` stands for a number and is carried over into the spoken 
 apply in one longest-first pass, and they run after Markdown is stripped and before numbers,
 units and math become words. That built-in normalization is done by
 [normt2s](https://github.com/c-siegel/normt2s), configured in `app/features/ai/tts/normalizer.py`;
-the output of a rule is not normalized again. At most 500 terms per language.
+the output of a rule is said as written, except that a rule whose spoken form contains a digit of
+its own ("1 s" → "1 Sekunde") is normalized again, so the digit is read as a word (see
+`compile_rules`). At most 500 terms per language.
 
 | Endpoint | Auth | Description |
 |---|---|---|

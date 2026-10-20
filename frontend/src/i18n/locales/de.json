@@ -718,7 +718,7 @@
       "wholeWord": "Nur ganzes Wort (Standard): „N“ wird nicht im Wort „Newton“ ersetzt. Einheiten direkt an einer Zahl wie „10kg“ werden trotzdem erkannt.",
       "caseSensitive": "Groß-/Kleinschreibung beachten: „m“ (Meter) und „M“ (Mega) bleiben verschiedene Begriffe.",
       "spellOut": "Buchstabieren: liest Abkürzungen wie „GPT“ Buchstabe für Buchstabe.",
-      "order": "Längere Begriffe haben Vorrang („km/h“ vor „km“). Deine Begriffe greifen vor den eingebauten Regeln, die Zahlen, Einheiten, Datumsangaben, Abkürzungen und Rechenzeichen in Worte fassen. Was du unter „Gesprochen“ einträgst, wird genau so gesprochen – nur {number} wird als Zahl in Worten eingesetzt."
+      "order": "Längere Begriffe haben Vorrang („km/h“ vor „km“). Deine Begriffe greifen vor den eingebauten Regeln, die Zahlen, Einheiten, Datumsangaben, Abkürzungen und Rechenzeichen in Worte fassen. Was du unter „Gesprochen“ einträgst, wird genau so gesprochen – nur Zahlen darin, auch {number}, werden in Worten gelesen."
     },
     "addTitle": "Begriff hinzufügen",
     "term": "Begriff (wie er im Text steht)",

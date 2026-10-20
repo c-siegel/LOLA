@@ -29,15 +29,15 @@ def test_every_pack_loads_and_has_unique_terms():
         ),
         ("de", "g ≈ 9,81 m/s²", "g ungefähr gleich neun Komma acht eins Meter pro Quadratsekunde"),
         ("de", "Bei 20°C und 1013 hPa", "Bei zwanzig Grad Celsius und eintausenddreizehn Hektopascal"),
-        # The pack's "1 s" -> "1 Sekunde" entries predate normt2s, which never rewrites a rule's
-        # output again — so their "1" stays a digit, as the TTS got it before.
-        ("de", "m = 5 kg, F = 1 N in 1 s", "m gleich fünf Kilogramm, F = eins Newton in 1 Sekunde"),
-        ("de", "Für Δt = 2 s gilt v₀ = 3 m/s", "Für Delta t = zwei Sekunden gilt v null = drei Meter pro Sekunde"),
-        ("de", "λ = 500 nm, 6 · 10^14 Hz", "Lambda = fünfhundert Nanometer, sechs mal zehn hoch vierzehn Hertz"),
+        # The pack's "1 s" -> "1 Sekunde" entries are renormalized (see compile_rules), so their
+        # "1" is read as a word too.
+        ("de", "m = 5 kg, F = 1 N in 1 s", "m gleich fünf Kilogramm, F gleich ein Newton in eine Sekunde"),
+        ("de", "Für Δt = 2 s gilt v₀ = 3 m/s", "Für Delta t gleich zwei Sekunden gilt v null gleich drei Meter pro Sekunde"),
+        ("de", "λ = 500 nm, 6 · 10^14 Hz", "Lambda gleich fünfhundert Nanometer, sechs mal zehn hoch vierzehn Hertz"),
         ("de", "Nach E = mc² und α-Strahlung", "Nach E gleich m c Quadrat und Alpha-Strahlung"),
         ("de", "220 Ω bei 5 V; die LED", "zweihundertzwanzig Ohm bei fünf Volt; die L E D"),
         ("de", "Newton war Physiker. Neu: 10kg", "Newton war Physiker. Neu: zehn Kilogramm"),
-        ("en", "It weighs 1 kg and moves 1 m in 1 s.", "It weighs 1 kilogram and moves 1 meter in 1 second."),
+        ("en", "It weighs 1 kg and moves 1 m in 1 s.", "It weighs one kilogram and moves one meter in one second."),
         ("en", "Then 2 kg at 13.9 m/s.", "Then two kilograms at thirteen point nine meters per second."),
         ("en", "In the 1990s at 20 °C.", "In the nineteen nineties at twenty degrees Celsius."),
     ],

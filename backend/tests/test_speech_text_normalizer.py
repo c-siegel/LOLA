@@ -53,9 +53,11 @@ def test_speaks_each_language(text: str, language: str, expected: str) -> None:
         ("The formula is $1.23 \\cdot x$.", "en", "The formula is one point two three times x."),
         # LLMs often write LaTeX without $...$ — it is read, not spelled out.
         ("\\frac{1}{2} und 3 \\cdot 4", "de", "ein halb und drei mal vier"),
-        # A multiplication dot outside $...$ is LOLA's own addition (see _MULTIPLICATION_DOT).
+        # A multiplication dot outside $...$ is read between operands only (normt2s >= 0.5) —
+        # not in a gender-inclusive word.
         ("F = m · a", "de", "F gleich m mal a"),
         ("F = m · a", "en", "F equals m times a"),
+        ("Liebe Lehrer·innen", "de", "Liebe Lehrer·innen"),
     ],
 )
 def test_speaks_math(text: str, language: str, expected: str) -> None:
