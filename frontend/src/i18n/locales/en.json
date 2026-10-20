@@ -837,6 +837,7 @@
     "ttsProject": "As the project is set up",
     "ttsLocal": "Local TTS on the server (Sopro)",
     "ttsBrowser": "Sopro in this browser",
+    "ttsBrowserPocket": "Pocket TTS in this browser (German)",
     "ttsNone": "None (text only)",
     "streaming": "Streaming (the avatar starts speaking after the first sentence)",
     "avatar": "Show the 3D avatar",
@@ -891,6 +892,11 @@
     "noProject": "Pick a project first.",
     "needParakeet": "Load the on-device speech recognition first (or pick server speech recognition).",
     "needSopro": "Load Sopro and pick a voice first (or pick another speech output).",
+    "needPocket": "Load Pocket TTS first (or pick another speech output).",
+    "pocketTitle": "Speech output in this browser (Pocket TTS)",
+    "pocketHint": "Loads Kyutai's Pocket TTS (German, about 99 MB) from this server into the browser and speaks with the preset voice \"alba\" — no voice cloning. Runs on the CPU. If loading fails, the model files are missing on the server: they are downloaded with scripts/fetch-tts-model.sh.",
+    "pocketVoice": "Voice: {{voice}} — {{credit}}",
+    "pocketGermanOnly": "Pocket TTS only speaks German; this project's spoken language is a different one.",
     "resultsTitle": "Results",
     "resultsHint": "All times in milliseconds. Unless noted, they count from the moment the student finished (recording stopped, clip ended, text sent).",
     "copy": "Copy as CSV",
@@ -974,12 +980,17 @@
       }
     },
     "speech": {
-      "title": "Speech Recognition",
+      "title": "Speech Recognition and Output",
       "parakeet": {
         "description": "Multilingual speech recognition model that runs on the visitor's device (ternary version of NVIDIA's Parakeet TDT 0.6B v3)",
         "note": "Original model by NVIDIA, ternary version by Moondream, ONNX export by eschmidbauer and mrfakename. Used unchanged; the files are only re-compressed for delivery."
       },
-      "onnxRuntime": { "description": "Runs the speech recognition model in the browser via WebGPU and WebAssembly" }
+      "onnxRuntime": { "description": "Runs the speech recognition and speech output models in the browser via WebGPU and WebAssembly" },
+      "pocket": {
+        "description": "German speech output that runs on the visitor's device (for now in the latency test)",
+        "note": "ONNX export and int8 quantization by Lauro00000 (with lookbe/pocket-tts-onnx-export), mirrored unchanged by LOLA; the voice-cloning part is not included. Tokenizer and the voice state \"alba\" from Kyutai, unchanged. Voice recorded by Alba MacKenna (CC BY 4.0)."
+      },
+      "tokenizers": { "description": "Splits the text into the tokens the speech output model reads" }
     },
     "fonts": {
       "title": "Fonts",

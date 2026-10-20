@@ -32,7 +32,7 @@ See the [root README](../README.md) for how this fits into the rest of the app, 
 | `src/styles/` | Global styles |
 | `src/types/` | Shared TypeScript types |
 | `src/vendor/` | Third-party code copied in rather than installed: `motion-engine/` (the avatar's gestures, see its `ATTRIBUTION.md`) |
-| `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), in-browser Sopro speech output for the latency test (`soproWorker.ts`, used through `src/lib/soproTts.ts`) and the microphone capture AudioWorklet |
+| `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), in-browser speech output for the latency test — Sopro (`soproWorker.ts`, used through `src/lib/soproTts.ts`) and Pocket TTS (`pocketWorker.ts` through `src/lib/pocketTts.ts`; the generation itself is `src/lib/pocketTtsCore.ts`, the model comes from `scripts/fetch-tts-model.sh`) and the microphone capture AudioWorklet |
 
 ## Pages
 

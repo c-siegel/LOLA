@@ -3,11 +3,12 @@
 // ended, or the text was sent) — the moment from which a student waits.
 
 export type SttMode = "device" | "server-project" | "server-whisper" | "server-parakeet";
-export type TtsMode = "project" | "local" | "browser" | "none";
+/** "browser" is Sopro (kept as the stored value of earlier sessions), "browser-pocket" Pocket TTS. */
+export type TtsMode = "project" | "local" | "browser" | "browser-pocket" | "none";
 
 /** Modes in which this device speaks the reply (the server sends text only). */
 export function isBrowserTtsMode(mode: TtsMode): boolean {
-  return mode === "browser";
+  return mode === "browser" || mode === "browser-pocket";
 }
 
 export interface LabConfig {

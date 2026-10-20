@@ -837,6 +837,7 @@
     "ttsProject": "Wie im Projekt eingestellt",
     "ttsLocal": "Lokale Sprachausgabe auf dem Server (Sopro)",
     "ttsBrowser": "Sopro in diesem Browser",
+    "ttsBrowserPocket": "Pocket TTS in diesem Browser (Deutsch)",
     "ttsNone": "Keine (nur Text)",
     "streaming": "Streaming (der Avatar spricht schon nach dem ersten Satz)",
     "avatar": "3D-Avatar anzeigen",
@@ -891,6 +892,11 @@
     "noProject": "Wähle zuerst ein Projekt.",
     "needParakeet": "Lade zuerst die Spracherkennung auf dem Gerät (oder wähle die Spracherkennung auf dem Server).",
     "needSopro": "Lade zuerst Sopro und wähle eine Stimme (oder wähle eine andere Sprachausgabe).",
+    "needPocket": "Lade zuerst Pocket TTS (oder wähle eine andere Sprachausgabe).",
+    "pocketTitle": "Sprachausgabe in diesem Browser (Pocket TTS)",
+    "pocketHint": "Lädt Kyutais Pocket TTS (Deutsch, etwa 99 MB) von diesem Server in den Browser und spricht mit der vorgegebenen Stimme „alba“ – ohne Stimmklonen. Läuft auf der CPU. Schlägt das Laden fehl, fehlen die Modelldateien auf dem Server: Sie werden mit scripts/fetch-tts-model.sh heruntergeladen.",
+    "pocketVoice": "Stimme: {{voice}} – {{credit}}",
+    "pocketGermanOnly": "Pocket TTS spricht nur Deutsch; die Sprache dieses Projekts ist eine andere.",
     "resultsTitle": "Ergebnisse",
     "resultsHint": "Alle Zeiten in Millisekunden. Wenn nicht anders angegeben, gezählt ab dem Moment, in dem die Eingabe fertig war (Aufnahme beendet, Clip zu Ende, Text gesendet).",
     "copy": "Als CSV kopieren",
@@ -974,12 +980,17 @@
       }
     },
     "speech": {
-      "title": "Spracherkennung",
+      "title": "Spracherkennung und Sprachausgabe",
       "parakeet": {
         "description": "Mehrsprachiges Spracherkennungsmodell, das auf dem Gerät der Besucherin läuft (ternäre Version von NVIDIAs Parakeet TDT 0.6B v3)",
         "note": "Originalmodell von NVIDIA, ternäre Version von Moondream, ONNX-Export von eschmidbauer und mrfakename. Unverändert verwendet; die Dateien werden für die Auslieferung nur neu komprimiert."
       },
-      "onnxRuntime": { "description": "Führt das Spracherkennungsmodell per WebGPU und WebAssembly im Browser aus" }
+      "onnxRuntime": { "description": "Führt die Modelle für Spracherkennung und Sprachausgabe per WebGPU und WebAssembly im Browser aus" },
+      "pocket": {
+        "description": "Deutsche Sprachausgabe, die auf dem Gerät der Besucherin läuft (vorerst im Latenztest)",
+        "note": "ONNX-Export und int8-Quantisierung von Lauro00000 (mit lookbe/pocket-tts-onnx-export), von LOLA unverändert gespiegelt; der Teil zum Stimmklonen ist nicht enthalten. Tokenizer und Stimmzustand „alba“ von Kyutai, unverändert. Stimme aufgenommen von Alba MacKenna (CC BY 4.0)."
+      },
+      "tokenizers": { "description": "Zerlegt den Text in die Tokens, die das Sprachausgabemodell liest" }
     },
     "fonts": {
       "title": "Schriften",

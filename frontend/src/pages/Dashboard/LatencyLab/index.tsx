@@ -20,6 +20,7 @@ import { projectsApi } from "@/api/projects";
 import { voiceClipsApi } from "@/api/voiceClips";
 import { ParakeetSttEngine, isWebGpuAvailable, type LoadProgress } from "@/lib/parakeetStt";
 import { modelLabel, useBrowserSttStatus, useLocalTtsStatus, useProviders, useServerSttStatus } from "@/lib/providers";
+import { PocketBrowserTts } from "@/lib/pocketTts";
 import { SoproBrowserTts } from "@/lib/soproTts";
 import type { ChatMessage } from "@/types/chat";
 import {
@@ -39,6 +40,8 @@ import styles from "./LatencyLab.module.css";
 import { sitePath } from "@/lib/basePath";
 
 const PARAKEET_MODEL_URL = sitePath("/models/parakeet-redux/v1/");
+// Written by scripts/fetch-tts-model.sh (German Pocket TTS with the voice "alba").
+const POCKET_MODEL_URL = sitePath("/models/pocket-tts-de/v1/");
 const SETTINGS_KEY = "lola.latencyLab";
 const DEFAULT_SCRIPT = "Hallo! Wer bist du?\nKannst du mir das in einem Satz erklären?";
 
@@ -149,8 +152,10 @@ export function LatencyLabPage() {
 
   const parakeetRef = useRef<ParakeetSttEngine | null>(null);
   const soproRef = useRef<SoproBrowserTts | null>(null);
+  const pocketRef = useRef<PocketBrowserTts | null>(null);
   const [parakeet, setParakeet] = useState<EngineState>(idleEngine);
   const [sopro, setSopro] = useState<EngineState & { backend: string | null }>({ ...idleEngine, backend: null });
+  const [pocket, setPocket] = useState<EngineState & { backend: string | null }>({ ...idleEngine, backend: null });
   const [voice, setVoice] = useState<{ name: string; prepareMs: number } | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
 
@@ -158,6 +163,7 @@ export function LatencyLabPage() {
     () => () => {
       parakeetRef.current?.dispose();
       soproRef.current?.dispose();
+      pocketRef.current?.dispose();
     },
     [],
   );
@@ -188,6 +194,19 @@ export function LatencyLabPage() {
       setSopro({ status: "ready", progress: null, loadSeconds: (performance.now() - started) / 1000, error: null, backend: engine.backend });
     } catch (error) {
       setSopro({ ...idleEngine, status: "error", error: error instanceof Error ? error.message : String(error), backend: null });
+    }
+  }
+
+  async function loadPocket() {
+    const engine = pocketRef.current ?? new PocketBrowserTts();
+    pocketRef.current = engine;
+    const started = performance.now();
+    setPocket({ ...idleEngine, status: "loading", backend: null });
+    try {
+      await engine.load(POCKET_MODEL_URL, (progress) => setPocket((prev) => ({ ...prev, progress })));
+      setPocket({ status: "ready", progress: null, loadSeconds: (performance.now() - started) / 1000, error: null, backend: engine.backend });
+    } catch (error) {
+      setPocket({ ...idleEngine, status: "error", error: error instanceof Error ? error.message : String(error), backend: null });
     }
   }
 
@@ -255,6 +274,7 @@ export function LatencyLabPage() {
     if (!project) return t("latencyLab.noProject");
     if (spoken && config.sttMode === "device" && parakeetRef.current?.status !== "ready") return t("latencyLab.needParakeet");
     if (config.ttsMode === "browser" && (sopro.status !== "ready" || !voice)) return t("latencyLab.needSopro");
+    if (config.ttsMode === "browser-pocket" && pocket.status !== "ready") return t("latencyLab.needPocket");
     return null;
   }
 
@@ -278,7 +298,7 @@ export function LatencyLabPage() {
       speaker: speakerRef.current!,
       inputContext: inputContextRef.current!,
       parakeet: parakeetRef.current,
-      browserTts: config.ttsMode === "browser" ? soproRef.current : null,
+      browserTts: config.ttsMode === "browser" ? soproRef.current : config.ttsMode === "browser-pocket" ? pocketRef.current : null,
       history: historyRef.current,
       signal,
       onPartial: setPartial,
@@ -470,6 +490,7 @@ export function LatencyLabPage() {
                 {t("latencyLab.ttsLocal")}
               </option>
               <option value="browser">{t("latencyLab.ttsBrowser")}</option>
+              <option value="browser-pocket">{t("latencyLab.ttsBrowserPocket")}</option>
               <option value="none">{t("latencyLab.ttsNone")}</option>
             </select>
           </label>
@@ -567,6 +588,27 @@ export function LatencyLabPage() {
           )}
           {voice && <p className={styles.hint}>{t("latencyLab.soproVoiceReady", { name: voice.name, ms: ms(voice.prepareMs) })}</p>}
           {voiceError && <p className={styles.error}>{voiceError}</p>}
+        </div>
+
+        <div className={styles.engine}>
+          <div className={styles.engineHead}>
+            <HeadingWithInfo
+              as="h4"
+              className={styles.engineTitle}
+              title={t("latencyLab.pocketTitle")}
+              info={t("latencyLab.pocketHint")}
+            />
+            <Button size="sm" onClick={() => void loadPocket()} disabled={busy || pocket.status === "loading"}>
+              {t("latencyLab.load")}
+            </Button>
+          </div>
+          <EngineLine state={pocket} extra={pocket.backend ? t("latencyLab.soproBackend", { backend: pocket.backend }) : null} />
+          {pocket.status === "ready" && pocketRef.current?.voice && (
+            <p className={styles.hint}>
+              {t("latencyLab.pocketVoice", { voice: pocketRef.current.voice, credit: pocketRef.current.voiceCredit ?? "" })}
+            </p>
+          )}
+          {project && project.spokenLanguage !== "de" && <p className={styles.hint}>{t("latencyLab.pocketGermanOnly")}</p>}
         </div>
       </section>
 
