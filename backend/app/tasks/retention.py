@@ -19,12 +19,13 @@ How to use:
 """
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 
 import anyio.to_thread
 from sqlalchemy import delete
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.db.session import engine
 from app.features.chat.models import Conversation, ProjectAccess
@@ -38,6 +39,43 @@ logger = logging.getLogger(__name__)
 RETENTION_CHECK_INTERVAL_SECONDS = 6 * 60 * 60
 
 
+def _message_time(message: dict) -> datetime | None:
+    """A saved message's timestamp (as UTC), or None if it has none or it can't be parsed."""
+    try:
+        parsed = datetime.fromisoformat(message["timestamp"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _trim_old_messages(session: Session, cutoff: datetime) -> int:
+    """Drop messages older than `cutoff` from conversations that are still being added to.
+
+    A visitor has one conversation per project, so a student who returns now and then would
+    otherwise keep their oldest messages forever. Returns the number of messages removed; a
+    conversation left empty is deleted.
+    """
+    removed = 0
+    # started_at only ever precedes the first message, so a conversation that began after the
+    # cutoff can't hold anything old.
+    for conversation in session.exec(select(Conversation).where(Conversation.started_at < cutoff)).all():
+        messages = json.loads(conversation.messages_json)
+        # A message without a readable timestamp is kept: dropping it would be a guess.
+        kept = [m for m in messages if (sent := _message_time(m)) is None or sent >= cutoff]
+        if len(kept) == len(messages):
+            continue
+        removed += len(messages) - len(kept)
+        if not kept:
+            session.delete(conversation)
+            continue
+        conversation.messages_json = json.dumps(kept)
+        first = next((sent for m in kept if (sent := _message_time(m)) is not None), None)
+        if first is not None:
+            conversation.started_at = first
+        session.add(conversation)
+    return removed
+
+
 def purge_expired_data(session: Session) -> int:
     """Delete conversations and access logs past the configured retention period; returns rows removed."""
     retention_days = get_or_create_site_settings(session).conversation_retention_days
@@ -46,15 +84,16 @@ def purge_expired_data(session: Session) -> int:
         return 0
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
-    # updated_at, not started_at: a conversation that's still being added to shouldn't be cut in
-    # half mid-lesson just because it began before the cutoff.
     conversations = session.execute(delete(Conversation).where(Conversation.updated_at < cutoff)).rowcount
+    # A conversation still in use survives the delete above, but its messages older than the
+    # retention period must not.
+    conversations = (conversations or 0) + _trim_old_messages(session, cutoff)
     accesses = session.execute(delete(ProjectAccess).where(ProjectAccess.accessed_at < cutoff)).rowcount
     session.commit()
 
     removed = (conversations or 0) + (accesses or 0)
     if removed:
-        logger.info("Retention: removed %d rows older than %d days.", removed, retention_days)
+        logger.info("Retention: removed %d rows and messages older than %d days.", removed, retention_days)
     return removed
 
 

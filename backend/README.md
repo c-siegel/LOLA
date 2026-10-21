@@ -424,7 +424,7 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 | `features/chat/unlock.py` | Chat password verification | `verify_chat_password(project, password)`, `issue_unlock_token(project, visitor_id)`.<br>`is_unlocked(...)` / `assert_unlocked(...)` — check vs. raise variants. |
 | `features/chat/visitor_name.py`, `visitor_log.py` | Visitor name and visit logging | `clean_visitor_name(...)`, `assert_visitor_name_provided(...)`, `log_access(session, project_id, visitor_id)`. |
 | `features/auth/email.py` | Transactional email | `send_password_reset_email(to_email, reset_link)`. |
-| `tasks/retention.py` | Data-retention cleanup | `purge_expired_data(session)` — deletes conversations/access logs past the configured retention period. |
+| `tasks/retention.py` | Data-retention cleanup | `purge_expired_data(session)` — deletes conversations and access logs past the configured retention period, and trims messages older than it from conversations still in use. |
 
 ## Adding an AI provider
 
