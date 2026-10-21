@@ -163,7 +163,7 @@ project has knowledge bases attached. In production, Caddy (in
 `docker/`) reverse-proxies the frontend and backend behind a single domain.
 
 <p align="center">
-  <img src="docs/architecture.svg" alt="Diagram: browsers talk to Caddy, which routes /api/* to the FastAPI backend and serves the frontend elsewhere; the backend reads/writes SQLite + uploaded files and calls out to external AI providers" width="820">
+  <img src="docs/architecture.svg" alt="Architecture diagram: visitors and teachers use the React SPA in their browser (project dashboard, chat page with 3D avatar and optional on-device speech recognition and speech output). Requests and responses pass through a TLS-terminating reverse proxy to Caddy, which serves the SPA and model files and routes /api to the FastAPI backend. The backend reads and writes SQLite and uploads, calls cloud LLM/TTS/STT providers, and optionally calls the local-tts, rag, rag-eval and docling-serve services" width="820">
 </p>
 
 ## Deployment
