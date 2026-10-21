@@ -1,3 +1,12 @@
+<p align="center">
+  <a href="../README.md">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="../docs/lola-icon-svgs/lola-wordmark-dark-bg.svg">
+      <img src="../docs/lola-icon-svgs/lola-wordmark.svg" alt="LOLA" width="140">
+    </picture>
+  </a>
+</p>
+
 # LOLA evaluation service (optional)
 
 Measures how well an avatar answers from its knowledge base, with

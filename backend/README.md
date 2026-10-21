@@ -1,9 +1,17 @@
+<p align="center">
+  <a href="../README.md">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="../docs/lola-icon-svgs/lola-wordmark-dark-bg.svg">
+      <img src="../docs/lola-icon-svgs/lola-wordmark.svg" alt="LOLA" width="140">
+    </picture>
+  </a>
+</p>
+
 # LOLA backend
 
-LOLA's backend uses FastAPI as framework for building APIs with Python: user auth, avatar/project management, and calls out to LLM, text-to-speech (TTS), and speech-to-text (STT) providers.
+FastAPI backend (Python): auth, projects and avatars, calls to LLM, TTS and STT providers, analytics.
 
-See the [root README](../README.md) for what the app does and how to run it end to end — this
-file only covers backend-specific details.
+Overview and setup: [root README](../README.md). This file covers backend details only.
 
 ## Stack
 
@@ -430,7 +438,7 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 
 [`app/core/providers.py`](app/core/providers.py) is the single source of truth for which LLM/TTS
 providers a user can connect with their own API key (see the
-[root README](../README.md#supported-ai-providers) for the current list). The frontend's
+[root README](../docs/ai-providers.md) for the current list). The frontend's
 provider dropdown, model list, and validation are all generated from this one registry — adding
 a provider is one `ProviderSpec` entry here, not a change in several places. Most providers go
 through [litellm](https://github.com/BerriAI/litellm); a provider with a non-standard API (like
@@ -455,7 +463,7 @@ A few backend behaviors worth knowing about if you're deploying or extending thi
   stopped an anonymous visitor from sending arbitrarily large text against the project owner's own
   LLM API key.
 - **A stored key's endpoint (`api_base`) is validated** against cloud-metadata addresses and the
-  deployment's own Docker service names (`app/features/api_keys/schemas.py`) — see the [root README](../README.md#supported-ai-providers)
+  deployment's own Docker service names (`app/features/api_keys/schemas.py`) — see the [root README](../docs/ai-providers.md)
   for what this does and doesn't restrict.
 - **Data retention** (`app/tasks/retention.py`) is enforced both at startup and
   periodically (every 6 hours, see `app/main.py`) for as long as the process runs, not just once

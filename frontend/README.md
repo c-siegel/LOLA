@@ -1,10 +1,17 @@
+<p align="center">
+  <a href="../README.md">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="../docs/lola-icon-svgs/lola-wordmark-dark-bg.svg">
+      <img src="../docs/lola-icon-svgs/lola-wordmark.svg" alt="LOLA" width="140">
+    </picture>
+  </a>
+</p>
+
 # LOLA frontend
 
-React + TypeScript single-page app (SPA) for LOLA: the dashboard where a user manages
-projects/avatars, and the public chat page visitors use to talk to an avatar.
+React + TypeScript single-page app: the dashboard where users manage projects and avatars, and the public chat page visitors use.
 
-See the [root README](../README.md) for how this fits into the rest of the app, and
-[CLAUDE.md](../CLAUDE.md) for how code in this repo is commented.
+Overview: [root README](../README.md). Code conventions: [AGENTS.md](../AGENTS.md).
 
 ## Stack
 
@@ -68,7 +75,7 @@ The backend-side timings the latency test reads (`llmMs`, `ttsMs`, `sttMs`, ...)
 ## Local setup
 
 Step-by-step setup (`npm install`, dev server) now lives in the root README — see
-[Deploy A: local development](../README.md#deploy-a-local-development). Start the backend first
+[Deploy A: local development](../README.md#local-development). Start the backend first
 (it must be running at `http://localhost:8000` for the dev server's `/api/*` proxy to work — see
 `vite.config.ts`).
 

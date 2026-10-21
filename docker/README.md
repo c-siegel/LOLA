@@ -1,13 +1,17 @@
+<p align="center">
+  <a href="../README.md">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="../docs/lola-icon-svgs/lola-wordmark-dark-bg.svg">
+      <img src="../docs/lola-icon-svgs/lola-wordmark.svg" alt="LOLA" width="140">
+    </picture>
+  </a>
+</p>
+
 # Deploying LOLA
 
-Everything needed to run LOLA in production with Docker: images, a Compose file, the
-reverse-proxy config, and a systemd unit. Works on any Docker host — the backend container's app
-user adapts to whatever UID/GID owns your data directory via `PUID`/`PGID` (see
-[Deploying](#deploying) below). The defaults for both happen to match **TrueNAS SCALE**'s built-in
-"apps" user, so a TrueNAS deployment needs no extra configuration, but nothing here is TrueNAS-only.
+Production setup with Docker: images, Compose file, reverse-proxy config and a systemd unit. Works on any Docker host; the backend's app user adapts to the UID/GID of your data directory via `PUID`/`PGID` ([Deploying](#deploying)). The defaults match TrueNAS SCALE's "apps" user, so TrueNAS needs no extra configuration.
 
-See the [root README](../README.md) for what the app does and for the shared `.env` setup, and
-[CLAUDE.md](../CLAUDE.md) for how code in this repo is commented.
+Shared `.env` setup: [root README](../README.md#quick-start). Code conventions: [AGENTS.md](../AGENTS.md).
 
 ## What's here
 
@@ -31,7 +35,7 @@ and reverse-proxies API calls to the `backend` container. Caddy itself only spea
 (`auto_https off`); TLS is expected to be terminated in front of it (e.g. a Cloudflare Tunnel).
 
 Both services read their configuration from `../.env` (relative to this folder) via
-`env_file: ../.env` — the same file used by [Deploy A](../README.md#deploy-a-local-development).
+`env_file: ../.env` — the same file used by [Deploy A](../README.md#local-development).
 This assumes the repo is checked out on the host and Compose is run from within it (e.g. via
 `lola.service`), not e.g. pasted into a UI that only takes the YAML without the surrounding
 repo.
@@ -51,7 +55,7 @@ balancer or uptime monitor tries the more obvious URL first). Both hit the same 
 ## Deploying
 
 This assumes the repo is checked out on the host (e.g. at `/opt/lola`) — see the root
-[README](../README.md#deployment) for the shared `.env` setup (`cp .env.example .env` at the repo
+[README](../README.md#quick-start) for the shared `.env` setup (`cp .env.example .env` at the repo
 root, then fill in the required secrets).
 
 1. Nothing to do for the on-device speech recognition model: the one-off `stt-model` service in

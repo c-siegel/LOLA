@@ -1,13 +1,17 @@
+<p align="center">
+  <a href="../README.md">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="../docs/lola-icon-svgs/lola-wordmark-dark-bg.svg">
+      <img src="../docs/lola-icon-svgs/lola-wordmark.svg" alt="LOLA" width="140">
+    </picture>
+  </a>
+</p>
+
 # LOLA local TTS (optional)
 
-A self-hosted text-to-speech (TTS) engine that runs next to the cloud TTS providers (OpenAI,
-Google Gemini, Cartesia, Google Cloud TTS) — for projects that leave the TTS key unset, so
-nobody needs a cloud API key just to hear an avatar speak. Backed by Kyutai's
-[Pocket TTS](https://github.com/kyutai-labs/pocket-tts) (MIT code, CC BY 4.0 weights), a small
-(~100M-parameter) model that runs several times faster than real time on one CPU core.
+Self-hosted text-to-speech for projects that leave the TTS key unset, so no cloud key is needed to hear an avatar speak. Backed by Kyutai's [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) (MIT code, CC BY 4.0 weights): a ~100M-parameter model, several times faster than real time on one CPU core.
 
-See the [root README](../README.md#local-text-to-speech-optional) for how this fits into the
-rest of the app — this file only covers running the sidecar itself.
+This file covers running the sidecar; for the overview see the [root README](../README.md#optional-services).
 
 ## Why a separate service?
 
@@ -43,7 +47,7 @@ download per language from Hugging Face into `TTS_MODEL_CACHE_DIR`, about 20 s e
 read the cache). Once loaded, a sentence starts after ~0.1 s and is generated at about four times
 real time on one laptop core (measured on a Ryzen 5 5625U).
 
-Then point the backend at it (see the [root README](../README.md#local-text-to-speech-optional)):
+Then point the backend at it (see the [root README](../README.md#optional-services)):
 
 ```bash
 export LOCAL_TTS_ENABLED=true
