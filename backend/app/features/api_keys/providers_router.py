@@ -13,9 +13,12 @@ from app.core.config import settings
 from app.core.deps import get_current_user
 from app.core.providers import KEY_TYPE_EMBEDDING, PROVIDERS
 from app.features.ai.stt import parakeet_local
+from app.features.ai.tts.local import sidecar_voices
 from app.features.api_keys.schemas import (
     BrowserSttStatusOut,
+    BrowserTtsStatusOut,
     LocalTtsStatusOut,
+    LocalTtsVoiceOut,
     ProviderModelOut,
     ProviderSpecOut,
     ServerSttStatusOut,
@@ -46,6 +49,7 @@ def list_providers(_: User = Depends(get_current_user)):
             tts_model_fixed=spec.tts_model is not None,
             stt_model_fixed=spec.stt_model is not None,
             requires_arcana_id=spec.requires_arcana_id,
+            thinking_switch=spec.thinking_switch,
         )
         for spec in PROVIDERS
     ]
@@ -53,8 +57,23 @@ def list_providers(_: User = Depends(get_current_user)):
 
 @router.get("/local-tts-status", response_model=LocalTtsStatusOut)
 def local_tts_status(_: User = Depends(get_current_user)):
-    """Whether the local-TTS sidecar is enabled for this deployment (see Settings.local_tts_enabled)."""
-    return LocalTtsStatusOut(available=settings.local_tts_enabled)
+    """Whether the local-TTS sidecar is enabled for this deployment (see Settings.local_tts_enabled),
+    and if it answers, what it can speak: languages, voice cloning and its voices."""
+    sidecar = sidecar_voices()
+    if sidecar is None:
+        return LocalTtsStatusOut(available=settings.local_tts_enabled)
+    return LocalTtsStatusOut(
+        available=True,
+        reachable=True,
+        cloning=sidecar.cloning,
+        languages=sidecar.languages,
+        voices=[
+            LocalTtsVoiceOut(id=voice["id"], label=voice.get("label") or voice["id"], kind=voice["kind"])
+            for voice in sidecar.voices
+            # A newer sidecar may know kinds this backend doesn't; leave those out.
+            if voice.get("kind") in ("preset", "donation") and voice.get("id")
+        ],
+    )
 
 
 @router.get("/browser-stt-status", response_model=BrowserSttStatusOut)
@@ -62,6 +81,13 @@ def browser_stt_status(_: User = Depends(get_current_user)):
     """Whether browser-side (WebGPU) transcription is enabled for this deployment (see
     Settings.browser_stt_enabled)."""
     return BrowserSttStatusOut(available=settings.browser_stt_enabled)
+
+
+@router.get("/browser-tts-status", response_model=BrowserTtsStatusOut)
+def browser_tts_status(_: User = Depends(get_current_user)):
+    """Whether this deployment offers on-device speech output (see Settings.browser_tts_enabled),
+    and the one language its model speaks."""
+    return BrowserTtsStatusOut(available=settings.browser_tts_enabled, language=settings.browser_tts_language)
 
 
 @router.get("/server-stt-status", response_model=ServerSttStatusOut)

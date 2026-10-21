@@ -6,29 +6,10 @@
   min-width: 0;
 }
 
-.header h2 {
-  margin: 0 0 var(--space-1);
-  font-size: 1.5rem;
-}
-
-.header p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-}
-
 .card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
+  composes: card from "../../../styles/dashboard.module.css";
 }
 
-.card h3,
 .live h3 {
   margin: 0;
   font-size: 1rem;
@@ -77,9 +58,7 @@
 }
 
 .hint {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--text-tertiary);
+  composes: hint from "../../../styles/dashboard.module.css";
 }
 
 .error {
@@ -137,13 +116,6 @@
   gap: var(--space-3);
 }
 
-.voiceRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-4);
-}
-
 .fileButton {
   display: inline-flex;
   align-items: center;
@@ -157,6 +129,11 @@
 
 .fileButton input {
   display: none;
+}
+
+.fileButton[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .stageRow {
@@ -307,7 +284,7 @@
   color: var(--text-secondary);
 }
 
-/* Engine names (e.g. Sopro) read like the bold labels they replaced, not like section headings. */
+/* Engine names (e.g. Pocket TTS) read like the bold labels they replaced, not like section headings. */
 .engineTitle h4 {
   font-family: var(--font-body);
   font-size: 0.9375rem;

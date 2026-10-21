@@ -1,18 +1,31 @@
 [project]
-name = "eduavatars-local-tts"
-version = "0.1.0"
+name = "lola-local-tts"
+version = "0.2.0"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "pydantic-settings>=2.4",
-    # torch/torchaudio are sopro's own dependencies (torch>=2.3) but are deliberately NOT listed
-    # here — see docker/local-tts.Dockerfile for why they're installed as a separate, earlier
-    # step (the plain PyPI torch wheel pulls in several GB of CUDA libraries this CPU-only
-    # service never uses).
-    "sopro>=2.2.0",
+    # torch is pocket-tts' own dependency but is deliberately installed as a separate, earlier
+    # step — see docker/local-tts.Dockerfile (the plain PyPI torch wheel pulls in several GB of
+    # CUDA libraries this CPU-only service never uses).
+    # Capped below 4: app/synthesis.py rewrites pocket-tts' own configs and reads its
+    # `has_voice_cloning` flag, neither of which is a stable public API.
+    "pocket-tts>=3.3.0,<4",
     "soundfile>=0.12.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
 ]
 
 [tool.setuptools]
 packages = ["app"]
+
+[tool.setuptools.package-data]
+app = ["donated_voices.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

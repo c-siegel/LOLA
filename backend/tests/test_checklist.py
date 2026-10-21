@@ -57,7 +57,7 @@ def test_checklist_survives_export_and_import(client, teacher) -> None:
     assert data.checklist_enabled is True and data.checklist_ordered is False
     assert [item.model_dump() for item in data.checklist_items] == with_ids
     # Exports written before the plan existed import without one.
-    assert parse_project_yaml("eduavatars_export: 2\nproject:\n  title: x\n").checklist_items == []
+    assert parse_project_yaml("lola_export: 2\nproject:\n  title: x\n").checklist_items == []
 
 
 

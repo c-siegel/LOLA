@@ -30,6 +30,8 @@ export interface Project {
   // ::_sampling_params). temperature 0.0-2.0, topP 0.0-1.0 — the backend checks the same limits.
   temperature: number;
   topP: number;
+  // Reasoning switch for models that support it; "default" leaves the model's own behaviour.
+  thinkingMode: ThinkingMode;
   published: boolean;
   shareSlug: string | null;
   saveConversations: boolean;
@@ -56,6 +58,10 @@ export interface Project {
   // server's local Whisper — only shown/usable in the Configurator when the deployment also
   // allows it (see useBrowserSttStatus in lib/providers.ts).
   sttBrowserEnabled: boolean;
+  // Whether the visitor's device speaks the replies (Pocket TTS in the browser), with the server's
+  // TTS as the fallback — only offered when the deployment allows it and for its model's language
+  // (see useBrowserTtsStatus in lib/providers.ts).
+  ttsBrowserEnabled: boolean;
   // Whether the public chat should use sentence-chunked streaming (text+audio per sentence)
   // instead of waiting for the full reply — see backend features/chat/public_router.py's /messages/stream.
   // Meaningless without ttsEnabled, so the configurator only shows this toggle when TTS is on.
@@ -128,6 +134,9 @@ export const KNOWLEDGE_MODES: KnowledgeMode[] = ["off", "supplement", "strict"];
 
 // The local server STT engines (backend Settings.stt_engine / Project.stt_server_engine).
 export type SttServerEngine = "whisper" | "parakeet";
+
+export type ThinkingMode = "default" | "on" | "off";
+export const THINKING_MODES: ThinkingMode[] = ["default", "on", "off"];
 
 export type ChatLayout = "avatar_chat" | "avatar_chat_collapsed" | "avatar_only" | "chat_only";
 export const CHAT_LAYOUTS: ChatLayout[] = ["avatar_chat", "avatar_chat_collapsed", "avatar_only", "chat_only"];

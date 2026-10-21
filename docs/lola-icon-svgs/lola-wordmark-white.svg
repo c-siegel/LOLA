@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 212 84" width="424" height="168">
+  <title>LOLA</title>
+  <defs>
+  <mask id="face" maskUnits="userSpaceOnUse" x="0" y="0" width="212" height="104">
+    <rect width="212" height="104" fill="#fff"/>
+    <circle cx="71" cy="40" r="3.4" fill="#000"/>
+    <circle cx="87" cy="40" r="3.4" fill="#000"/>
+    <path d="M70 50Q79 57.5 88 50" fill="none" stroke="#000" stroke-width="3.4" stroke-linecap="round"/>
+  </mask>
+  </defs>
+  <path fill="#FFFFFF" d="M8.22 68V20.32H18.14V59.36H38.3V68Z M116.22 68V20.32H126.14V59.36H146.3V68Z M152.7 68 168.83 20.32H182.02L198.14 68H187.33L184.13 58.27H166.66L163.46 68ZM169.41 49.63H181.38L174.08 27.1H176.77Z"/>
+  <g fill="#FFFFFF" mask="url(#face)"><circle cx="79" cy="44" r="25"/><path d="M61 59L53 77L73 66Z"/></g>
+</svg>

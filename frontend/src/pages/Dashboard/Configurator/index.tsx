@@ -46,6 +46,7 @@ function toDraft(project: Project): ConfiguratorDraft {
     llmApiKeyId: project.llmApiKeyId,
     temperature: project.temperature,
     topP: project.topP,
+    thinkingMode: project.thinkingMode,
     saveConversations: project.saveConversations,
     requireVisitorName: project.requireVisitorName,
     surveyBeforeUrl: project.surveyBeforeUrl ?? "",
@@ -61,6 +62,7 @@ function toDraft(project: Project): ConfiguratorDraft {
     sttServerEngine: project.sttServerEngine,
     sttEnabled: project.sttEnabled,
     sttBrowserEnabled: project.sttBrowserEnabled,
+    ttsBrowserEnabled: project.ttsBrowserEnabled,
     streamingEnabled: project.streamingEnabled,
     knowledgeMode: project.knowledgeMode,
     knowledgeTopK: project.knowledgeTopK,
@@ -90,6 +92,7 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.llmApiKeyId !== project.llmApiKeyId ||
     draft.temperature !== project.temperature ||
     draft.topP !== project.topP ||
+    draft.thinkingMode !== project.thinkingMode ||
     draft.saveConversations !== project.saveConversations ||
     draft.requireVisitorName !== project.requireVisitorName ||
     draft.surveyBeforeUrl !== (project.surveyBeforeUrl ?? "") ||
@@ -105,6 +108,7 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.sttServerEngine !== project.sttServerEngine ||
     draft.sttEnabled !== project.sttEnabled ||
     draft.sttBrowserEnabled !== project.sttBrowserEnabled ||
+    draft.ttsBrowserEnabled !== project.ttsBrowserEnabled ||
     draft.streamingEnabled !== project.streamingEnabled ||
     draft.knowledgeMode !== project.knowledgeMode ||
     draft.knowledgeTopK !== project.knowledgeTopK ||
@@ -159,6 +163,7 @@ export function ConfiguratorPage() {
         llmApiKeyId: data.llmApiKeyId,
         temperature: data.temperature,
         topP: data.topP,
+        thinkingMode: data.thinkingMode,
         saveConversations: data.saveConversations,
         requireVisitorName: data.requireVisitorName,
         surveyBeforeUrl: data.surveyBeforeUrl,
@@ -174,6 +179,7 @@ export function ConfiguratorPage() {
         sttServerEngine: data.sttServerEngine,
         sttEnabled: data.sttEnabled,
         sttBrowserEnabled: data.sttBrowserEnabled,
+        ttsBrowserEnabled: data.ttsBrowserEnabled,
         streamingEnabled: data.streamingEnabled,
         knowledgeMode: data.knowledgeMode,
         knowledgeTopK: data.knowledgeTopK,

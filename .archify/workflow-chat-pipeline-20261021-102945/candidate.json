@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Chat request pipeline",
+    "output": ".archify/workflow-chat-pipeline-20261021-102945/chat-pipeline.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": { "url": "https://github.com/c-siegel/LOLA.git", "revision": "f660e5a7f888aa04a839d456abe9b70e42a25346" }
+  },
+  "lanes": [
+    { "id": "ui", "label": "Student's browser" },
+    { "id": "api", "label": "Backend" },
+    { "id": "svc", "label": "Services and storage" }
+  ],
+  "phases": [
+    { "id": "input", "label": "Input + checks", "fromCol": 0, "toCol": 1 },
+    { "id": "context", "label": "Context + answer", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "speech", "label": "Chunks, markers, voice", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["input", "gate", "prep", "retrieve", "llm", "chunker", "markers", "reply"],
+  "nodes": [
+    { "id": "input", "lane": "ui", "col": 0, "type": "frontend", "label": "Student input", "sublabel": "typed, or speech to text", "tag": "STT on-device or server",
+      "sources": [{ "path": "frontend/src/workers/parakeetWorker.ts", "line": 10 }, { "path": "backend/app/features/chat/public_router.py", "line": 255, "end_line": 300 }] },
+    { "id": "gate", "lane": "api", "col": 1, "type": "security", "label": "Request checks", "sublabel": "unlock, name, rate limit", "tag": "401 / 429 if blocked",
+      "sources": [{ "path": "backend/app/features/chat/public_router.py", "line": 150, "end_line": 171 }] },
+    { "id": "prep", "lane": "api", "col": 2, "type": "backend", "label": "Build context", "sublabel": "persona, gesture prompt, plan, history",
+      "sources": [{ "path": "backend/app/features/chat/pipeline.py", "line": 139, "end_line": 173 }, { "path": "backend/app/features/chat/motion.py", "line": 57, "end_line": 63 }] },
+    { "id": "retrieve", "lane": "svc", "col": 2, "type": "backend", "label": "Retrieve passages", "sublabel": "rag service", "tag": "never blocks the chat",
+      "sources": [{ "path": "backend/app/features/knowledge/retrieval.py", "line": 123, "end_line": 139 }, { "path": "backend/app/features/chat/pipeline.py", "line": 176, "end_line": 183 }] },
+    { "id": "llm", "lane": "svc", "col": 3, "type": "cloud", "label": "LLM stream", "sublabel": "text with ::gesture:: markers",
+      "sources": [{ "path": "backend/app/features/chat/pipeline.py", "line": 186, "end_line": 200 }, { "path": "backend/app/features/chat/pipeline.py", "line": 416, "end_line": 422 }] },
+    { "id": "chunker", "lane": "api", "col": 4, "type": "backend", "label": "normt2s chunker", "sublabel": "sentences: raw + spoken form", "tag": "Markdown, numbers, word list",
+      "sources": [{ "path": "backend/app/features/ai/tts/normalizer.py", "line": 48, "end_line": 59 }, { "path": "backend/app/features/ai/tts/normalizer.py", "line": 77, "end_line": 86 }, { "path": "backend/app/features/chat/pipeline.py", "line": 347 }] },
+    { "id": "save", "lane": "svc", "col": 4, "type": "database", "label": "Save transcript", "sublabel": "markers stripped, if enabled",
+      "sources": [{ "path": "backend/app/features/chat/pipeline.py", "line": 203, "end_line": 225 }, { "path": "backend/app/features/chat/pipeline.py", "line": 443, "end_line": 457 }] },
+    { "id": "markers", "lane": "api", "col": 5, "type": "backend", "label": "Cut markers", "sublabel": "gestures + plan ticks per chunk", "tag": "never shown or spoken",
+      "sources": [{ "path": "backend/app/features/chat/motion.py", "line": 72, "end_line": 77 }, { "path": "backend/app/features/chat/motion.py", "line": 102, "end_line": 135 }, { "path": "backend/app/features/chat/pipeline.py", "line": 357, "end_line": 377 }] },
+    { "id": "tts", "lane": "svc", "col": 5, "type": "backend", "label": "Text to speech", "sublabel": "per chunk, in parallel", "tag": "skipped if off or on-device",
+      "sources": [{ "path": "backend/app/features/chat/pipeline.py", "line": 246, "end_line": 267 }] },
+    { "id": "reply", "lane": "ui", "col": 5, "type": "frontend", "label": "Avatar answers", "sublabel": "text, voice, gestures",
+      "sources": [{ "path": "frontend/src/api/publicChat.ts", "line": 136, "end_line": 150 }, { "path": "frontend/src/components/TalkingHeadAvatar/TalkingHeadAvatar.tsx", "line": 390 }] }
+  ],
+  "edges": [
+    { "id": "to-gate", "from": "input", "to": "gate", "label": "message + history", "variant": "emphasis" },
+    { "id": "to-prep", "from": "gate", "to": "prep", "variant": "emphasis" },
+    { "id": "to-retrieve", "from": "prep", "to": "retrieve", "label": "if knowledge base", "variant": "dashed" },
+    { "id": "to-llm", "from": "retrieve", "to": "llm", "label": "passages", "variant": "emphasis" },
+    { "id": "to-chunker", "from": "llm", "to": "chunker", "label": "tokens", "variant": "emphasis" },
+    { "id": "to-save", "from": "llm", "to": "save", "label": "full reply", "variant": "dashed", "role": "async" },
+    { "id": "to-markers", "from": "chunker", "to": "markers", "label": "raw + spoken", "variant": "emphasis" },
+    { "id": "to-tts", "from": "markers", "to": "tts", "label": "spoken text", "variant": "dashed", "role": "branch" },
+    { "id": "to-reply", "from": "markers", "to": "reply", "label": "SSE chunk: text, gestures", "variant": "emphasis", "role": "return" },
+    { "id": "audio", "from": "tts", "to": "reply", "label": "audio", "variant": "dashed", "role": "return", "fromSide": "right", "toSide": "right", "route": "outside-right" }
+  ],
+  "cards": [
+    { "dot": "amber", "title": "Motion markers", "items": ["The prompt offers ten curated gestures; the LLM writes ::name:: where it should happen", "Markers are cut out of text and speech; unknown ones are dropped silently, plan ticks (::done_N::) go the same way", "The browser's MotionEngine plays the gestures when that chunk's audio starts"] },
+    { "dot": "cyan", "title": "normt2s", "items": ["Turns Markdown, numbers, units and math into words for the voice; the shown text keeps its formatting", "Releases a chunk at each sentence end: short first, longer later, cut at 300 characters", "Applies the teacher's pronunciation word list"] },
+    { "dot": "rose", "title": "Failure behaviour", "items": ["Knowledge base unavailable or too slow: the LLM answers without passages", "TTS failure: the text still goes out; LLM failure ends the stream with an error event", "A failed save is only logged"] }
+  ]
+}

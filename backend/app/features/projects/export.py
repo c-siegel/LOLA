@@ -2,7 +2,7 @@
 Project Export/Import
 
 Turns a Project into a portable YAML document, and back — so an educator can back up a
-project, move it to another eduavatars account, or share a configuration with a colleague
+project, move it to another LOLA account, or share a configuration with a colleague
 without also handing over their own API keys.
 
 What is YAML? A human-readable text format for structured data (like JSON, but easier to
@@ -22,6 +22,7 @@ import yaml
 from pydantic import ValidationError
 from sqlmodel import Session
 
+from app.core.ownership import find_owned
 from app.features.media.models import AvatarModel, BackgroundImage, VoiceClip
 from app.features.projects.models import Project
 from app.features.projects.schemas import ProjectExportData
@@ -48,13 +49,13 @@ MAX_IMPORT_UPLOAD_BYTES = 256 * 1024
 
 
 class ProjectImportError(ValueError):
-    """Raised when an uploaded file isn't a valid eduavatars project export."""
+    """Raised when an uploaded file isn't a valid LOLA project export."""
 
 
 def export_project_yaml(project: Project) -> str:
     """Serialize `project`'s portable configuration (no API keys, publishing state, or IDs) as YAML."""
     data = ProjectExportData.model_validate(project, from_attributes=True)
-    payload = {"eduavatars_export": FORMAT_VERSION, "project": data.model_dump()}
+    payload = {"lola_export": FORMAT_VERSION, "project": data.model_dump()}
     return _YAML_HEADER + yaml.safe_dump(payload, allow_unicode=True, sort_keys=False)
 
 
@@ -65,7 +66,7 @@ def export_filename(project: Project) -> str:
 
 
 def parse_project_yaml(raw: bytes | str) -> ProjectExportData:
-    """Parse and validate an uploaded file as an eduavatars project export.
+    """Parse and validate an uploaded file as a LOLA project export.
 
     Raises ProjectImportError for anything that isn't a well-formed export — not the file's own
     fault vs. a bug distinction; every failure just means "can't import this file".
@@ -77,7 +78,7 @@ def parse_project_yaml(raw: bytes | str) -> ProjectExportData:
     if not isinstance(document, dict) or not isinstance(document.get("project"), dict):
         raise ProjectImportError("missing a 'project' section")
     fields = document["project"]
-    if document.get("eduavatars_export", 1) == 1:
+    if document.get("lola_export", 1) == 1:
         fields = _upgrade_v1(fields)
     try:
         return ProjectExportData.model_validate(fields)
@@ -99,18 +100,6 @@ def _upgrade_v1(fields: dict) -> dict:
     return fields
 
 
-def _owned(
-    session: Session, model: type[AvatarModel | BackgroundImage | VoiceClip], user_id: str, item_id: str | None
-) -> str | None:
-    """Keep a library reference only if it still points at one of this user's own uploads —
-    dropped instead of failing the import, e.g. when importing a colleague's export whose avatar
-    isn't in this account's library, so the project just falls back to the default look."""
-    if not item_id:
-        return None
-    item = session.get(model, item_id)
-    return item_id if item is not None and item.user_id == user_id else None
-
-
 def import_project(session: Session, user_id: str, data: ProjectExportData) -> Project:
     """Create a new project for `user_id` from a parsed export.
 
@@ -119,9 +108,16 @@ def import_project(session: Session, user_id: str, data: ProjectExportData) -> P
     silently broken/misleading until the educator re-configures them anyway.
     """
     fields = data.model_dump()
-    fields["avatar_model_id"] = _owned(session, AvatarModel, user_id, fields["avatar_model_id"])
-    fields["avatar_background_id"] = _owned(session, BackgroundImage, user_id, fields["avatar_background_id"])
-    fields["tts_voice_clip_id"] = _owned(session, VoiceClip, user_id, fields["tts_voice_clip_id"])
+    # Keep a library reference only if it still points at one of this user's own uploads —
+    # dropped instead of failing the import, e.g. when importing a colleague's export whose avatar
+    # isn't in this account's library, so the project just falls back to the default look.
+    for field, model in (
+        ("avatar_model_id", AvatarModel),
+        ("avatar_background_id", BackgroundImage),
+        ("tts_voice_clip_id", VoiceClip),
+    ):
+        if fields[field] and find_owned(session, model, fields[field], user_id) is None:
+            fields[field] = None
     # Knowledge bases aren't part of an export, so an imported project has none attached — it
     # must not claim to answer from material it doesn't have.
     fields["knowledge_mode"] = "off"

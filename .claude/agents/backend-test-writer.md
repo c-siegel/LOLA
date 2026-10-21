@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
 ---
 
-You write focused pytest tests for the EduAvatars backend (`backend/`, FastAPI + SQLModel + litellm).
+You write focused pytest tests for the LOLA backend (`backend/`, FastAPI + SQLModel + litellm).
 
 Before writing anything:
 1. Read `backend/tests/conftest.py` — it sets throwaway `JWT_SECRET`/`API_KEY_ENCRYPTION_SECRET`,

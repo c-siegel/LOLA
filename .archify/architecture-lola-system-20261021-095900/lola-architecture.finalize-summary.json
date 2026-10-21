@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "C:\\Users\\cs27soje\\Documents\\GitHub\\LOLA\\.archify\\architecture-lola-system-20261021-095900\\candidate.json",
+    "sha256": "8238877d6d151acd786ec76f5663adcaf86a9e7153b5113c2de7c0dcd4c2cab9",
+    "bytes": 7405
+  },
+  "artifact": {
+    "path": "C:\\Users\\cs27soje\\Documents\\GitHub\\LOLA\\.archify\\architecture-lola-system-20261021-095900\\lola-architecture.html",
+    "sha256": "48daa6a1781e8955182db252a04fbb83884f116cc7ca4514cd528be041c12d75",
+    "bytes": 847390
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "C:\\Users\\cs27soje\\Documents\\GitHub\\LOLA\\.archify\\architecture-lola-system-20261021-095900\\lola-architecture.finalize.json",
+    "summaryReceipt": "C:\\Users\\cs27soje\\Documents\\GitHub\\LOLA\\.archify\\architecture-lola-system-20261021-095900\\lola-architecture.finalize-summary.json",
+    "browserCheckReceipt": "C:\\Users\\cs27soje\\Documents\\GitHub\\LOLA\\.archify\\architecture-lola-system-20261021-095900\\lola-architecture.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-21T07:51:00.035Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 5796,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "backend-tts",
+            "from": "backend",
+            "to": "tts",
+            "label": "synthesize",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "right": {
+            "id": "backend-eval",
+            "from": "backend",
+            "to": "evalsvc",
+            "label": "evaluate",
+            "collectionIndex": 13,
+            "artifactIndex": 14
+          },
+          "point": [
+            896,
+            410
+          ],
+          "sharedNode": "backend"
+        }
+      ],
+      "detours": [],
+      "truncated": false
+    },
+    "hints": [
+      "backend → tts and backend → evalsvc cross next to backend: move node tts or evalsvc so the two reach backend from different sides (for example one level with it, one directly above or below it)."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

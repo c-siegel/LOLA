@@ -1,5 +1,6 @@
 import i18n from "@/i18n";
 import { sitePath } from "@/lib/basePath";
+import { saveFile } from "@/lib/download";
 
 // Every backend route lives under /api/v1 (see backend/app/core/urls.py), behind the site's own
 // sub-path if it has one (see lib/basePath.ts). Exported for the few requests that bypass
@@ -70,11 +71,17 @@ type SimpleHeaders = Record<string, string>;
 
 // "attachment; filename=\"foo.zip\"" -> "foo.zip" — falls back to `fallback` if the header is
 // missing or doesn't carry a filename (shouldn't happen, but a download still needs some name).
-// Shared by every endpoint that returns a raw file instead of JSON (analytics export, project
-// export), since those bypass apiClient/request() below and read the Response directly.
-export function filenameFromContentDisposition(header: string | null, fallback: string): string {
+function filenameFromContentDisposition(header: string | null, fallback: string): string {
   const match = header?.match(/filename="?([^";]+)"?/);
   return match ? match[1] : fallback;
+}
+
+/** Fetches a file from the API (exports return a file, not JSON, so this bypasses request()) and
+ * saves it under the name the response's Content-Disposition gives, else `fallbackName`. */
+export async function downloadFile(path: string, fallbackName: string, init?: RequestInit): Promise<void> {
+  const res = await fetch(`${BASE_URL}${path}`, { credentials: "include", ...init });
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+  saveFile(await res.blob(), filenameFromContentDisposition(res.headers.get("Content-Disposition"), fallbackName));
 }
 
 async function request<T>(path: string, init?: RequestInit & { headers?: SimpleHeaders }): Promise<T> {

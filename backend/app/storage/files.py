@@ -14,7 +14,10 @@ How to use:
 
 from pathlib import Path
 
+from fastapi import UploadFile
 from fastapi.responses import FileResponse
+
+from app.core.errors import DomainError
 
 _PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 _JPEG_MAGIC = b"\xff\xd8\xff"
@@ -45,6 +48,19 @@ def sniff_image(content: bytes, allowed: set[str]) -> tuple[str, str] | None:
 def is_glb(content: bytes) -> bool:
     """Whether `content` starts with the binary glTF signature ("glTF")."""
     return content[:4] == _GLTF_MAGIC
+
+
+def read_upload(file: UploadFile, max_bytes: int, too_large: str) -> bytes:
+    """The upload's bytes; refuses anything over `max_bytes` with HTTP 400 and `too_large`.
+
+    Reads one byte past the limit rather than the whole file, so an oversized upload is caught
+    without loading all of it. Blocking: call it from a plain `def` route, which FastAPI runs in
+    its thread pool.
+    """
+    content = file.file.read(max_bytes + 1)
+    if len(content) > max_bytes:
+        raise DomainError(too_large)
+    return content
 
 
 def save_file(directory: Path, filename: str, content: bytes) -> Path:

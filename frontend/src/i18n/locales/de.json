@@ -25,7 +25,9 @@
     "analytics": "Auswertung",
     "apiDashboard": "API-Dashboard",
     "profile": "Profileinstellungen",
-    "admin": "Admin",
+    "adminUsers": "Konten",
+    "adminSettings": "Website-Einstellungen",
+    "adminPages": "Seiten",
     "groups": { "create": "Erstellen", "insights": "Einblicke", "setup": "Einrichtung", "admin": "Admin" },
     "dashboardFallback": "Dashboard",
     "dashboardNavAriaLabel": "Dashboard-Navigation",
@@ -265,7 +267,7 @@
       "title": "Website-Einstellungen",
       "subtitle": "Instanzweite Einstellungen, änderbar ohne erneutes Deployment.",
       "imprintTitle": "Impressum & Kontakt",
-      "imprintHint": "Wird im Impressum und in der Datenschutzerklärung angezeigt. Leere Felder erscheinen dort als Platzhalter.",
+      "imprintHint": "Wird im Impressum und in der Datenschutzerklärung angezeigt. Leere Felder erscheinen dort als Platzhalter. Wer eine dieser Seiten unter „Seiten“ durch eigenen Text ersetzt hat, pflegt die Angaben dort.",
       "providerNameLabel": "Anbieter / Verantwortliche Person",
       "providerStreetLabel": "Straße und Hausnummer",
       "providerCityLabel": "PLZ und Ort",
@@ -404,6 +406,9 @@
       "temperature": "Temperatur",
       "temperatureHint": "Wie viel Zufall das Modell haben darf. Niedrig (0-0,3) liefert sachliche, gut wiederholbare Antworten; etwa 0,7 ist ein guter Allround-Wert; über 1,2 wird es kreativ, driftet aber ab. Wird dem Modell als `temperature` übergeben.",
       "topP": "Top P",
+      "thinking": "Denken",
+      "thinkingHint": "Ob das Modell vor der Antwort nachdenkt (Reasoning). „Modell-Standard“ ändert nichts. „Aus“ überspringt das Nachdenken, die Antwort beginnt dann deutlich früher; „An“ erzwingt es. Nur Modelle, die das Nachdenken umschalten können, reagieren darauf (z. B. Qwen3-Hybridmodelle auf einem vLLM-Server), andere ignorieren es. Wird als `chat_template_kwargs.enable_thinking` gesendet.",
+      "thinkingOptions": {"default": "Modell-Standard", "on": "An", "off": "Aus"},
       "topPHint": "Schränkt ein, aus wie vielen Wörtern das Modell wählen darf: bei 1,0 aus allen, bei 0,5 nur aus den wahrscheinlichsten, die zusammen 50 % der Wahrscheinlichkeit ausmachen. Ohne konkreten Grund bei 1,0 lassen \u2014 es wirkt ähnlich wie die Temperatur, und beides gleichzeitig zu senken macht Antworten sehr eintönig.",
       "language": "Sprache",
       "spokenLanguageOptions": { "de": "Deutsch", "en": "Englisch" },
@@ -420,7 +425,7 @@
       "voiceHint": "Für Cartesia und Google Cloud TTS ist eine Stimme Pflicht (kein Standardwert) — ohne läuft die Sprachausgabe für dieses Projekt ins Leere.",
       "voiceClip": "Stimme (lokale Sprachausgabe)",
       "voiceClipDefault": "Standardstimme der Sprache",
-      "voiceClipHint": "Klont eine Stimme aus einem deiner eigenen Stimmclips. Clips anlegen und anhören unter",
+      "voiceClipHint": "Wähle eine voreingestellte Stimme oder — wenn auf diesem Server das Stimmklonen eingerichtet ist — eine gespendete Stimme oder einen deiner eigenen Stimmclips. Clips anlegen und anhören unter",
       "sttTitle": "Spracheingabe (STT)",
       "sttText": "Aktiviert den Mikrofon-Button im öffentlichen Chat. Standardmäßig aus.",
       "sttKey": "Spracherkennung auf dem Server",
@@ -435,7 +440,16 @@
       "sttBrowserTitle": "Spracherkennung auf dem Gerät (empfohlen)",
       "sttBrowserText": "Sprachnachrichten werden auf dem Gerät der Besucherin erkannt, mit Live-Text schon während des Sprechens — die Aufnahmen verlassen das Gerät nicht. Jedes Gerät lädt das Modell einmal herunter (etwa 170 MB), bevor der Chat startet. Geräte ohne WebGPU nutzen automatisch den STT-Schlüssel bzw. das Whisper des Servers.",
       "streamingTitle": "Gestreamte Antworten",
-      "streamingText": "Der Avatar beginnt schon nach dem ersten Satz zu sprechen, statt auf die vollständige Antwort zu warten. Standardmäßig aus."
+      "streamingText": "Der Avatar beginnt schon nach dem ersten Satz zu sprechen, statt auf die vollständige Antwort zu warten. Standardmäßig aus.",
+      "localVoicePresets": "Voreingestellte Stimmen",
+      "localVoiceDonations": "Gespendete Stimmen (CC0)",
+      "localVoiceClips": "Deine Stimmclips",
+      "cloningOff": "Stimmklonen ist auf diesem Server nicht eingerichtet. Deine Stimmclips und gespendete Stimmen sind deshalb nicht wählbar; ein schon gewählter Clip wird mit der Standardstimme gesprochen.",
+      "localTtsUnreachable": "Die lokale Sprachausgabe antwortet gerade nicht, deshalb fehlt die Liste ihrer Stimmen. Die gewählte Stimme bleibt gespeichert.",
+      "localTtsLanguageMissing": "Die lokale Sprachausgabe dieses Servers spricht die Sprache dieses Projekts nicht. Wähle eine andere Sprache oder einen Cloud-Anbieter.",
+      "ttsBrowserTitle": "Sprachausgabe auf dem Gerät",
+      "ttsBrowserText": "Das Gerät der Besucherin spricht die Antworten selbst (Pocket TTS, Deutsch), statt sie vom Server zu bekommen — mit der oben gewählten voreingestellten Stimme, sonst mit „Alba“; eigene Stimmclips und gespendete Stimmen gibt es auf dem Gerät nicht. Jedes Gerät lädt das Modell einmal herunter (etwa 100 MB), bevor es spricht; bis dahin und auf Geräten, die es nicht laden können, spricht die oben gewählte Sprachausgabe.",
+      "ttsBrowserLanguage": "Nur für deutschsprachige Projekte: Das Modell spricht nur Deutsch."
     },
     "step3": {
       "defaultPreprompt": "Du bist ein hilfreicher, KI-gestützter Lernassistent.\n\nAntworte kindgerecht, geduldig und ermutigend. Wenn du etwas nicht weißt, sag das ehrlich, anstatt zu raten.",
@@ -702,7 +716,8 @@
     "previewButton": "Anhören",
     "previewSample": "Hallo! Ich bin dein Lernbegleiter. Wollen wir loslegen?",
     "previewSlow": "Wird erzeugt… die erste Hörprobe nach dem Start des Sprachdienstes kann etwa eine Minute dauern.",
-    "previewFailed": "Die Hörprobe konnte nicht erzeugt werden."
+    "previewFailed": "Die Hörprobe konnte nicht erzeugt werden.",
+    "cloningOff": "Stimmklonen ist auf diesem Server nicht eingerichtet (dafür braucht die lokale Sprachausgabe einen Hugging-Face-Token). Du kannst Clips anlegen, aber Projekte sprechen bis dahin mit einer voreingestellten Stimme."
   },
   "pronunciation": {
     "title": "Aussprache",
@@ -712,11 +727,11 @@
     "howTo": {
       "title": "So funktioniert's",
       "term": "Begriff: wie das Wort im Text steht, z. B. „pH“ oder „km/h“. Gesprochen: wie die Sprachausgabe es sagen soll, z. B. „p H“.",
-      "number": "Platzhalter {number}: steht für eine beliebige Zahl wie 5 oder 1,5. „{number} m“ → „{number} Meter“ liest „1,5 m“ als „1,5 Meter“, lässt ein einzelnes „m“ (z. B. die Masse) aber unverändert.",
+      "number": "Platzhalter {number}: steht für eine beliebige Zahl wie 5 oder 1,5. „{number} m“ → „{number} Meter“ liest „1,5 m“ als „eins Komma fünf Meter“, lässt ein einzelnes „m“ (z. B. die Masse) aber unverändert.",
       "wholeWord": "Nur ganzes Wort (Standard): „N“ wird nicht im Wort „Newton“ ersetzt. Einheiten direkt an einer Zahl wie „10kg“ werden trotzdem erkannt.",
       "caseSensitive": "Groß-/Kleinschreibung beachten: „m“ (Meter) und „M“ (Mega) bleiben verschiedene Begriffe.",
       "spellOut": "Buchstabieren: liest Abkürzungen wie „GPT“ Buchstabe für Buchstabe.",
-      "order": "Längere Begriffe haben Vorrang („km/h“ vor „km“). Danach greifen die eingebauten Regeln für Kommazahlen und Rechenzeichen."
+      "order": "Längere Begriffe haben Vorrang („km/h“ vor „km“). Deine Begriffe greifen vor den eingebauten Regeln, die Zahlen, Einheiten, Datumsangaben, Abkürzungen und Rechenzeichen in Worte fassen. Was du unter „Gesprochen“ einträgst, wird genau so gesprochen – nur Zahlen darin, auch {number}, werden in Worten gelesen."
     },
     "addTitle": "Begriff hinzufügen",
     "term": "Begriff (wie er im Text steht)",
@@ -820,6 +835,22 @@
     "saved": "Gespeichert."
   },
   "latencyLab": {
+    "sttCheck": {
+      "title": "Nur Spracherkennung messen",
+      "hint": "Misst das geladene Spracherkennungsmodell allein, ohne Projekt, Sprachmodell oder Sprachausgabe: wie schnell der erste Live-Text erscheint, wie lange jede Neu-Erkennung dauert und wie lange es vom Stopp bis zum endgültigen Text dauert. Es wird nichts an den Server geschickt. Ablauf für einen Gerätetest: docs/stt-device-test.md.",
+      "needModel": "Lade zuerst oben die Spracherkennung auf diesem Gerät.",
+      "startMic": "Über das Mikrofon aufnehmen",
+      "stop": "Stopp",
+      "playFile": "Eine Audiodatei durch die Erkennung abspielen",
+      "partial": "Live-Text",
+      "final": "Endgültiger Text",
+      "firstPartial": "Erster Text nach",
+      "decode": "Dauer pro Neu-Erkennung (letzte / Schnitt / max.)",
+      "decodedAudio": "Audiolänge der letzten Neu-Erkennung",
+      "finalize": "Zeit vom Stopp bis zum endgültigen Text",
+      "copy": "Ergebnisse kopieren",
+      "error": "Fehler: {{message}}"
+    },
     "title": "Latenztest",
     "subtitle": "Simuliere Gespräche von Schüler:innen mit einem deiner Projekte und miss jeden Schritt auf diesem Gerät: Spracherkennung, Sprachmodell, Sprachausgabe und Avatar — vor allem, wie lange es nach dem Ende des Sprechens dauert, bis der Avatar antwortet.",
     "setupTitle": "Konfiguration",
@@ -833,8 +864,8 @@
     "llmProject": "Wie im Projekt eingestellt",
     "tts": "Sprachausgabe",
     "ttsProject": "Wie im Projekt eingestellt",
-    "ttsLocal": "Lokale Sprachausgabe auf dem Server (Sopro)",
-    "ttsBrowser": "Sopro in diesem Browser",
+    "ttsLocal": "Lokale Sprachausgabe auf dem Server (Pocket TTS)",
+    "ttsBrowserPocket": "Pocket TTS in diesem Browser (Deutsch)",
     "ttsNone": "Keine (nur Text)",
     "streaming": "Streaming (der Avatar spricht schon nach dem ersten Satz)",
     "avatar": "3D-Avatar anzeigen",
@@ -848,14 +879,7 @@
     "yes": "ja",
     "no": "nein",
     "parakeetTitle": "Spracherkennung auf diesem Gerät (Parakeet)",
-    "soproTitle": "Sprachausgabe in diesem Browser (Sopro)",
-    "soproHint": "Lädt das Sopro-Modell in diesen Browser (von Hugging Face, außer du trägst unten eine selbst gehostete Kopie ein). Nutzt auf Computern WebGPU und auf Tablets und Smartphones die CPU.",
-    "soproModelUrl": "Modelladresse (optional)",
-    "soproBackend": "läuft als {{backend}}",
-    "soproVoice": "Zu klonende Stimme",
-    "soproVoicePick": "Eine deiner Stimmaufnahmen wählen …",
-    "soproVoiceUpload": "Aufnahme hochladen",
-    "soproVoiceReady": "Stimme „{{name}}“ bereit (vorbereitet in {{ms}} ms).",
+    "engineBackend": "läuft als {{backend}}",
     "load": "Laden",
     "engineStatus": "Status: {{status}}",
     "loadedIn": "bereit nach {{seconds}} s",
@@ -888,7 +912,11 @@
     "missingClips": "Diese Aufnahmen aus dem Skript wurden nicht hinzugefügt: {{names}}",
     "noProject": "Wähle zuerst ein Projekt.",
     "needParakeet": "Lade zuerst die Spracherkennung auf dem Gerät (oder wähle die Spracherkennung auf dem Server).",
-    "needSopro": "Lade zuerst Sopro und wähle eine Stimme (oder wähle eine andere Sprachausgabe).",
+    "needPocket": "Lade zuerst Pocket TTS (oder wähle eine andere Sprachausgabe).",
+    "pocketTitle": "Sprachausgabe in diesem Browser (Pocket TTS)",
+    "pocketHint": "Lädt Kyutais Pocket TTS (Deutsch, etwa 100 MB) von diesem Server in den Browser und spricht mit der voreingestellten Stimme des Projekts (sonst „alba“) – ohne Stimmklonen. Läuft auf der CPU. Schlägt das Laden fehl, fehlen die Modelldateien auf dem Server: Sie werden mit scripts/fetch-tts-model.sh heruntergeladen.",
+    "pocketVoice": "Stimme: {{voice}} – {{credit}}",
+    "pocketGermanOnly": "Pocket TTS spricht nur Deutsch; die Sprache dieses Projekts ist eine andere.",
     "resultsTitle": "Ergebnisse",
     "resultsHint": "Alle Zeiten in Millisekunden. Wenn nicht anders angegeben, gezählt ab dem Moment, in dem die Eingabe fertig war (Aufnahme beendet, Clip zu Ende, Text gesendet).",
     "copy": "Als CSV kopieren",
@@ -928,7 +956,7 @@
       "llmFirstTokenMs": "Server: vom Eingang der Nachricht bis zum ersten Wort des Sprachmodells (nur mit Streaming).",
       "llmTotalMs": "Server: bis die ganze Antwort des Sprachmodells da ist.",
       "firstChunkTextReadyMs": "Server: bis der erste Satz vollständig ist und an die Sprachausgabe geht.",
-      "firstChunkTtsMs": "Wie lange die Sprachausgabe für den ersten Satz brauchte – auf dem Server oder mit Sopro im Browser bis zum ersten Ton.",
+      "firstChunkTtsMs": "Wie lange die Sprachausgabe für den ersten Satz brauchte – auf dem Server oder im Browser bis zum ersten Ton.",
       "ttsTotalMs": "Synthesezeit aller Sätze zusammen.",
       "requestToFirstChunkMs": "Dieses Gerät: vom Senden der Nachricht bis zum ersten Teil der Antwort (Netzwerk, Sprachmodell und Sprachausgabe auf dem Server zusammen).",
       "firstAudioMs": "Dieses Gerät: vom Ende der Eingabe bis der Avatar zu sprechen beginnt. Das ist die Wartezeit, die Schüler:innen spüren.",
@@ -938,23 +966,6 @@
       "avatarFps": "Bilder pro Sekunde des 3D-Avatars, während er sprach (Ziel: 30).",
       "retrievalMs": "Server: Suche der Abschnitte in den Wissensbasen des Projekts, bevor das Sprachmodell gefragt wird. Leer ohne Wissensbasis."
     }
-  },
-  "sttTest": {
-    "title": "Gerätetest Spracherkennung",
-    "intro": "Lädt das Spracherkennungsmodell und misst, wie schnell es auf diesem Gerät läuft. Es wird nichts an den Server geschickt.",
-    "status": "Status: {{status}}",
-    "loadTime": "Modell bereit nach {{seconds}} s",
-    "error": "Fehler: {{message}}",
-    "startMic": "Über das Mikrofon aufnehmen",
-    "stop": "Stopp",
-    "playFile": "Eine Audiodatei durch die Erkennung abspielen",
-    "partial": "Live-Text",
-    "final": "Endgültiger Text",
-    "firstPartial": "Erster Text nach",
-    "decode": "Dauer pro Neu-Erkennung (letzte / Schnitt / max.)",
-    "decodedAudio": "Audiolänge der letzten Neu-Erkennung",
-    "finalize": "Zeit vom Stopp bis zum endgültigen Text",
-    "copy": "Ergebnisse kopieren"
   },
   "credits": {
     "title": "Credits & Lizenzen",
@@ -972,12 +983,18 @@
       }
     },
     "speech": {
-      "title": "Spracherkennung",
+      "title": "Spracherkennung und Sprachausgabe",
       "parakeet": {
         "description": "Mehrsprachiges Spracherkennungsmodell, das auf dem Gerät der Besucherin läuft (ternäre Version von NVIDIAs Parakeet TDT 0.6B v3)",
         "note": "Originalmodell von NVIDIA, ternäre Version von Moondream, ONNX-Export von eschmidbauer und mrfakename. Unverändert verwendet; die Dateien werden für die Auslieferung nur neu komprimiert."
       },
-      "onnxRuntime": { "description": "Führt das Spracherkennungsmodell per WebGPU und WebAssembly im Browser aus" }
+      "onnxRuntime": { "description": "Führt die Modelle für Spracherkennung und Sprachausgabe per WebGPU und WebAssembly im Browser aus" },
+      "pocket": {
+        "description": "Sprachausgabe ohne Cloud-Anbieter: auf dem Server für alle Projekte ohne TTS-Schlüssel und, vorerst im Latenztest, auf dem Gerät der Besucherin",
+        "note": "Im Browser: ONNX-Export und int8-Quantisierung von Lauro00000 (mit lookbe/pocket-tts-onnx-export), von LOLA unverändert gespiegelt; der Teil zum Stimmklonen ist nicht enthalten. Tokenizer und Stimmzustand „alba“ von Kyutai, unverändert. Stimme aufgenommen von Alba MacKenna (CC BY 4.0).",
+        "voicesNote": "Voreingestellte Stimmen aus Kyutais Stimmsammlung: Alba MacKenna, VCTK und CML-TTS (CC BY 4.0), Mozilla Common Voice, Voice-Zero und Kyutais eigene Aufnahmen (CC0). Gespendete Stimmen aus dem Unmute Voice Donation Project (CC0)."
+      },
+      "tokenizers": { "description": "Zerlegt den Text in die Tokens, die das Sprachausgabemodell liest" }
     },
     "fonts": {
       "title": "Schriften",
@@ -1362,7 +1379,140 @@
     "bibUnlinked": "Ohne Eintrag: {{names}}. Den Schlüssel kannst du bei den Quellenangaben eines Dokuments selbst wählen.",
     "bibFailed": "Der Import ist fehlgeschlagen."
   },
+  "adminPages": {
+    "title": "Seiten",
+    "subtitle": "Texte der öffentlichen Seiten an die eigene Einrichtung anpassen und weitere Seiten anlegen – je Sprache.",
+    "loadError": "Seiten konnten nicht geladen werden.",
+    "builtinTitle": "Eingebaute Seiten",
+    "builtinHint": "Ohne eigenen Text zeigen diese Seiten den mitgelieferten Text. Fehlt eine Sprache, erscheint der englische Text, sonst der mitgelieferte.",
+    "customTitle": "Weitere Seiten",
+    "customHint": "Zum Beispiel eine Erklärung zur Barrierefreiheit, die öffentliche Stellen wie Schulen und Hochschulen veröffentlichen müssen. Erreichbar unter /p/<adresse>, sobald veröffentlicht.",
+    "columns": {
+      "page": "Seite",
+      "ownText": "Eigener Text",
+      "lastChange": "Zuletzt geändert",
+      "status": "Status"
+    },
+    "kinds": {
+      "landing": "Startseite",
+      "imprint": "Impressum",
+      "privacy": "Datenschutzerklärung",
+      "custom": "Eigene Seite"
+    },
+    "descriptions": {
+      "landing": "Überschrift, Einleitung und Funktionskarten der Startseite, dazu ein optionaler eigener Abschnitt.",
+      "imprint": "Ersetzt das mitgelieferte Impressum durch einen eigenen Text in Markdown.",
+      "privacy": "Ersetzt die mitgelieferte Datenschutzerklärung durch einen eigenen Text in Markdown.",
+      "custom": "Eine eigene Seite in Markdown."
+    },
+    "localeWritten": "Eigener Text vorhanden",
+    "localeMissing": "Kein eigener Text",
+    "edit": "Bearbeiten",
+    "untitled": "Ohne Titel",
+    "published": "Veröffentlicht",
+    "draft": "Entwurf",
+    "noCustomPages": "Noch keine weiteren Seiten.",
+    "slugLabel": "Adresse der Seite",
+    "slugPlaceholder": "barrierefreiheit",
+    "slugHint": "Der letzte Teil der Adresse: aus „barrierefreiheit“ wird /p/barrierefreiheit. Nur Kleinbuchstaben, Ziffern und Bindestriche.",
+    "create": "Seite anlegen",
+    "createError": "Seite konnte nicht angelegt werden.",
+    "neverChanged": "Noch nie geändert",
+    "deletedAccount": "Gelöschtes Konto",
+    "languages": {
+      "de": "Deutsch",
+      "en": "Englisch"
+    },
+    "status": {
+      "own": "In dieser Sprache wird dein eigener Text angezeigt.",
+      "fallbackEnglish": "In dieser Sprache gibt es noch keinen eigenen Text – Besucher:innen sehen deinen englischen Text.",
+      "builtin": "In dieser Sprache gibt es noch keinen eigenen Text – Besucher:innen sehen den mitgelieferten Text.",
+      "customOther": "In dieser Sprache gibt es noch keinen Text – Besucher:innen sehen den Text einer anderen Sprache.",
+      "customEmpty": "Diese Seite hat noch keinen Text und ist deshalb nicht erreichbar."
+    },
+    "landingFields": {
+      "badge": "Hinweis über der Überschrift",
+      "headingFull": "Überschrift",
+      "headingShort": "Kurze Überschrift (Smartphone)",
+      "heroText": "Einleitungstext",
+      "configureTitle": "Karte 1: Titel",
+      "configureText": "Karte 1: Text",
+      "publishTitle": "Karte 2: Titel",
+      "publishText": "Karte 2: Text",
+      "flexibilityTitle": "Karte 3: Titel",
+      "flexibilityText": "Karte 3: Text"
+    },
+    "editor": {
+      "back": "Alle Seiten",
+      "view": "Seite ansehen",
+      "languageTabs": "Sprache",
+      "unsaved": "Ungespeicherte Änderungen",
+      "write": "Bearbeiten",
+      "preview": "Vorschau",
+      "previewEmpty": "Noch kein Text.",
+      "markdownHint": "Markdown: ## Überschrift, **fett**, [Link](https://…), - Liste",
+      "landingFieldsHint": "Leere Felder behalten den mitgelieferten Text (grau angezeigt). Fehlt die kurze Überschrift, wird auf dem Smartphone die normale verwendet.",
+      "landingExtra": "Eigener Abschnitt unter den Karten (optional)",
+      "landingExtraHint": "Zum Beispiel, wer diese Instanz betreibt, oder ein Hinweis auf ein Forschungsprojekt. Bleibt das Feld leer, gibt es keinen Abschnitt.",
+      "titleLabel": "Titel",
+      "titleHint": "Überschrift der Seite und Linktext im Footer.",
+      "titleOptionalLabel": "Überschrift (optional)",
+      "titleOptionalHint": "Leer lassen, um die übliche Überschrift zu behalten. Gilt nur zusammen mit eigenem Text.",
+      "insertBuiltin": "Mitgelieferten Text als Vorlage einfügen",
+      "confirmInsertBuiltin": "Den bisherigen Text im Editor durch den mitgelieferten ersetzen?",
+      "contentLabel": "Text",
+      "contentHint": "Der Inhalt der Seite in Markdown. HTML wird nicht dargestellt.",
+      "contentLegalHint": "Ersetzt die ganze mitgelieferte Seite. Für die Richtigkeit des Textes ist die Einrichtung verantwortlich, die diese Instanz betreibt. HTML wird nicht dargestellt.",
+      "save": "{{language}} speichern",
+      "saved": "Gespeichert.",
+      "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+      "reset": "Auf mitgelieferten Text zurücksetzen",
+      "confirmReset": "Den eigenen Text in dieser Sprache löschen? Danach erscheint der englische oder der mitgelieferte Text.",
+      "deleteText": "Text dieser Sprache löschen",
+      "confirmDeleteText": "Den Text in dieser Sprache löschen?"
+    },
+    "settings": {
+      "title": "Einstellungen der Seite",
+      "published": "Veröffentlicht",
+      "publishedHint": "Nur veröffentlichte Seiten mit Text sind öffentlich erreichbar.",
+      "showInFooter": "Im Footer verlinken",
+      "showInFooterHint": "Zeigt einen Link im Footer der Startseite und der Anmeldeseiten.",
+      "footerOrder": "Reihenfolge im Footer",
+      "footerOrderHint": "Kleinere Zahlen stehen weiter vorne.",
+      "save": "Einstellungen speichern",
+      "saveError": "Einstellungen konnten nicht gespeichert werden.",
+      "delete": "Seite löschen",
+      "confirmDelete": "Diese Seite mit allen Texten und ihrem Verlauf endgültig löschen?",
+      "deleteError": "Seite konnte nicht gelöscht werden."
+    },
+    "history": {
+      "title": "Verlauf",
+      "lastChange": "Zuletzt geändert:",
+      "when": "Wann",
+      "who": "Wer",
+      "what": "Was",
+      "empty": "Noch keine Änderungen.",
+      "actions": {
+        "created": "Angelegt",
+        "content_saved": "Text gespeichert",
+        "content_reset": "Text zurückgesetzt",
+        "settings_changed": "Einstellungen geändert"
+      }
+    }
+  },
+  "customPage": {
+    "notFoundTitle": "Seite nicht gefunden",
+    "notFoundText": "Diese Seite gibt es nicht oder sie ist nicht veröffentlicht.",
+    "backHome": "Zur Startseite"
+  },
   "errors": {
+    "PAGE_NOT_FOUND": "Seite nicht gefunden.",
+    "PAGE_SLUG_INVALID": "Die Adresse darf nur Kleinbuchstaben (a–z), Ziffern und einzelne Bindestriche enthalten (max. 80 Zeichen).",
+    "PAGE_SLUG_TAKEN": "Diese Adresse ist schon vergeben.",
+    "PAGE_BUILTIN_PROTECTED": "Eingebaute Seiten können nicht verschoben, versteckt oder gelöscht werden – nur ihr Text ist änderbar.",
+    "PAGE_TITLE_REQUIRED": "Bitte einen Titel angeben – er erscheint als Überschrift und im Footer.",
+    "PAGE_FIELDS_NOT_ALLOWED": "Diese Felder gibt es auf dieser Seite nicht.",
+    "PAGE_FIELD_TOO_LONG": "Ein Feld ist zu lang (max. 2.000 Zeichen).",
     "RATE_LIMIT_EVALUATION": "Zu viele Anfragen an den Qualitätstest. Bitte warte ein paar Minuten.",
     "EVALUATION_DISABLED": "Der Qualitätstest ist auf diesem Server nicht eingerichtet.",
     "EVALUATION_SERVICE_UNAVAILABLE": "Der Bewertungsdienst ist gerade nicht erreichbar.",

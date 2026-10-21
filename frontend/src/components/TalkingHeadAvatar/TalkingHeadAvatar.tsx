@@ -71,6 +71,13 @@ export interface TalkingHeadAvatarHandle {
   decodeAudio: (audioBase64: string) => Promise<AudioBuffer>;
   /** Plays an already-decoded buffer from decodeAudio(). */
   speakBuffer: (audioBuffer: AudioBuffer) => void;
+  /**
+   * Plays `audioBuffer` seamlessly after the previous queueBuffer() call's audio — for speech that
+   * arrives in short pieces cut mid-word (an in-browser TTS engine, see lib/browserTts.ts).
+   * speakBuffer() can't do that on the avatar: TalkingHead only starts its next buffer from the
+   * previous one's `ended` event, which leaves an audible gap at every seam.
+   */
+  queueBuffer: (audioBuffer: AudioBuffer) => void;
   /** Immediately stops any audio currently playing (mid-sentence included), clears the speech
    * queue, and resets the mouth to its idle shape. Used both when the student interrupts a reply,
    * and — just as important — right after a reply's last chunk naturally finishes: HeadAudio drives
@@ -190,6 +197,23 @@ export const TalkingHeadAvatar = forwardRef<TalkingHeadAvatarHandle, TalkingHead
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const headRef = useRef<TalkingHead | null>(null);
+    // queueBuffer()'s own playback, outside TalkingHead's speech queue: every source until it
+    // ends, and when the last one finishes, so the next piece starts exactly there.
+    const queuedSourcesRef = useRef(new Set<AudioBufferSourceNode>());
+    const queueEndRef = useRef(0);
+    const stopQueuedSources = () => {
+      for (const source of queuedSourcesRef.current) {
+        source.onended = null;
+        try {
+          source.stop();
+        } catch {
+          // Its context is already closed.
+        }
+        source.disconnect();
+      }
+      queuedSourcesRef.current.clear();
+      queueEndRef.current = 0;
+    };
     const motionEngineRef = useRef<MotionEngine | null>(null);
     // The imperative handle below is created once, so it reads the prop through a ref.
     const thinkingMotionsEnabledRef = useRef(thinkingMotionsEnabled);
@@ -224,14 +248,44 @@ export const TalkingHeadAvatar = forwardRef<TalkingHeadAvatarHandle, TalkingHead
           // played here, independently of this call.
           headRef.current?.speakAudio({ audio: audioBuffer });
         },
+        queueBuffer(audioBuffer: AudioBuffer) {
+          const head = headRef.current;
+          if (!head) return;
+          const audioCtx = head.audioCtx;
+          if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+          const sources = queuedSourcesRef.current;
+          if (sources.size === 0) {
+            // What startSpeaking() does at the start of an utterance.
+            head.lookAtCamera(500);
+            head.speakWithHands();
+          }
+          head.isSpeaking = true;
+          head.stateName = "speaking";
+          const source = audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(head.audioAnalyzerNode);
+          const startAt = Math.max(audioCtx.currentTime, queueEndRef.current);
+          source.start(startAt);
+          queueEndRef.current = startAt + audioBuffer.duration;
+          sources.add(source);
+          source.onended = () => {
+            source.disconnect();
+            sources.delete(source);
+            if (sources.size > 0) return;
+            queueEndRef.current = 0;
+            head.isSpeaking = false;
+            head.stateName = "idle";
+          };
+        },
         stopSpeaking() {
+          stopQueuedSources();
           headRef.current?.stopSpeaking();
         },
         async waitUntilIdle(signal?: AbortSignal) {
           const head = headRef.current;
           if (!head) return;
           const POLL_INTERVAL_MS = 50;
-          while (head.isSpeaking && !signal?.aborted) {
+          while ((head.isSpeaking || queuedSourcesRef.current.size > 0) && !signal?.aborted) {
             await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
           }
         },
@@ -400,6 +454,12 @@ export const TalkingHeadAvatar = forwardRef<TalkingHeadAvatarHandle, TalkingHead
             // A factor on top of devicePixelRatio, see MAX_PIXEL_RATIO.
             modelPixelRatio: Math.min(1, MAX_PIXEL_RATIO / window.devicePixelRatio),
           });
+          // TalkingHead sends all audio through a convolver with a one-second "dry" impulse. The
+          // convolver normalizes its impulse by default, which scales that single 1.0 sample down
+          // to about 0.25 (-12 dB in Chromium): the avatar spoke much quieter than audio-only output.
+          // `normalize` only takes effect when the buffer is set, hence setReverb() again.
+          head.audioReverbNode.normalize = false;
+          await head.setReverb(null);
           await head.showAvatar({ url: avatarUrl, body: "F" });
           if (cancelled) return;
           headRef.current = head;
@@ -508,6 +568,8 @@ export const TalkingHeadAvatar = forwardRef<TalkingHeadAvatarHandle, TalkingHead
         container?.removeEventListener("webglcontextlost", onContextLost, true);
         container?.removeEventListener("webglcontextrestored", onContextRestored, true);
         headRef.current = null;
+        // A disposed head's sources would never report `ended`, and waitUntilIdle would wait forever.
+        stopQueuedSources();
         // Clears the engine's pending gesture timers, which would otherwise fire on a disposed head.
         motionEngineRef.current?.stop();
         motionEngineRef.current = null;

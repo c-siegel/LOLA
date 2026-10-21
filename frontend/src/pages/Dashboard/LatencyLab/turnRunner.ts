@@ -3,12 +3,12 @@
 // The page (index.tsx) owns the engines and the avatar; this only orchestrates and measures.
 
 import { errorMessage } from "@/api/client";
-import { latencyTestApi, sendLatencyMessage, type LatencyChunkEvent } from "@/api/latencyTest";
+import { latencyTestApi, sendLatencyMessage, type LatencyChunkEvent, type ServerTtsMode } from "@/api/latencyTest";
 import type { TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
+import type { BrowserTts } from "@/lib/browserTts";
 import type { ParakeetSttEngine } from "@/lib/parakeetStt";
-import type { SoproBrowserTts } from "@/lib/soproTts";
 import type { ChatMessage } from "@/types/chat";
-import type { InputKind, LabConfig, TurnResult } from "./metrics";
+import { isBrowserTtsMode, type InputKind, type LabConfig, type TurnResult } from "./metrics";
 
 export interface Clip {
   id: string;
@@ -33,7 +33,8 @@ export interface TurnContext {
   /** Created in the click that started the run, kept for all its turns (iPadOS needs that). */
   inputContext: AudioContext;
   parakeet: ParakeetSttEngine | null;
-  sopro: SoproBrowserTts | null;
+  /** The engine for the selected browser TTS mode; null for server modes. */
+  browserTts: BrowserTts | null;
   history: ChatMessage[];
   signal: AbortSignal;
   /** Live transcript while the student "speaks", for the page to show. */
@@ -250,19 +251,21 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
     }
 
     // ---- 2. Reply from the backend, 3. speech output on this device ----
-    const browserTts = ctx.config.ttsMode === "browser";
-    if (browserTts && !ctx.sopro?.backend) throw new Error("Sopro (browser TTS) is not loaded.");
+    const browserTts = isBrowserTtsMode(ctx.config.ttsMode);
+    if (browserTts && !ctx.browserTts?.backend) throw new Error("The browser TTS engine is not loaded.");
     const requestAt = performance.now();
     let firstChunkAt: number | null = null;
     let firstAudioAt: number | null = null;
     let queueEnd = 0;
     let gapMs = 0;
-    let soproMs = 0;
+    let browserTtsMs = 0;
     let replyText = "";
     // Chunks are decoded/synthesized strictly in order, so they also play in order.
     let speech: Promise<void> = Promise.resolve();
 
-    const play = (buffer: AudioBuffer) => {
+    // `pieces`: the buffer continues the previous one mid-word (browser TTS), so it must follow it
+    // without TalkingHead's gap between speech-queue items.
+    const play = (buffer: AudioBuffer, pieces = false) => {
       const now = performance.now();
       if (firstAudioAt == null) {
         firstAudioAt = now;
@@ -272,7 +275,8 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
         gapMs += now - queueEnd;
       }
       queueEnd = Math.max(now, queueEnd) + buffer.duration * 1000;
-      ctx.speaker.speakBuffer(buffer);
+      if (pieces) ctx.speaker.queueBuffer(buffer);
+      else ctx.speaker.speakBuffer(buffer);
     };
 
     const onChunk = (chunk: LatencyChunkEvent) => {
@@ -286,13 +290,13 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
         speech = speech.then(async () => play(await ctx.speaker.decodeAudio(audioBase64)));
       } else if (browserTts) {
         speech = speech.then(async () => {
-          const synthesis = await ctx.sopro!.synthesize(chunk.text, ctx.language, (samples, sampleRate) => {
+          const synthesis = await ctx.browserTts!.synthesize(chunk.text, ctx.language, (samples, sampleRate) => {
             const buffer = new AudioBuffer({ length: samples.length, numberOfChannels: 1, sampleRate });
             buffer.copyToChannel(samples, 0);
-            play(buffer);
+            play(buffer, true);
           });
           if (chunk.index === 0) result.firstChunkTtsMs = synthesis.firstAudioMs;
-          soproMs += synthesis.synthMs;
+          browserTtsMs += synthesis.synthMs;
         });
       }
     };
@@ -304,7 +308,7 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
         history: ctx.history,
         llmApiKeyId: ctx.config.llmKeyId,
         // Browser TTS: the server sends text only, this device speaks it.
-        ttsMode: ctx.config.ttsMode === "browser" ? "none" : ctx.config.ttsMode,
+        ttsMode: browserTts ? "none" : (ctx.config.ttsMode as ServerTtsMode),
         streaming: ctx.config.streaming,
       },
       onChunk,
@@ -321,7 +325,7 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
     ctx.history.push({ role: "user", content: message }, { role: "assistant", content: done.reply });
 
     await abortable(speech, ctx.signal);
-    if (browserTts) result.ttsTotalMs = soproMs;
+    if (browserTts) result.ttsTotalMs = browserTtsMs;
     await ctx.speaker.waitUntilIdle(ctx.signal);
     if (firstAudioAt != null) {
       result.firstAudioMs = firstAudioAt - t0;

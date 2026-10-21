@@ -22,24 +22,24 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from normt2s import Piece, RuleSet
 from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.error_codes import ErrorCode
 from app.features.ai import llm
 from app.features.ai.tts import VoiceReference, synthesize_speech
-from app.features.ai.tts.pronunciation import PronunciationMatcher
+from app.features.ai.tts.normalizer import normalize_for_speech, speech_stream
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.resolve import resolve_llm_key, resolve_tts_key
 from app.features.chat.conversation_store import save_turn
 from app.features.chat.checklist import Check, Checklist, checklist_for, checklist_prompt
 from app.features.chat.motion import MotionMark, compose_system_prompt, extract_markers
-from app.features.chat.streaming import SentenceChunker
 from app.features.knowledge.prompt import reference_block
 from app.features.knowledge.retrieval import KnowledgeContext, Passage, prepare_knowledge, retrieve, sources_for_transcript
 from app.features.media.service import voice_reference_for_project
 from app.features.projects.models import Project
-from app.features.pronunciation.service import matcher_for
+from app.features.pronunciation.service import rules_for
 
 # Visitors deliberately only get generic error messages (no technical detail) — so the actual
 # error is still visible *somewhere* instead of being swallowed entirely, it goes into the
@@ -71,6 +71,7 @@ class ChatContext:
     preprompt: str
     temperature: float | None
     top_p: float | None
+    thinking: bool | None
     start_prompt: str | None
     tts_voice: str | None
     spoken_language: str
@@ -82,7 +83,7 @@ class ChatContext:
     knowledge: KnowledgeContext | None = None
     # The teacher's own pronunciation word list for spoken_language (None: empty or TTS off).
     # Loaded once here, so a streamed reply doesn't re-read it for every chunk.
-    pronunciation: PronunciationMatcher | None = None
+    pronunciation: RuleSet | None = None
     # Whether the LLM may mark gestures for the avatar (see features/chat/motion.py) — already
     # False when the project's layout shows no avatar.
     motion_enabled: bool = False
@@ -91,6 +92,10 @@ class ChatContext:
     # The conversation plan (see features/chat/checklist.py), None when off. Unlike gestures it
     # also applies to the chat-only layout: it structures the conversation, not the avatar.
     checklist: Checklist | None = None
+    # The visitor's device speaks this reply (see Project.tts_browser_enabled): no synthesis here,
+    # the reply's spoken form goes out instead — normalized and with the teacher's pronunciation
+    # list applied, exactly what the server's TTS would have read.
+    speak_on_device: bool = False
 
 
 @dataclass
@@ -123,6 +128,8 @@ class ChatReply:
     motions: list[str] = field(default_factory=list)
     # Plan steps ticked off or taken back in this reply (see features/chat/checklist.py).
     checks: list[Check] = field(default_factory=list)
+    # What the visitor's device should say — only with ChatContext.speak_on_device.
+    spoken: str | None = None
 
 
 class LLMFailed(Exception):
@@ -152,13 +159,14 @@ def prepare_chat(session: Session, project: Project, llm_key: UserApiKey | None 
         preprompt=project.preprompt or "",
         temperature=project.temperature,
         top_p=project.top_p,
+        thinking={"on": True, "off": False}.get(project.thinking_mode),
         start_prompt=project.start_prompt,
         tts_voice=project.tts_voice,
         spoken_language=project.spoken_language,
         save_conversations=project.save_conversations,
         voice_clip=voice_reference_for_project(session, project) if tts_api_key is None else None,
         knowledge=prepare_knowledge(session, project, api_key.provider),
-        pronunciation=matcher_for(session, project.user_id, project.spoken_language) if project.tts_enabled else None,
+        pronunciation=rules_for(session, project.user_id, project.spoken_language) if project.tts_enabled else None,
         motion_enabled=project.motion_enabled and project.chat_layout != "chat_only",
         motion_prompt=project.motion_prompt,
         checklist=checklist_for(project),
@@ -188,6 +196,7 @@ def _chat_request(context: ChatContext, turn: ChatTurn, passages: list[Passage],
         context.start_prompt,
         turn.history,
         reference_material=reference,
+        thinking=context.thinking,
     )
 
 
@@ -234,11 +243,12 @@ def _split_markers(context: ChatContext, text: str) -> tuple[str, list[MotionMar
     return clean, marks if context.motion_enabled else [], list(last.values())
 
 
-def _synthesize(context: ChatContext, text: str) -> tuple[str | None, str | None, float]:
+def _synthesize(context: ChatContext, text: str, normalized: bool = False) -> tuple[str | None, str | None, float]:
     """Speech for `text` as (audioBase64, contentType, ms); never raises — speech output is an
-    addition to the text reply, so a TTS failure is logged and the text still goes out."""
+    addition to the text reply, so a TTS failure is logged and the text still goes out.
+    `normalized`: `text` already is the spoken form (see synthesize_speech)."""
     # A chunk can consist of nothing but a gesture marker.
-    if not context.tts_enabled or not text:
+    if not context.tts_enabled or context.speak_on_device or not text:
         return None, None, 0.0
     synth_start = time.perf_counter()
     try:
@@ -249,6 +259,7 @@ def _synthesize(context: ChatContext, text: str) -> tuple[str | None, str | None
             context.spoken_language,
             voice_clip=context.voice_clip,
             pronunciation=context.pronunciation,
+            normalized=normalized,
         )
     except Exception:
         logger.exception("TTS failed (project_id=%s)", context.project_id)
@@ -282,7 +293,10 @@ def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> Ch
     tts_start = time.perf_counter()
     audio_base64, content_type, _ = _synthesize(context, reply)
     tts_ms = (time.perf_counter() - tts_start) * 1000 if audio_base64 is not None else None
-    return ChatReply(reply, audio_base64, content_type, llm_ms, tts_ms, retrieval_ms, [m.name for m in motions], checks)
+    spoken = normalize_for_speech(reply, context.spoken_language, context.pronunciation) if context.speak_on_device else None
+    return ChatReply(
+        reply, audio_base64, content_type, llm_ms, tts_ms, retrieval_ms, [m.name for m in motions], checks, spoken
+    )
 
 
 @dataclass
@@ -310,7 +324,7 @@ def answer_for_evaluation(context: ChatContext, question: str) -> EvaluationAnsw
 
 def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dict]]:
     """Yield (event, data) pairs for a streamed reply: one "chunk" per sentence-sized piece (see
-    streaming.py), each synthesized as soon as it's ready — so the avatar can start speaking well
+    ai/tts/normalizer.py::speech_stream), each synthesized as soon as it's ready — so the avatar can start speaking well
     before the full reply exists — then "done" (or "error" if the LLM failed).
 
     Never raises for an LLM or save failure: by the time either happens, part of the reply may
@@ -321,38 +335,49 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
     # Time until the first chunk is handed to TTS, distinct from first_chunk_ms (time until
     # that chunk's synthesis *finishes*) — isolates LLM/chunking speed from TTS speed. Captured
     # in submit() itself since that's the one place both the per-delta loop and the
-    # chunker.flush() tail path funnel through.
+    # flush_piece() tail path funnel through.
     first_chunk_ready_ms: float | None = None
     # Time until the LLM's first token — separates the provider's own response time from the
-    # chunker waiting for a whole sentence.
+    # stream waiting for a whole sentence.
     first_token_ms: float | None = None
     total_tts_ms: float | None = 0.0 if context.tts_enabled else None
     full_text_parts: list[str] = []
-    chunker = SentenceChunker()
+    # Each piece carries the raw text (shown, and where the markers are) and its spoken form
+    # (normalized, with the teacher's word list), so a chunk is normalized once, as a whole.
+    stream = speech_stream(context.spoken_language, context.pronunciation)
     # Chunks are submitted to the shared _tts_executor (module-level, see its definition
     # above) in order, but output order is enforced independently by pop_ready() only ever
     # popping the deque's front once it's done — so it doesn't matter whether the shared
     # pool's worker threads finish chunk N+1 before chunk N, synthesis for chunk N still
     # overlaps with the LLM producing chunk N+1 rather than a fully sequential "wait for
     # TTS, then ask for more".
-    futures: deque[tuple[int, "Future[tuple[str | None, str | None, float]]", str, list[str], list[dict], float]] = deque()
+    futures: deque[tuple[int, "Future[tuple[str | None, str | None, float]]", str, str, list[str], list[dict], float]] = deque()
     next_index = 0
 
-    def submit(text: str) -> None:
+    def submit(piece: Piece) -> None:
         nonlocal next_index, first_chunk_ready_ms
+        # Stripped like the whole reply: the browser joins chunks with a space.
+        raw = piece.raw.strip()
+        if not raw:
+            return
         ready_ms = (time.perf_counter() - start_time) * 1000
         if first_chunk_ready_ms is None:
             first_chunk_ready_ms = ready_ms
-        # The chunker keeps a marker in one piece (see streaming.py), so each chunk's markers can
-        # be cut out on their own; the browser plays them when that chunk's audio starts.
-        text, marks, checks = _split_markers(context, text)
+        # The stream never cuts inside a marker, so each chunk's markers can be cut out on their
+        # own; the browser plays them when that chunk's audio starts.
+        text, marks, checks = _split_markers(context, raw)
         motions = [m.name for m in marks]
         ticks = [c.to_client() for c in checks]
-        futures.append((next_index, _tts_executor.submit(_synthesize, context, text), text, motions, ticks, ready_ms))
+        # The normalizer only silences markers that stand apart; motion.py decides what a marker
+        # is, also one glued to a word ("Richtig::nod_yes::"), so the spoken side goes through it too.
+        spoken = extract_markers(piece.spoken)[0].strip()
+        futures.append(
+            (next_index, _tts_executor.submit(_synthesize, context, spoken, True), text, spoken, motions, ticks, ready_ms)
+        )
         next_index += 1
 
     def chunk_event(
-        idx: int, future: Future, text: str, motions: list[str], checks: list[dict], ready_ms: float
+        idx: int, future: Future, text: str, spoken: str, motions: list[str], checks: list[dict], ready_ms: float
     ) -> tuple[str, dict]:
         nonlocal first_chunk_ms, total_tts_ms
         audio_b64, content_type, synth_ms = future.result()
@@ -363,7 +388,7 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
             first_chunk_ms = sent_ms
         # The *Ms fields are per-chunk timings (since the request started) for the dashboard's
         # latency test; the public chat ignores them.
-        return "chunk", {
+        event = {
             "index": idx,
             "text": text,
             "audioBase64": audio_b64,
@@ -375,6 +400,9 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
             "ttsMs": synth_ms if context.tts_enabled else None,
             "sentMs": sent_ms,
         }
+        if context.speak_on_device:
+            event["spoken"] = spoken
+        return "chunk", event
 
     def pop_ready():
         while futures and futures[0][1].done():
@@ -389,8 +417,8 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
             if first_token_ms is None:
                 first_token_ms = (time.perf_counter() - start_time) * 1000
             full_text_parts.append(delta)
-            for chunk in chunker.feed(delta):
-                submit(chunk)
+            for piece in stream.feed_pieces(delta):
+                submit(piece)
             yield from pop_ready()
     except Exception as exc:  # LLM failure mid-stream — no retry, whatever was already sent stays.
         llm_error = exc
@@ -398,8 +426,8 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
     reply_ready_at = datetime.now(timezone.utc)
 
     if llm_error is None:
-        tail = chunker.flush()
-        if tail:
+        tail = stream.flush_piece()
+        if tail is not None:
             submit(tail)
 
     # Drain whatever's left, waiting for each in turn — most of this already finished while

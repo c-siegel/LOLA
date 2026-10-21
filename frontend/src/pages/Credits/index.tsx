@@ -79,6 +79,56 @@ export function CreditsPage() {
             </div>
 
             <div className={styles.creditItem}>
+              <h3>Pocket TTS</h3>
+              <p className={styles.author}>
+                {t("credits.byAuthor", {
+                  name: "Kyutai Labs (Manu Orsini, Simon Rouard, Gabriel De Marmiesse, Václav Volhejn, Neil Zeghidour, Alexandre Défossez)",
+                })}
+              </p>
+              <p className={styles.description}>{t("credits.speech.pocket.description")}</p>
+              <div className={styles.links}>
+                <a href="https://huggingface.co/kyutai/pocket-tts" target="_blank" rel="noopener noreferrer">
+                  kyutai/pocket-tts
+                </a>
+                <a href="https://github.com/kyutai-labs/pocket-tts" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "pocket-tts" })}
+                </a>
+                <a href="https://huggingface.co/Lauro00000/k6-onnx-int8" target="_blank" rel="noopener noreferrer">
+                  Lauro00000/k6-onnx-int8
+                </a>
+                <a href="https://huggingface.co/c-siegel/pocket-tts-en-de-onnx-int8" target="_blank" rel="noopener noreferrer">
+                  c-siegel/pocket-tts-en-de-onnx-int8
+                </a>
+                <a href="https://huggingface.co/kyutai/tts-voices" target="_blank" rel="noopener noreferrer">
+                  kyutai/tts-voices
+                </a>
+              </div>
+              <div className={styles.license}>
+                <strong>{t("credits.licenseLabel")}</strong> CC BY 4.0
+              </div>
+              <div className={styles.note}>
+                <strong>{t("credits.noteLabel")}</strong> {t("credits.speech.pocket.note")}
+              </div>
+              <div className={styles.note}>
+                <strong>{t("credits.noteLabel")}</strong> {t("credits.speech.pocket.voicesNote")}
+              </div>
+            </div>
+
+            <div className={styles.creditItem}>
+              <h3>Tokenizers.js</h3>
+              <p className={styles.author}>{t("credits.byAuthor", { name: "Hugging Face" })}</p>
+              <p className={styles.description}>{t("credits.speech.tokenizers.description")}</p>
+              <div className={styles.links}>
+                <a href="https://github.com/huggingface/tokenizers.js" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "tokenizers.js" })}
+                </a>
+              </div>
+              <div className={styles.license}>
+                <strong>{t("credits.licenseLabel")}</strong> Apache License 2.0
+              </div>
+            </div>
+
+            <div className={styles.creditItem}>
               <h3>ONNX Runtime Web</h3>
               <p className={styles.author}>{t("credits.byAuthor", { name: "Microsoft" })}</p>
               <p className={styles.description}>{t("credits.speech.onnxRuntime.description")}</p>

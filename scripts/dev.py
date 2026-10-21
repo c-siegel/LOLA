@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Local development runner: set up and start every EduAvatars service with one command.
+Local development runner: set up and start every LOLA service with one command.
 
     python scripts/dev.py setup     # once: venvs, pip/npm installs, database migrations
     python scripts/dev.py           # start backend + frontend + the optional services enabled in .env
@@ -60,7 +60,6 @@ SERVICES = [
         "local-tts", "local-tts", 8080, "LOCAL_TTS_ENABLED", "LOCAL_TTS_URL",
         data_dirs={
             "TTS_MODEL_CACHE_DIR": ".cache",
-            "TTS_VOICES_DIR": "voices",
             "TTS_CUSTOM_VOICES_DIR": ".data/custom-voices",
         },
         pip_extras="",
@@ -153,7 +152,7 @@ def setup(names: list[str]) -> None:
         run([str(python), "-m", "pip", "install", "--upgrade", "pip"], cwd)
         if name == "local-tts":
             # CPU-only build — the default PyPI torch wheel pulls several GB of unused CUDA libraries.
-            run([str(python), "-m", "pip", "install", "torch", "torchaudio",
+            run([str(python), "-m", "pip", "install", "torch",
                  "--index-url", "https://download.pytorch.org/whl/cpu"], cwd)
         run([str(python), "-m", "pip", "install", "-e", f".{service.pip_extras}"], cwd)
         if name == "backend" and (ROOT / ".env").exists():
@@ -223,7 +222,11 @@ def start(names: list[str]) -> None:
         sys.exit(f"Not set up yet: {', '.join(missing)}. Run: python scripts/dev.py setup {' '.join(missing)}")
 
     if "backend" in names:
-        run([str(venv_python(BY_NAME["backend"])), "-m", "alembic", "upgrade", "head"], ROOT / "backend")
+        backend_python = str(venv_python(BY_NAME["backend"]))
+        run([backend_python, "-m", "alembic", "upgrade", "head"], ROOT / "backend")
+        # Same idempotent step docker/backend-entrypoint.sh runs, so ADMIN_EMAIL/ADMIN_PASSWORD
+        # in .env work for local development too.
+        run([backend_python, "-m", "app.cli.bootstrap_admin"], ROOT / "backend")
 
     color = sys.stdout.isatty()
     if color and IS_WINDOWS:
@@ -272,7 +275,7 @@ def start(names: list[str]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Set up and run EduAvatars locally.")
+    parser = argparse.ArgumentParser(description="Set up and run LOLA locally.")
     parser.add_argument("command", nargs="?", choices=["setup", "start"], default="start")
     parser.add_argument(
         "services", nargs="*", metavar="service",

@@ -6,7 +6,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import de from "./locales/de.json";
 import en from "./locales/en.json";
 
-export const LANGUAGE_STORAGE_KEY = "eduavatars_lang";
+export const LANGUAGE_STORAGE_KEY = "lola_lang";
 
 i18next
   .use(LanguageDetector)

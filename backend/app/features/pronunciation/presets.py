@@ -25,12 +25,12 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from normt2s import Rule
 from sqlalchemy import delete, func
 from sqlmodel import Session, select
 
 from app.core.error_codes import ErrorCode
 from app.core.errors import DomainError
-from app.features.ai.tts.pronunciation import PronunciationRule
 from app.features.pronunciation import service
 from app.features.pronunciation.models import PronunciationEntry
 from app.features.pronunciation.schemas import clean_rule
@@ -48,7 +48,7 @@ class PresetPack:
     id: str
     language: str
     version: int
-    entries: tuple[PronunciationRule, ...]
+    entries: tuple[Rule, ...]
 
 
 def _load(path: Path) -> PresetPack:
@@ -61,7 +61,7 @@ def _load(path: Path) -> PresetPack:
         # the tests), not silently when someone applies it.
         term, spoken = clean_rule(item["term"], item["spoken"])
         entries.append(
-            PronunciationRule(
+            Rule(
                 term,
                 spoken,
                 whole_word=bool(item.get("wholeWord", default_whole)),

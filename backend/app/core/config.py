@@ -32,11 +32,11 @@ from cryptography.fernet import Fernet
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Path to the .env-file within the root directory. EDUAVATARS_ENV_FILE points elsewhere; set to an
+# Path to the .env-file within the root directory. LOLA_ENV_FILE points elsewhere; set to an
 # empty value it reads no file at all, which the test suite relies on so a developer's own .env
 # can't change what the tests see.
 _ROOT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
-_ENV_FILE = os.environ.get("EDUAVATARS_ENV_FILE", str(_ROOT_ENV_FILE)) or None
+_ENV_FILE = os.environ.get("LOLA_ENV_FILE", str(_ROOT_ENV_FILE)) or None
 
 # Values people copy-paste from .env.example (or type without thinking) — none of these are
 # safe JWT secrets, no matter how they're cased, so this is checked in addition to length.
@@ -47,7 +47,6 @@ _WEAK_JWT_SECRETS = frozenset(
     }
 )
 
-
 class Settings(BaseSettings):
     
     # Pydantic configuration: read from the shared root .env file, ignore extra environment variables
@@ -55,7 +54,7 @@ class Settings(BaseSettings):
 
     # ==================== DATABASE SETTINGS ====================
     
-    database_url: str = "sqlite:///./eduavatars.db"
+    database_url: str = "sqlite:///./lola.db"
 
     # ==================== JWT AUTHENTICATION SETTINGS ====================
     
@@ -240,7 +239,7 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_username: str = ""
     smtp_password: str = ""
-    smtp_from_address: str = "no-reply@eduavatars.example"
+    smtp_from_address: str = "no-reply@lola.example"
     smtp_use_tls: bool = True
     password_reset_token_expire_minutes: int = 30
 
@@ -263,8 +262,8 @@ class Settings(BaseSettings):
     # ==================== ADMIN BOOTSTRAP SETTINGS ====================
 
     # Set both together to create (or promote) an admin account on startup — see
-    # app/cli/bootstrap_admin.py, run from docker/backend-entrypoint.sh. Safe to remove from your
-    # .env after the first successful run; the bootstrap is idempotent either way.
+    # app/cli/bootstrap_admin.py, run from docker/backend-entrypoint.sh and scripts/dev.py. Safe to
+    # remove from your .env after the first successful run; the bootstrap is idempotent either way.
 
     admin_email: str | None = None
     """
@@ -417,6 +416,30 @@ class Settings(BaseSettings):
     scripts/fetch-stt-model.sh. Same-origin by default: Caddy serves it in production (see
     docker/Caddyfile) and Vite in development (see frontend/vite.config.ts).
     """
+
+    # ==================== BROWSER TEXT-TO-SPEECH SETTINGS ====================
+    # Speech output generated on the visitor's own device: Kyutai's Pocket TTS (int8 ONNX, German,
+    # preset voice "alba") in a web worker — see frontend/src/lib/pocketTts.ts. The server then
+    # only sends the reply's text and its spoken form; a project's own TTS (cloud key or local
+    # sidecar) stays the fallback for a device that can't load the model. Like browser STT, the
+    # backend computes nothing here (see features/api_keys/resolve.py::browser_tts_model_url_for).
+
+    browser_tts_enabled: bool = False
+    """
+    Whether projects may let visitors' devices speak the replies. Off by default because the model
+    files aren't downloaded by default: Docker Compose's "browser-tts" profile downloads them (in
+    development, run scripts/fetch-tts-model.sh). Each project still opts in with its own
+    "tts_browser_enabled" checkbox. Every visitor's device downloads the model once (~99 MB).
+    """
+
+    browser_tts_model_url: str = "/models/pocket-tts-de/v1/"
+    """Base URL of the model files, as written by scripts/fetch-tts-model.sh. Same-origin by
+    default, like browser_stt_model_url."""
+
+    browser_tts_language: str = "de"
+    """The language of the model at browser_tts_model_url — Pocket TTS has one model per language,
+    and scripts/fetch-tts-model.sh downloads the German one. Projects in other languages keep
+    speaking through the server."""
 
     # ==================== PUBLIC CHAT & VOICE INPUT RATE LIMITS ====================
 

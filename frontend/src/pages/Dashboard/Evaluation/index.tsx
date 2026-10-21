@@ -11,7 +11,8 @@ import { ChevronDown, ChevronRight, Download, Square, Trash2 } from "lucide-reac
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
-import { HeadingWithInfo, InfoButton, InfoPanel, LabelWithInfo, useInfoTip } from "@/components/InfoTip";
+import { InfoButton, InfoPanel, LabelWithInfo, useInfoTip } from "@/components/InfoTip";
+import { PageHeader } from "@/components/PageHeader";
 import { apiKeysApi } from "@/api/apiKeys";
 import { errorMessage } from "@/api/client";
 import {
@@ -141,9 +142,7 @@ export function EvaluationPage() {
 
 function Header() {
   const { t } = useTranslation();
-  return (
-    <HeadingWithInfo as="h2" className={styles.header} title={t("evaluation.title")} info={t("evaluation.subtitle")} />
-  );
+  return <PageHeader title={t("evaluation.title")} info={t("evaluation.subtitle")} />;
 }
 
 function formatScore(value: number | null | undefined): string {

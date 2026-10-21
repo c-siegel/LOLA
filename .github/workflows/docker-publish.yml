@@ -98,6 +98,33 @@ jobs:
       - name: Check dependency licences
         run: pip install pip-licenses && sh scripts/check-licences.sh
 
+  local-tts-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # CPU-only torch first, as in docker/local-tts.Dockerfile — the default wheel pulls in CUDA.
+      - name: Install local TTS service + test dependencies
+        working-directory: local-tts
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+
+      # The tests fake Pocket TTS; nothing is downloaded.
+      - name: Run local TTS service tests
+        working-directory: local-tts
+        run: pytest
+
+      - name: Check dependency licences
+        run: pip install pip-licenses && sh scripts/check-licences.sh
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:
@@ -120,7 +147,7 @@ jobs:
         run: npm run build
 
   build-and-push:
-    needs: [backend-tests, rag-tests, rag-eval-tests, frontend-build]
+    needs: [backend-tests, rag-tests, rag-eval-tests, local-tts-tests, frontend-build]
     runs-on: ubuntu-latest
     permissions:
       contents: read

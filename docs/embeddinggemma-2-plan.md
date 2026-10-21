@@ -1,8 +1,25 @@
 # Plan: EmbeddingGemma 2 as a local embedding model for the knowledge service
 
-Status: **plan only, nothing implemented.** Written 2026-10-13 after a research session that could
-not reach Hugging Face from the sandbox, so every statement about the model files below is from the
-model cards and still has to be verified in step 1.
+Status: **steps 1–4 done** (loader, allowlist entry, tests); the model is selectable but opt-in.
+Next: step 5 (evaluation), then step 6 (docs). Written 2026-10-13; spike results added 2026-10-20.
+
+## Spike results (step 1, 2026-10-20)
+
+- Repo revision `daa72c51243991dfcaf9f9137d2c573d8f7790c0`, licence `apache-2.0` in the card
+  metadata (Gemma 4 licence = Apache 2.0). No separate `LICENSE` file, and the card has no
+  Prohibited Use Policy section, so there is no extra note for the README.
+- Text graph: `onnx/model_quantized.onnx` + `onnx/model_quantized.onnx_data` (314 MB).
+  Inputs `input_ids`, `attention_mask` and `image_/video_/audio_features [n, 512]`; outputs
+  `last_hidden_state`, then `sentence_embedding [b, 768]`. So fastembed can't load it → option B
+  (`OnnxTextModel`). Pooling and projection are inside the graph; the output is already L2-normalised.
+- Prompts (`config_sentence_transformers.json`): query `task: search result | query: `,
+  document `title: none | text: `.
+- 4 German passages × 4 questions: each question's right passage is nearest (cosine distance
+  0.18–0.25 vs. 0.40–0.51 for the others). ~45 ms per query, ~10 s for 64 × 1400 characters,
+  peak RSS ~1.5 GB during the batch (developer laptop, CPU).
+- **For step 5:** small talk "Hallo!" lands at distance ~0.35 to every passage, well below the
+  default `RAG_MAX_VECTOR_DISTANCE=0.75`, so it would retrieve passages. The threshold needs
+  tuning for this model (somewhere between ~0.25 and ~0.35 on this sample).
 
 ## Goal
 
@@ -186,8 +203,4 @@ nothing after it (AGENTS.md). PRs target `working-branch`.
 
 ## Open questions
 
-- Exact file names and input/output names of the text graph (step 1).
-- Does `onnx-community`'s q8 text graph keep the 512→768 projection and mean pooling inside the
-  graph? (The OpenVINO card's text tower does: output `sentence_embedding [b, 768]`.)
-- Real German retrieval quality and distance-threshold behaviour (step 5).
-- Whether to ship MRL truncation at all.
+The graph questions were answered by the spike. What remains is in [open-work.md](open-work.md).

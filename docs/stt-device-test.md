@@ -12,25 +12,29 @@ about 10 minutes per device.
 - The device opens the app over **HTTPS or `localhost`** — WebGPU and the microphone are blocked
   on plain HTTP. For a phone/tablet against a dev machine, run `npm run dev -- --host` and accept
   the self-signed certificate once.
+- A teacher account to log in with on the device: the check is part of the dashboard's
+  **Latency test** page (`/dashboard/latency`), section "Device".
 - Two test clips, the same ones on every device: one German, one English, each 15–30 s of natural
   speech with a few pauses. Write down their exact text, so you can compare.
 
 ## 1. Load time (first visit)
 
-1. Clear site data for the app (browser settings), then open `/stt-test`.
-2. Note **"Model ready after … s"**. On a first visit this is mostly download time (~175 MB).
+1. Clear site data for the app (browser settings), log in, and open the latency test.
+2. Under "Device", press **Load** next to "Speech recognition on this device" and note
+   **"ready after … s"**. On a first visit this is mostly download time (~175 MB).
 3. If the status ends as `unsupported` or `error`, note the error message and skip to step 5 —
    the device will use server transcription.
 
 ## 2. Load time (repeat visit)
 
-Reload `/stt-test`. The model now comes from the browser's cache: note the ready time again. This
-is what a student waits on every later visit.
+Reload the page and press **Load** again. The model now comes from the browser's cache: note the
+ready time again. This is what a student waits on every later visit.
 
 ## 3. Known clips
 
-For each clip: **"Play an audio file through the recognizer"**, pick the file, let it play to the
-end, then press **"Copy results"** and paste the text into your notes. Compare **"Final text"**
+In **"Measure speech recognition only"** (below the model's Load button), for each clip:
+**"Play an audio file through the recognizer"**, pick the file, let it play to the end, then press
+**"Copy results"** and paste the text into your notes. Compare **"Final text"**
 with the clip's real text.
 
 ## 4. Live speech

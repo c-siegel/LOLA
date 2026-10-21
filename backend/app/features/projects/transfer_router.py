@@ -2,7 +2,7 @@
 Project Export/Import Routes
 
 Download a project's configuration as YAML, and create a new draft project from such a file —
-for backups, moving to another eduavatars account, or sharing with a colleague.
+for backups, moving to another LOLA account, or sharing with a colleague.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -50,7 +50,7 @@ def import_project_route(
 @router.get("/{project_id}/export")
 def export_project(project: Project = Depends(get_owned_project)):
     """Download a project's configuration as a YAML file, for backup or moving it to another
-    eduavatars account. Never includes API keys, the publish state, or the chat password."""
+    LOLA account. Never includes API keys, the publish state, or the chat password."""
     return Response(
         content=export_project_yaml(project),
         media_type="application/yaml",

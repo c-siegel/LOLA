@@ -38,14 +38,18 @@ const AdminUsersPage = lazy(() => import("./pages/Dashboard/Admin/Users").then((
 const AdminSettingsPage = lazy(() =>
   import("./pages/Dashboard/Admin/Settings").then((m) => ({ default: m.AdminSettingsPage })),
 );
+const AdminPagesPage = lazy(() => import("./pages/Dashboard/Admin/Pages").then((m) => ({ default: m.AdminPagesPage })));
+const AdminPageEditorPage = lazy(() =>
+  import("./pages/Dashboard/Admin/Pages/Editor").then((m) => ({ default: m.AdminPageEditorPage })),
+);
 const ForcePasswordChangePage = lazy(() =>
   import("./pages/Dashboard/ForcePasswordChange").then((m) => ({ default: m.ForcePasswordChangePage })),
 );
 const PublicChatPage = lazy(() => import("./pages/PublicChat").then((m) => ({ default: m.PublicChatPage })));
 const ImprintPage = lazy(() => import("./pages/Imprint").then((m) => ({ default: m.ImprintPage })));
 const PrivacyPage = lazy(() => import("./pages/Privacy").then((m) => ({ default: m.PrivacyPage })));
+const CustomPage = lazy(() => import("./pages/CustomPage").then((m) => ({ default: m.CustomPage })));
 const CreditsPage = lazy(() => import("./pages/Credits").then((m) => ({ default: m.CreditsPage })));
-const SttTestPage = lazy(() => import("./pages/SttTest").then((m) => ({ default: m.SttTestPage })));
 
 // Layout route: wraps every /dashboard/* screen in the shared sidebar shell (Screen 1c).
 function DashboardLayout() {
@@ -84,7 +88,7 @@ export function App() {
           <Route path="/impressum" element={<ImprintPage />} />
           <Route path="/datenschutz" element={<PrivacyPage />} />
           <Route path="/credits" element={<CreditsPage />} />
-          <Route path="/stt-test" element={<SttTestPage />} />
+          <Route path="/p/:slug" element={<CustomPage />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<OverviewPage />} />
             <Route path="projects/:id" element={<ConfiguratorPage />} />
@@ -100,6 +104,8 @@ export function App() {
             <Route path="change-password-required" element={<ForcePasswordChangePage />} />
             <Route path="admin" element={<RequireAdmin> <AdminUsersPage /> </RequireAdmin> } />
             <Route path="admin/settings" element={<RequireAdmin> <AdminSettingsPage /> </RequireAdmin> } />
+            <Route path="admin/pages" element={<RequireAdmin> <AdminPagesPage /> </RequireAdmin> } />
+            <Route path="admin/pages/:id" element={<RequireAdmin> <AdminPageEditorPage /> </RequireAdmin> } />
           </Route>
           <Route path="/c/:projectSlug" element={<PublicChatPage />} />
         </Routes>

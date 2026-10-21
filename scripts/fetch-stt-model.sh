@@ -11,7 +11,7 @@
 #
 # Usage:
 #   scripts/fetch-stt-model.sh                              # dev: writes ./models (served by Vite)
-#   scripts/fetch-stt-model.sh "$EDUAVATARS_DATA_DIR/models"  # production, by hand
+#   scripts/fetch-stt-model.sh "$LOLA_DATA_DIR/models"  # production, by hand
 # In production this normally runs by itself: the frontend image ships this script, and the
 # `stt-model` service in docker/docker-compose.yml runs it on every `docker compose up`.
 #

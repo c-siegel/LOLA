@@ -4,16 +4,18 @@ import { UserCog, Share2, SlidersHorizontal } from "lucide-react";
 import { ButtonLink } from "@/components/Button";
 import { Badge } from "@/components/Badge";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { Wordmark } from "@/components/Wordmark";
 import { TalkingHeadAvatar } from "@/components/TalkingHeadAvatar";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PublicLayout } from "@/layouts/PublicLayout";
+import { pickTranslation, usePageLocale, usePublicPage } from "@/lib/pages";
 import styles from "./Landing.module.css";
 
 // Shared between the desktop nav and the mobile drawer so both stay in sync.
 const NAV_ITEMS = [
   //{ labelKey: "landing.nav.features", href: "#" },
-  { labelKey: "landing.nav.sourceCode", href: "https://github.com/c-siegel/EduAvatars" },
+  { labelKey: "landing.nav.sourceCode", href: "https://github.com/c-siegel/LOLA" },
 ];
 
 // `full`/`short` give the two title variants shown at different breakpoints
@@ -29,6 +31,14 @@ export function LandingPage() {
   // Controls the mobile nav drawer only; the desktop nav is always visible and
   // hidden/shown purely via the @media query in Landing.module.css.
   const [menuOpen, setMenuOpen] = useState(false);
+  // An admin can replace any of the texts below and add a Markdown section (Dashboard → Admin →
+  // Pages). Each field left empty keeps its built-in text; see lib/pages.ts for the language order.
+  const landingQuery = usePublicPage("landing");
+  const landing = pickTranslation(landingQuery.data, usePageLocale());
+  const fields = landing?.fields ?? {};
+  const text = (field: string, key: string) => fields[field] || t(key);
+  // Hidden until loaded, so an instance with its own texts doesn't flash the built-in ones first.
+  const copyClass = landingQuery.isPending ? styles.pending : undefined;
 
   return (
     <PublicLayout showLanguageSwitcher={false}>
@@ -88,15 +98,17 @@ export function LandingPage() {
 
       {/* Hero: two-column on desktop (copy + image placeholder), stacked on mobile via CSS grid */}
       <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <Badge variant="accent">{t("landing.badge")}</Badge>
+        <div className={[styles.heroCopy, copyClass].filter(Boolean).join(" ")}>
+          <Badge variant="accent">{text("badge", "landing.badge")}</Badge>
           <h1>
             {/* Two copy variants: the full headline on desktop, a shorter one on mobile
                 (toggled purely via CSS display, see .headingFull/.headingShort) */}
-            <span className={styles.headingFull}>{t("landing.headingFull")}</span>
-            <span className={styles.headingShort}>{t("landing.headingShort")}</span>
+            <span className={styles.headingFull}>{text("headingFull", "landing.headingFull")}</span>
+            {/* An admin who only changed the full headline gets it on mobile too, rather than
+                the built-in short one that no longer matches it. */}
+            <span className={styles.headingShort}>{fields.headingShort || text("headingFull", "landing.headingShort")}</span>
           </h1>
-          <p>{t("landing.heroText")}</p>
+          <p>{text("heroText", "landing.heroText")}</p>
           <div className={styles.heroActions}>
             <ButtonLink to="/register" variant="accent">
               {t("landing.getStarted")}
@@ -113,21 +125,32 @@ export function LandingPage() {
 
       {/* Feature row: 3 cards, stacked on mobile; icon + title (long/short) + one-line description */}
       <section className={styles.features}>
-        <div className={styles.featureGrid}>
+        <div className={[styles.featureGrid, copyClass].filter(Boolean).join(" ")}>
           {FEATURES.map((feature) => (
             <div className={styles.featureCard} key={feature.key}>
               <div className={styles.featureIcon} aria-hidden="true">
                 <feature.icon size={20} strokeWidth={2} />
               </div>
               <h3>
-                <span className={styles.featureTitleFull}>{t(`landing.features.${feature.key}.full`)}</span>
-                <span className={styles.featureTitleShort}>{t(`landing.features.${feature.key}.short`)}</span>
+                {/* An admin's title replaces both the long and the short variant. */}
+                <span className={styles.featureTitleFull}>
+                  {text(`${feature.key}Title`, `landing.features.${feature.key}.full`)}
+                </span>
+                <span className={styles.featureTitleShort}>
+                  {text(`${feature.key}Title`, `landing.features.${feature.key}.short`)}
+                </span>
               </h3>
-              <p>{t(`landing.features.${feature.key}.text`)}</p>
+              <p>{text(`${feature.key}Text`, `landing.features.${feature.key}.text`)}</p>
             </div>
           ))}
         </div>
       </section>
+
+      {landing?.contentMd && (
+        <section className={styles.extra}>
+          <MarkdownContent className={styles.extraContent}>{landing.contentMd}</MarkdownContent>
+        </section>
+      )}
 
       <SiteFooter />
     </PublicLayout>

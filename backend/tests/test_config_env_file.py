@@ -12,7 +12,7 @@ PRINT_TTS_URL = "from app.core.config import settings; print(settings.local_tts_
 
 def _local_tts_url(env_file: str) -> str:
     env = {k: v for k, v in os.environ.items() if k != "LOCAL_TTS_URL"}
-    env["EDUAVATARS_ENV_FILE"] = env_file
+    env["LOLA_ENV_FILE"] = env_file
     result = subprocess.run(
         [sys.executable, "-c", PRINT_TTS_URL], cwd=BACKEND_DIR, env=env, capture_output=True, text=True, check=True
     )

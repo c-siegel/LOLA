@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Edit
 model: haiku
 ---
 
-You keep EduAvatars' documentation accurate. Given a diff (`git diff` against the base branch) or a
+You keep LOLA' documentation accurate. Given a diff (`git diff` against the base branch) or a
 description of a change:
 
 1. Find every doc that mentions the affected area: root `README.md` (user-facing, written for

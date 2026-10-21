@@ -31,6 +31,18 @@ def sampling_params(request: ChatRequest) -> dict:
     return params
 
 
+def thinking_extra_body(request: ChatRequest) -> dict:
+    """`chat_template_kwargs` that switch a vLLM-style model's reasoning on or off, or {}.
+
+    Qwen3-style hybrid models read `enable_thinking` from the chat template; a model without that
+    switch (an Instruct-only model, or one that always reasons) ignores it. Left out entirely when
+    the project doesn't set it, for the same reason as in sampling_params.
+    """
+    if request.thinking is None:
+        return {}
+    return {"chat_template_kwargs": {"enable_thinking": request.thinking}}
+
+
 def build_messages(request: ChatRequest) -> list[dict]:
     """Build the litellm-style message list from the project's prompt, optional start message, and history."""
     # start_prompt is inserted as an earlier assistant message (not as part of the system

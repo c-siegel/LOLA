@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiClient, filenameFromContentDisposition } from "./client";
+import { apiClient, downloadFile } from "./client";
 import type {
   AnalyticsFilters,
   AnalyticsStats,
@@ -43,23 +43,13 @@ export const analyticsApi = {
 
   // Downloads a .csv (one selected conversation) or .zip (several) directly as a file, instead of
   // parsing it as JSON like the other endpoints.
-  exportConversations: async (conversationIds: string[]) => {
+  exportConversations: (conversationIds: string[]) => {
     const body: ConversationIdsRequest = { conversationIds };
-    const res = await fetch(`${API_BASE_URL}/conversations/export`, {
+    return downloadFile("/conversations/export", "lola-transcripts.zip", {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error("Export failed");
-    const filename = filenameFromContentDisposition(res.headers.get("Content-Disposition"), "lola-transcripts.zip");
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
   },
 
   // Permanently deletes the checked-off conversations — ids that don't belong to the current

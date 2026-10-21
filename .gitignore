@@ -16,7 +16,6 @@ backend/uploads/
 backend/build/
 backend/whisper-cache
 .pytest_cache/
-local-tts/voices/*.wav
 local-tts/.cache/
 backend/.ruff_cache/
 
@@ -40,3 +39,9 @@ models/
 rag/.data/
 rag-eval/.data/
 local-tts/.data/
+
+# Generated files that must not be committed (see AGENTS.md)
+uv.lock
+local-tts/build/
+
+LOLA.cc.json.gz

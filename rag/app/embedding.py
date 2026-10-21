@@ -1,7 +1,8 @@
 """
 Embeddings: Local First, API Optional
 
-Local (default): fastembed runs an ONNX model on the CPU. Only models on the allowlist below
+Local (default): fastembed runs an ONNX model on the CPU; models fastembed can't load run
+through OnnxTextModel instead (onnxruntime directly). Only models on the allowlist below
 can be configured — each one's licence has been checked to be permissive, and fastembed also
 supports non-commercial models (e.g. jina-embeddings-v3, CC-BY-NC-4.0) that must never be
 picked by accident. API: any embedding model litellm can call, with the teacher's own key,
@@ -31,6 +32,21 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class OnnxSource:
+    """
+    Where to get a model fastembed can't load (see OnnxTextModel). Pinned to a commit so a
+    force-pushed upstream repo can't change the vectors under existing knowledge bases, and listed
+    file by file so only the text graph is downloaded, never e.g. a multimodal model's encoders.
+    """
+
+    revision: str
+    graph: str
+    sidecars: tuple[str, ...] = ()
+    tokenizer: str = "tokenizer.json"
+    max_tokens: int = 8192
+
+
+@dataclass(frozen=True)
 class LocalModelSpec:
     dimensions: int
     licence: str
@@ -39,6 +55,8 @@ class LocalModelSpec:
     chunk_overlap: int
     query_prefix: str = ""
     passage_prefix: str = ""
+    # None: a model fastembed supports, loaded by its name.
+    onnx: OnnxSource | None = None
 
 
 LOCAL_MODELS: dict[str, LocalModelSpec] = {
@@ -50,6 +68,22 @@ LOCAL_MODELS: dict[str, LocalModelSpec] = {
     ),
     # Many languages, but truncates at 128 tokens (~500 characters) — hence the small chunks.
     "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": LocalModelSpec(768, "Apache-2.0", 450, 80),
+    # Google's EmbeddingGemma 2 (Apache-2.0) in the onnx-community export: 100+ languages, 8192
+    # tokens, ~314 MB. q8, because q4/q4f16 drift too far from fp32 for stored vectors and the
+    # card warns about fp16 activations. Prefixes are the model's own retrieval prompts.
+    "onnx-community/embeddinggemma-2-ONNX": LocalModelSpec(
+        768,
+        "Apache-2.0",
+        1400,
+        200,
+        query_prefix="task: search result | query: ",
+        passage_prefix="title: none | text: ",
+        onnx=OnnxSource(
+            revision="daa72c51243991dfcaf9f9137d2c573d8f7790c0",
+            graph="onnx/model_quantized.onnx",
+            sidecars=("onnx/model_quantized.onnx_data",),
+        ),
+    ),
 }
 
 # Chunk size for API models: every current provider model accepts far more than this.
@@ -131,12 +165,89 @@ class ApiEmbedder:
         return self._call([text])[0]
 
 
+class OnnxTextModel:
+    """
+    Runs an ONNX text-embedding graph directly, for models fastembed can't load: fastembed only
+    feeds input_ids / attention_mask and takes the first output, while e.g. EmbeddingGemma 2's
+    graph also requires image/video/audio feature inputs and puts the pooled sentence embedding
+    second. Same embed() interface as fastembed's TextEmbedding, so LocalEmbedder can't tell.
+    """
+
+    OUTPUT = "sentence_embedding"
+
+    def __init__(self, session, tokenizer, max_tokens: int) -> None:
+        self._session = session
+        self._tokenizer = tokenizer
+        self._tokenizer.enable_truncation(max_tokens)
+        pad_id = tokenizer.token_to_id("<pad>")
+        self._pad_id = 0 if pad_id is None else pad_id
+        # A multimodal graph embeds text alone when every media input gets zero rows.
+        self._media_inputs = {i.name: i.shape[1] for i in session.get_inputs() if i.name.endswith("_features")}
+        unknown = {i.name for i in session.get_inputs()} - {"input_ids", "attention_mask", *self._media_inputs}
+        if unknown:
+            raise RuntimeError(f"ONNX embedding graph needs inputs this loader can't fill: {sorted(unknown)}")
+
+    def embed(self, texts, batch_size: int = 16):
+        import numpy as np
+
+        texts = list(texts)
+        for start in range(0, len(texts), batch_size):
+            encodings = self._tokenizer.encode_batch(texts[start : start + batch_size])
+            width = max(len(e.ids) for e in encodings)
+            ids = np.full((len(encodings), width), self._pad_id, dtype=np.int64)
+            mask = np.zeros((len(encodings), width), dtype=np.int64)
+            for row, encoding in enumerate(encodings):
+                ids[row, : len(encoding.ids)] = encoding.ids
+                mask[row, : len(encoding.ids)] = 1
+            feeds = {"input_ids": ids, "attention_mask": mask}
+            for name, feature_size in self._media_inputs.items():
+                feeds[name] = np.zeros((0, feature_size), dtype=np.float32)
+            yield from self._session.run([self.OUTPUT], feeds)[0]
+
+
+def _download_onnx_model(model_id: str, source: OnnxSource, cache_dir: str) -> tuple[str, str]:
+    """Fetch the pinned files (a no-op once cached); returns the graph's and tokenizer's paths."""
+    from huggingface_hub import hf_hub_download
+
+    def fetch(filename: str) -> str:
+        return hf_hub_download(model_id, filename, revision=source.revision, cache_dir=cache_dir)
+
+    graph = fetch(source.graph)
+    # Sidecars (external weights) land next to the graph in the snapshot folder, where onnxruntime looks.
+    for sidecar in source.sidecars:
+        fetch(sidecar)
+    return graph, fetch(source.tokenizer)
+
+
+def preload_local_model(model_id: str, cache_dir: str) -> None:
+    """Download a local model into cache_dir without loading it (docker/rag.Dockerfile's preload)."""
+    spec = LOCAL_MODELS[model_id]
+    if spec.onnx is not None:
+        _download_onnx_model(model_id, spec.onnx, cache_dir)
+    else:
+        from fastembed import TextEmbedding
+
+        TextEmbedding(model_name=model_id, cache_dir=cache_dir)
+
+
 _local_lock = threading.Lock()
 _local_embedder: LocalEmbedder | None = None
 
 
 def _load_local_model(model_id: str):
-    """Load the fastembed model (downloads into the cache on first use). Faked in tests."""
+    """Load the local model (downloads into the cache on first use). Faked in tests."""
+    spec = LOCAL_MODELS[model_id]
+    if spec.onnx is not None:
+        import onnxruntime
+        from tokenizers import Tokenizer
+
+        graph, tokenizer = _download_onnx_model(model_id, spec.onnx, settings.model_cache_dir)
+        options = onnxruntime.SessionOptions()
+        if settings.rag_embedding_threads:
+            options.intra_op_num_threads = settings.rag_embedding_threads
+        session = onnxruntime.InferenceSession(graph, options, providers=["CPUExecutionProvider"])
+        return OnnxTextModel(session, Tokenizer.from_file(tokenizer), spec.onnx.max_tokens)
+
     from fastembed import TextEmbedding
 
     return TextEmbedding(

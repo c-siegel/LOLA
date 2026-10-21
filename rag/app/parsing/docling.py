@@ -19,7 +19,7 @@ from app.config import settings
 from app.errors import RagError
 from app.parsing.types import ParseResult, cap_sections, split_markdown
 
-_PAGE_BREAK = "<!-- eduavatars-page-break -->"
+_PAGE_BREAK = "<!-- lola-page-break -->"
 
 _MIME_TYPES = {
     "pdf": "application/pdf",

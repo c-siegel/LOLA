@@ -25,7 +25,9 @@
     "analytics": "Analytics",
     "apiDashboard": "API dashboard",
     "profile": "Profile settings",
-    "admin": "Admin",
+    "adminUsers": "Accounts",
+    "adminSettings": "Site settings",
+    "adminPages": "Pages",
     "groups": { "create": "Create", "insights": "Insights", "setup": "Setup", "admin": "Admin" },
     "dashboardFallback": "Dashboard",
     "dashboardNavAriaLabel": "Dashboard navigation",
@@ -265,7 +267,7 @@
       "title": "Site settings",
       "subtitle": "Instance-wide settings, changeable without a redeploy.",
       "imprintTitle": "Imprint & contact",
-      "imprintHint": "Shown on the legal notice and privacy pages. Any field left empty shows a placeholder there instead.",
+      "imprintHint": "Shown on the legal notice and privacy pages. Any field left empty shows a placeholder there instead. Once a page has been replaced with your own text under \"Pages\", its details are edited there.",
       "providerNameLabel": "Provider / responsible person",
       "providerStreetLabel": "Street and number",
       "providerCityLabel": "Postal code and city",
@@ -404,6 +406,9 @@
       "temperature": "Temperature",
       "temperatureHint": "How much randomness the model is allowed. Low (0-0.3) gives focused, repeatable answers; around 0.7 is a good all-round setting; above 1.2 replies get creative but start to wander. Sent to the model as `temperature`.",
       "topP": "Top P",
+      "thinking": "Thinking",
+      "thinkingHint": "Whether the model reasons before it answers. \"Model default\" changes nothing. \"Off\" skips the reasoning, which makes replies start much sooner; \"On\" forces it. Only models that can switch reasoning react to this (e.g. Qwen3 hybrid models on a vLLM server); others ignore it. Sent as `chat_template_kwargs.enable_thinking`.",
+      "thinkingOptions": {"default": "Model default", "on": "On", "off": "Off"},
       "topPHint": "Narrows the pool of words the model may pick from: at 1.0 all of them are allowed, at 0.5 only the most likely ones that together make up 50% of the probability. Leave it at 1.0 unless you have a reason \u2014 it does a similar job to temperature, and turning both down at once makes replies very monotonous.",
       "language": "Language",
       "spokenLanguageOptions": { "de": "German", "en": "English" },
@@ -420,7 +425,7 @@
       "voiceHint": "Cartesia and Google Cloud TTS require a voice (no default) — without one, speech output for this project won't work.",
       "voiceClip": "Voice (local speech output)",
       "voiceClipDefault": "Default voice for the language",
-      "voiceClipHint": "Clone a voice from one of your own voice clips. Add and test clips under",
+      "voiceClipHint": "Pick a preset voice or — if voice cloning is set up on this server — a donated voice or one of your own voice clips. Add and test clips under",
       "sttTitle": "Voice input (STT)",
       "sttText": "Enables the microphone button in the public chat. Off by default.",
       "sttKey": "Server speech recognition",
@@ -435,7 +440,16 @@
       "sttBrowserTitle": "On-device speech recognition (recommended)",
       "sttBrowserText": "Voice messages are recognized on the visitor's own device with live text while they speak, so recordings never leave it. Each device downloads the model once (about 170 MB) before the chat opens. Devices without WebGPU automatically use the STT key or the server's Whisper instead.",
       "streamingTitle": "Streamed replies",
-      "streamingText": "The avatar starts speaking after the first sentence instead of waiting for the full reply. Off by default."
+      "streamingText": "The avatar starts speaking after the first sentence instead of waiting for the full reply. Off by default.",
+      "localVoicePresets": "Preset voices",
+      "localVoiceDonations": "Donated voices (CC0)",
+      "localVoiceClips": "Your voice clips",
+      "cloningOff": "Voice cloning isn't set up on this server, so your voice clips and donated voices can't be picked; a clip that is already selected is spoken with the default voice.",
+      "localTtsUnreachable": "Local speech output isn't answering right now, so its voices can't be listed. The selected voice stays saved.",
+      "localTtsLanguageMissing": "Local speech output on this server doesn't speak this project's language. Pick another language or a cloud provider.",
+      "ttsBrowserTitle": "On-device speech output",
+      "ttsBrowserText": "The visitor's own device speaks the replies (Pocket TTS, German) instead of getting them from the server — with the preset voice selected above, otherwise \"Alba\"; own voice clips and donated voices aren't available on the device. Each device downloads the model once (about 100 MB) before it speaks; until then, and on devices that can't load it, the speech output selected above speaks.",
+      "ttsBrowserLanguage": "Only for German projects: the model speaks German only."
     },
     "step3": {
       "defaultPreprompt": "You are a helpful, AI-powered learning assistant.\n\nAnswer in an age-appropriate, patient, and encouraging way. If you don't know something, say so honestly instead of guessing.",
@@ -702,7 +716,8 @@
     "previewButton": "Listen",
     "previewSample": "Hello! I'm your learning companion. Shall we get started?",
     "previewSlow": "Generating… the first sample after the speech service starts can take about a minute.",
-    "previewFailed": "The sample couldn't be generated."
+    "previewFailed": "The sample couldn't be generated.",
+    "cloningOff": "Voice cloning isn't set up on this server (local speech output needs a Hugging Face token for it). You can add clips, but until then projects speak with a preset voice."
   },
   "pronunciation": {
     "title": "Pronunciation",
@@ -712,11 +727,11 @@
     "howTo": {
       "title": "How it works",
       "term": "Term: how the word is written in the text, e.g. “pH” or “km/h”. Spoken as: how the speech output should say it, e.g. “p H”.",
-      "number": "Placeholder {number}: stands for any number like 5 or 1.5. “{number} m” → “{number} meters” reads “1.5 m” as “1.5 meters” but leaves a lone “m” (e.g. the mass) alone.",
+      "number": "Placeholder {number}: stands for any number like 5 or 1.5. “{number} m” → “{number} meters” reads “1.5 m” as “one point five meters” but leaves a lone “m” (e.g. the mass) alone.",
       "wholeWord": "Whole word only (default): “N” isn't replaced inside the word “Newton”. Units glued to a number like “10kg” are still recognized.",
       "caseSensitive": "Match case: “m” (meter) and “M” (mega) stay different terms.",
       "spellOut": "Read letter by letter: for abbreviations like “GPT”.",
-      "order": "Longer terms win (“km/h” before “km”). After that, the built-in rules for decimals and math symbols apply."
+      "order": "Longer terms win (“km/h” before “km”). Your terms apply before the built-in rules that put numbers, units, dates, abbreviations and math symbols into words. What you enter under “Spoken as” is said exactly as written — only numbers in it, including {number}, are read as words."
     },
     "addTitle": "Add a term",
     "term": "Term (as written)",
@@ -820,6 +835,22 @@
     "saved": "Saved."
   },
   "latencyLab": {
+    "sttCheck": {
+      "title": "Measure speech recognition only",
+      "hint": "Measures the loaded speech recognition model on its own, without a project, language model or speech output: how fast the first live text appears, how long each re-decode takes, and how long it takes from stop to the final text. Nothing is sent to the server. Device test procedure: docs/stt-device-test.md.",
+      "needModel": "Load the on-device speech recognition above first.",
+      "startMic": "Record from microphone",
+      "stop": "Stop",
+      "playFile": "Play an audio file through the recognizer",
+      "partial": "Live text",
+      "final": "Final text",
+      "firstPartial": "First text after",
+      "decode": "Re-decode time (last / average / max)",
+      "decodedAudio": "Audio length of last re-decode",
+      "finalize": "Time from stop to final text",
+      "copy": "Copy results",
+      "error": "Error: {{message}}"
+    },
     "title": "Latency test",
     "subtitle": "Simulate student conversations with one of your projects and measure every step on this device: speech recognition, language model, speech output and the avatar — above all, how long after the student stops speaking the avatar starts to answer.",
     "setupTitle": "Configuration",
@@ -833,8 +864,8 @@
     "llmProject": "As the project is set up",
     "tts": "Speech output",
     "ttsProject": "As the project is set up",
-    "ttsLocal": "Local TTS on the server (Sopro)",
-    "ttsBrowser": "Sopro in this browser",
+    "ttsLocal": "Local TTS on the server (Pocket TTS)",
+    "ttsBrowserPocket": "Pocket TTS in this browser (German)",
     "ttsNone": "None (text only)",
     "streaming": "Streaming (the avatar starts speaking after the first sentence)",
     "avatar": "Show the 3D avatar",
@@ -848,14 +879,7 @@
     "yes": "yes",
     "no": "no",
     "parakeetTitle": "Speech recognition on this device (Parakeet)",
-    "soproTitle": "Speech output in this browser (Sopro)",
-    "soproHint": "Downloads the Sopro model into this browser (from Hugging Face unless you enter a self-hosted copy below). Uses WebGPU on computers and the CPU on tablets and phones.",
-    "soproModelUrl": "Model address (optional)",
-    "soproBackend": "running as {{backend}}",
-    "soproVoice": "Voice to clone",
-    "soproVoicePick": "Pick one of your voice clips…",
-    "soproVoiceUpload": "Upload a clip",
-    "soproVoiceReady": "Voice \"{{name}}\" ready (prepared in {{ms}} ms).",
+    "engineBackend": "running as {{backend}}",
     "load": "Load",
     "engineStatus": "Status: {{status}}",
     "loadedIn": "ready after {{seconds}} s",
@@ -888,7 +912,11 @@
     "missingClips": "These clips from the script haven't been added: {{names}}",
     "noProject": "Pick a project first.",
     "needParakeet": "Load the on-device speech recognition first (or pick server speech recognition).",
-    "needSopro": "Load Sopro and pick a voice first (or pick another speech output).",
+    "needPocket": "Load Pocket TTS first (or pick another speech output).",
+    "pocketTitle": "Speech output in this browser (Pocket TTS)",
+    "pocketHint": "Loads Kyutai's Pocket TTS (German, about 100 MB) from this server into the browser and speaks with the project's preset voice (otherwise \"alba\") — no voice cloning. Runs on the CPU. If loading fails, the model files are missing on the server: they are downloaded with scripts/fetch-tts-model.sh.",
+    "pocketVoice": "Voice: {{voice}} — {{credit}}",
+    "pocketGermanOnly": "Pocket TTS only speaks German; this project's spoken language is a different one.",
     "resultsTitle": "Results",
     "resultsHint": "All times in milliseconds. Unless noted, they count from the moment the student finished (recording stopped, clip ended, text sent).",
     "copy": "Copy as CSV",
@@ -928,7 +956,7 @@
       "llmFirstTokenMs": "Server: from receiving the message until the language model's first word (streaming only).",
       "llmTotalMs": "Server: until the language model's whole reply is there.",
       "firstChunkTextReadyMs": "Server: until the first sentence is complete and handed to speech output.",
-      "firstChunkTtsMs": "How long synthesizing the first sentence took — on the server, or with Sopro in the browser until its first audio.",
+      "firstChunkTtsMs": "How long synthesizing the first sentence took — on the server, or in the browser until its first audio.",
       "ttsTotalMs": "Synthesis time of all sentences added up.",
       "requestToFirstChunkMs": "This device: from sending the message until the first piece of the reply arrived (network, language model and server TTS together).",
       "firstAudioMs": "This device: from the end of the student's input until the avatar starts speaking. This is the wait a student feels.",
@@ -938,23 +966,6 @@
       "avatarFps": "Frames per second of the 3D avatar while it was speaking (target: 30).",
       "retrievalMs": "Server: looking up the passages from the project's knowledge bases before the language model is asked. Empty without a knowledge base."
     }
-  },
-  "sttTest": {
-    "title": "Speech recognition device test",
-    "intro": "Loads the on-device speech recognition model and measures how fast it runs on this device. Nothing is sent to the server.",
-    "status": "Status: {{status}}",
-    "loadTime": "Model ready after {{seconds}} s",
-    "error": "Error: {{message}}",
-    "startMic": "Record from microphone",
-    "stop": "Stop",
-    "playFile": "Play an audio file through the recognizer",
-    "partial": "Live text",
-    "final": "Final text",
-    "firstPartial": "First text after",
-    "decode": "Re-decode time (last / average / max)",
-    "decodedAudio": "Audio length of last re-decode",
-    "finalize": "Time from stop to final text",
-    "copy": "Copy results"
   },
   "credits": {
     "title": "Credits & Licenses",
@@ -972,12 +983,18 @@
       }
     },
     "speech": {
-      "title": "Speech Recognition",
+      "title": "Speech Recognition and Output",
       "parakeet": {
         "description": "Multilingual speech recognition model that runs on the visitor's device (ternary version of NVIDIA's Parakeet TDT 0.6B v3)",
         "note": "Original model by NVIDIA, ternary version by Moondream, ONNX export by eschmidbauer and mrfakename. Used unchanged; the files are only re-compressed for delivery."
       },
-      "onnxRuntime": { "description": "Runs the speech recognition model in the browser via WebGPU and WebAssembly" }
+      "onnxRuntime": { "description": "Runs the speech recognition and speech output models in the browser via WebGPU and WebAssembly" },
+      "pocket": {
+        "description": "Speech output without a cloud provider: on the server for every project without a TTS key and, for now in the latency test, on the visitor's device",
+        "note": "In the browser: ONNX export and int8 quantization by Lauro00000 (with lookbe/pocket-tts-onnx-export), mirrored unchanged by LOLA; the voice-cloning part is not included. Tokenizer and the voice state \"alba\" from Kyutai, unchanged. Voice recorded by Alba MacKenna (CC BY 4.0).",
+        "voicesNote": "Preset voices from Kyutai's voice collection: Alba MacKenna, VCTK and CML-TTS (CC BY 4.0), Mozilla Common Voice, Voice-Zero and Kyutai's own recordings (CC0). Donated voices from the Unmute Voice Donation Project (CC0)."
+      },
+      "tokenizers": { "description": "Splits the text into the tokens the speech output model reads" }
     },
     "fonts": {
       "title": "Fonts",
@@ -1362,7 +1379,140 @@
     "bibUnlinked": "Without an entry: {{names}}. You can choose the key yourself in a document's source details.",
     "bibFailed": "The import failed."
   },
+  "adminPages": {
+    "title": "Pages",
+    "subtitle": "Adapt the public pages' texts to your institution and add further pages — per language.",
+    "loadError": "Pages couldn't be loaded.",
+    "builtinTitle": "Built-in pages",
+    "builtinHint": "Without text of your own these pages show the built-in text. If a language is missing, visitors see your English text, otherwise the built-in one.",
+    "customTitle": "Further pages",
+    "customHint": "For example an accessibility statement, which public bodies such as schools and universities have to publish. Reachable at /p/<address> once published.",
+    "columns": {
+      "page": "Page",
+      "ownText": "Own text",
+      "lastChange": "Last changed",
+      "status": "Status"
+    },
+    "kinds": {
+      "landing": "Home page",
+      "imprint": "Legal notice",
+      "privacy": "Privacy policy",
+      "custom": "Custom page"
+    },
+    "descriptions": {
+      "landing": "The home page's headline, intro and feature cards, plus an optional section of your own.",
+      "imprint": "Replaces the built-in legal notice with your own text in Markdown.",
+      "privacy": "Replaces the built-in privacy policy with your own text in Markdown.",
+      "custom": "A page of your own in Markdown."
+    },
+    "localeWritten": "Has own text",
+    "localeMissing": "No own text",
+    "edit": "Edit",
+    "untitled": "Untitled",
+    "published": "Published",
+    "draft": "Draft",
+    "noCustomPages": "No further pages yet.",
+    "slugLabel": "Page address",
+    "slugPlaceholder": "accessibility",
+    "slugHint": "The last part of the address: \"accessibility\" becomes /p/accessibility. Lowercase letters, digits and hyphens only.",
+    "create": "Create page",
+    "createError": "The page couldn't be created.",
+    "neverChanged": "Never changed",
+    "deletedAccount": "Deleted account",
+    "languages": {
+      "de": "German",
+      "en": "English"
+    },
+    "status": {
+      "own": "Your own text is shown in this language.",
+      "fallbackEnglish": "No text of your own in this language yet — visitors see your English text.",
+      "builtin": "No text of your own in this language yet — visitors see the built-in text.",
+      "customOther": "No text in this language yet — visitors see the text of another language.",
+      "customEmpty": "This page has no text yet, so it can't be visited."
+    },
+    "landingFields": {
+      "badge": "Label above the headline",
+      "headingFull": "Headline",
+      "headingShort": "Short headline (phones)",
+      "heroText": "Intro text",
+      "configureTitle": "Card 1: title",
+      "configureText": "Card 1: text",
+      "publishTitle": "Card 2: title",
+      "publishText": "Card 2: text",
+      "flexibilityTitle": "Card 3: title",
+      "flexibilityText": "Card 3: text"
+    },
+    "editor": {
+      "back": "All pages",
+      "view": "View page",
+      "languageTabs": "Language",
+      "unsaved": "Unsaved changes",
+      "write": "Write",
+      "preview": "Preview",
+      "previewEmpty": "No text yet.",
+      "markdownHint": "Markdown: ## Heading, **bold**, [link](https://…), - list",
+      "landingFieldsHint": "Empty fields keep the built-in text (shown in grey). Without a short headline, phones show the normal one.",
+      "landingExtra": "Section of your own below the cards (optional)",
+      "landingExtraHint": "For example who runs this instance, or a note about a research project. Leave it empty for no section.",
+      "titleLabel": "Title",
+      "titleHint": "The page heading and the footer link text.",
+      "titleOptionalLabel": "Heading (optional)",
+      "titleOptionalHint": "Leave empty to keep the usual heading. Only used together with your own text.",
+      "insertBuiltin": "Insert the built-in text as a starting point",
+      "confirmInsertBuiltin": "Replace the text in the editor with the built-in one?",
+      "contentLabel": "Text",
+      "contentHint": "The page's content in Markdown. HTML is not rendered.",
+      "contentLegalHint": "Replaces the whole built-in page. The institution running this instance is responsible for the text being correct. HTML is not rendered.",
+      "save": "Save {{language}}",
+      "saved": "Saved.",
+      "saveError": "Save failed. Please try again.",
+      "reset": "Reset to the built-in text",
+      "confirmReset": "Delete your own text in this language? The English or the built-in text is shown instead.",
+      "deleteText": "Delete this language's text",
+      "confirmDeleteText": "Delete the text in this language?"
+    },
+    "settings": {
+      "title": "Page settings",
+      "published": "Published",
+      "publishedHint": "Only published pages with text can be visited.",
+      "showInFooter": "Link in the footer",
+      "showInFooterHint": "Shows a link in the footer of the home page and the sign-in pages.",
+      "footerOrder": "Order in the footer",
+      "footerOrderHint": "Smaller numbers come first.",
+      "save": "Save settings",
+      "saveError": "The settings couldn't be saved.",
+      "delete": "Delete page",
+      "confirmDelete": "Permanently delete this page with all its texts and history?",
+      "deleteError": "The page couldn't be deleted."
+    },
+    "history": {
+      "title": "History",
+      "lastChange": "Last changed:",
+      "when": "When",
+      "who": "Who",
+      "what": "What",
+      "empty": "No changes yet.",
+      "actions": {
+        "created": "Created",
+        "content_saved": "Text saved",
+        "content_reset": "Text reset",
+        "settings_changed": "Settings changed"
+      }
+    }
+  },
+  "customPage": {
+    "notFoundTitle": "Page not found",
+    "notFoundText": "This page doesn't exist or isn't published.",
+    "backHome": "Back to the home page"
+  },
   "errors": {
+    "PAGE_NOT_FOUND": "Page not found.",
+    "PAGE_SLUG_INVALID": "The address may only contain lowercase letters (a–z), digits and single hyphens (max. 80 characters).",
+    "PAGE_SLUG_TAKEN": "This address is already taken.",
+    "PAGE_BUILTIN_PROTECTED": "Built-in pages can't be moved, hidden or deleted — only their text can be changed.",
+    "PAGE_TITLE_REQUIRED": "Please enter a title — it's the page heading and the footer link.",
+    "PAGE_FIELDS_NOT_ALLOWED": "This page doesn't have these fields.",
+    "PAGE_FIELD_TOO_LONG": "A field is too long (max. 2,000 characters).",
     "RATE_LIMIT_EVALUATION": "Too many evaluation requests. Please wait a few minutes.",
     "EVALUATION_DISABLED": "Evaluation isn't set up on this server.",
     "EVALUATION_SERVICE_UNAVAILABLE": "The evaluation service can't be reached right now.",

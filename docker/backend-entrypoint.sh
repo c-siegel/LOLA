@@ -9,11 +9,11 @@ set -eu
 PUID="${PUID:-568}"
 PGID="${PGID:-568}"
 
-if [ "$(id -u eduavatars)" != "$PUID" ]; then
-  usermod -o -u "$PUID" eduavatars
+if [ "$(id -u lola)" != "$PUID" ]; then
+  usermod -o -u "$PUID" lola
 fi
-if [ "$(id -g eduavatars)" != "$PGID" ]; then
-  groupmod -o -g "$PGID" eduavatars
+if [ "$(id -g lola)" != "$PGID" ]; then
+  groupmod -o -g "$PGID" lola
 fi
 
 # Not created automatically by the app — without this step, avatar/profile picture uploads and the
@@ -32,15 +32,15 @@ mkdir -p /data/rag /data/rag-eval
 # Re-applied on every start, not just once at image build time — /data is a bind mount, so its
 # actual on-disk ownership is independent of whatever the image expects, and changes if PUID/PGID
 # differ from a previous run.
-chown -R eduavatars:eduavatars /data
+chown -R lola:lola /data
 
 # Must run from within backend/, otherwise Python can't find the app package (see the comment in
 # backend/alembic/env.py). WORKDIR is already set to /app/backend in the Dockerfile. Both steps run
 # as the (now correctly configured) app user, never as root.
-gosu eduavatars python -m alembic upgrade head
+gosu lola python -m alembic upgrade head
 
 # Creates/promotes an admin account from ADMIN_EMAIL/ADMIN_PASSWORD if set — a no-op otherwise,
 # and safe to run on every start (see app/cli/bootstrap_admin.py).
-gosu eduavatars python -m app.cli.bootstrap_admin
+gosu lola python -m app.cli.bootstrap_admin
 
-exec gosu eduavatars "$@"
+exec gosu lola "$@"

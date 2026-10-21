@@ -1,5 +1,5 @@
 """
-EduAvatars Evaluation Service
+LOLA Evaluation Service
 
 Ragas sends anonymous usage analytics unless RAGAS_DO_NOT_TRACK is "true". It's forced here,
 before anything can import ragas, so no deployment can switch it on by accident: this service

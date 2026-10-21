@@ -368,3 +368,21 @@ def test_streamed_reply_returns_its_db_connection_before_streaming(fake_ai, monk
         app.dependency_overrides.clear()
         rate_limit._hits.clear()
         file_engine.dispose()
+
+
+def test_forgot_password_ignores_smtp_failure(monkeypatch, anon, engine):
+    """A broken mail server must not turn a known email into a 500 (account enumeration)."""
+    from app.core.config import settings
+    from app.features.auth import password_reset
+
+    make_user(engine, email="reset@example.com")
+    monkeypatch.setattr(settings, "smtp_host", "smtp.invalid")
+
+    def boom(*_args):
+        raise OSError("SMTP down")
+
+    monkeypatch.setattr(password_reset, "send_password_reset_email", boom)
+    known = anon.post("/auth/forgot-password", json={"email": "reset@example.com"})
+    unknown = anon.post("/auth/forgot-password", json={"email": "nobody@example.com"})
+    assert known.status_code == 200
+    assert known.json() == unknown.json()

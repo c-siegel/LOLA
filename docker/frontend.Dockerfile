@@ -22,10 +22,11 @@ FROM caddy:2-alpine
 # user: caddy:2-alpine's own Dockerfile already grants the `caddy` binary itself
 # cap_net_bind_service via setcap, which isn't tied to running as root.
 RUN adduser -D -u 1000 caddyuser
-# For the one-off `stt-model` service (see docker-compose.yml), which reuses this image to download
-# the speech recognition model: curl isn't in the base image, and BusyBox's gzip lacks -k.
+# For the one-off `stt-model` and `tts-model` services (see docker-compose.yml), which reuse this
+# image to download the on-device models: curl isn't in the base image, and BusyBox's gzip lacks -k.
 RUN apk add --no-cache curl gzip
 COPY --chmod=755 scripts/fetch-stt-model.sh /usr/local/bin/fetch-stt-model
+COPY --chmod=755 scripts/fetch-tts-model.sh /usr/local/bin/fetch-tts-model
 COPY --from=build --chown=caddyuser:caddyuser /app/frontend/dist /srv
 COPY --chown=caddyuser:caddyuser docker/Caddyfile /etc/caddy/Caddyfile
 USER caddyuser

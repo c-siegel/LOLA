@@ -55,3 +55,29 @@ def test_enforce_still_blocks_after_a_sweep_leaves_the_current_key_untouched(mon
 
     with pytest.raises(Exception):
         rate_limit._enforce("chat-ip:1.2.3.4", max_requests=2, window_seconds=60, message="x")
+
+
+@pytest.mark.parametrize(
+    "enforce, prefix",
+    [
+        (rate_limit.enforce_public_chat_rate_limit, "chat"),
+        (rate_limit.enforce_public_transcribe_rate_limit, "transcribe"),
+        (rate_limit.enforce_chat_unlock_rate_limit, "chat-unlock"),
+    ],
+)
+def test_visitor_rejections_do_not_use_up_the_shared_ip_budget(enforce, prefix) -> None:
+    """One stuck tab past its own limit must not lock out the rest of a class behind the same IP."""
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+
+    request = SimpleNamespace(client=SimpleNamespace(host="10.0.0.1"))
+    now = time.monotonic()
+    rate_limit._hits[f"{prefix}-visitor:stuck"] = [now] * 1000
+
+    for _ in range(50):
+        with pytest.raises(HTTPException):
+            enforce(request, "stuck")
+
+    assert len(rate_limit._hits.get(f"{prefix}-ip:10.0.0.1", [])) == 0
+    enforce(request, "other-student")

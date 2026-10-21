@@ -1,6 +1,7 @@
 """Route-level tests for the avatar/background libraries, the profile picture, and the API-key
 management routes (/api-keys)."""
 
+from app.features.media import avatars_router, backgrounds_router
 from conftest import browser_url, create_key, create_project, login_as, make_user, publish
 
 GLB = b"glTF" + b"\x00" * 16
@@ -78,6 +79,25 @@ def test_background_library(client, anon, teacher):
 
     assert client.delete(f"/backgrounds/{background['id']}").status_code == 204
     assert client.get("/backgrounds").json() == []
+
+
+def test_oversized_library_uploads_are_refused(client, teacher, monkeypatch):
+    monkeypatch.setattr(avatars_router, "_MAX_UPLOAD_BYTES", len(GLB) - 1)
+    monkeypatch.setattr(avatars_router, "_MAX_THUMBNAIL_BYTES", len(PNG) - 1)
+    monkeypatch.setattr(backgrounds_router, "_MAX_UPLOAD_BYTES", len(PNG) - 1)
+
+    avatar = client.post("/avatars", files={"file": ("a.glb", GLB, "model/gltf-binary")})
+    assert avatar.status_code == 400
+    assert avatar.json() == {"detail": "AVATAR_FILE_TOO_LARGE"}
+    background = client.post("/backgrounds", files={"file": ("b.png", PNG, "image/png")})
+    assert background.status_code == 400
+    assert background.json() == {"detail": "BACKGROUND_FILE_TOO_LARGE"}
+
+    monkeypatch.setattr(avatars_router, "_MAX_UPLOAD_BYTES", len(GLB))
+    avatar_id = client.post("/avatars", files={"file": ("a.glb", GLB, "model/gltf-binary")}).json()["id"]
+    thumb = client.post(f"/avatars/{avatar_id}/thumbnail", files={"file": ("t.png", PNG, "image/png")})
+    assert thumb.status_code == 400
+    assert thumb.json() == {"detail": "AVATAR_THUMBNAIL_TOO_LARGE"}
 
 
 def test_profile_picture(client, teacher):

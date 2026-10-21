@@ -96,6 +96,14 @@ class PublicProjectOut(CamelModel):
     # on the server only (deployment opt-out, project opt-out, or password-locked) — see
     # features/api_keys/resolve.py::browser_stt_model_url_for.
     browser_stt_model_url: str | None = None
+    # Base URL of the on-device speech output model, or None if this project speaks through the
+    # server only — see features/api_keys/resolve.py::browser_tts_model_url_for. The page sends
+    # speak_on_device once the model has loaded on the visitor's device.
+    browser_tts_model_url: str | None = None
+    # The preset voice the device should speak with (the project's tts_voice) — None without
+    # on-device speech output. A name the model doesn't have, e.g. a cloud provider's voice, makes
+    # the device use the model's default voice (see frontend workers/pocketWorker.ts).
+    browser_tts_voice: str | None = None
     # Whether the frontend should use POST /messages/stream instead of /messages — see
     # features/chat/pipeline.py::stream_turn. Meaningless (and always False here) without
     # tts_enabled, since the whole point is audio starting before the full reply is ready.
@@ -164,6 +172,11 @@ class ChatMessageIn(CamelModel):
     # wouldn't know earlier rounds of the conversation. Additionally capped server-side, see
     # features/ai/llm/history.py::build_messages.
     history: list[ChatHistoryEntry] = []
+    # The visitor's device has the on-device speech output model loaded and speaks the reply
+    # itself: the server skips its own TTS and sends the spoken text instead (ChatMessageOut.spoken,
+    # the stream's "spoken" per chunk). Ignored unless the project offers on-device speech output
+    # (see features/api_keys/resolve.py::browser_tts_model_url_for).
+    speak_on_device: bool = False
 
     # Belt and braces alongside the frontend's own guard (sendMessage's trim-check in
     # pages/PublicChat/index.tsx) — a blank message has no legitimate use here, so nothing should
@@ -181,9 +194,9 @@ class ChatMessageOut(CamelModel):
     reply: str
     audio_base64: str | None = None
     content_type: str | None = None
-    # Wall-clock duration of the LLM/TTS calls in send_message(), for the client-side latency log
-    # (see pages/PublicChat/index.tsx) — None for tts_ms means TTS didn't run at all (disabled/no
-    # key), not that it was instant.
+    # Wall-clock duration of the LLM/TTS calls in send_message() — None for tts_ms means TTS didn't
+    # run at all (disabled/no key), not that it was instant. The public chat doesn't show them;
+    # latency is measured in the dashboard's latency test (latency_router.py).
     llm_ms: float | None = None
     tts_ms: float | None = None
     # Gestures for the avatar, in reply order (see features/chat/motion.py) — empty when the
@@ -192,6 +205,8 @@ class ChatMessageOut(CamelModel):
     # Plan steps ticked off or taken back in this reply (see features/chat/checklist.py) — the
     # browser stores them on the message and echoes them back in ChatHistoryEntry.checks.
     checks: list[ChecklistCheck] = []
+    # The reply as the visitor's device should say it — only with ChatMessageIn.speak_on_device.
+    spoken: str | None = None
 
 
 class TranscriptionOut(CamelModel):

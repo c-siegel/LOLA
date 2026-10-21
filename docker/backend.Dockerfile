@@ -38,18 +38,18 @@ COPY docker/backend-entrypoint.sh /usr/local/bin/backend-entrypoint.sh
 RUN chmod +x /usr/local/bin/backend-entrypoint.sh
 
 # App user — the process doesn't need root, only write access to the mounted data directory (see
-# docker-compose.yml, bind mount on EDUAVATARS_DATA_DIR:/data). Created here with a default UID/GID
+# docker-compose.yml, bind mount on LOLA_DATA_DIR:/data). Created here with a default UID/GID
 # of 568 — TrueNAS SCALE's fixed UID/GID for its built-in "apps" system user, which owns app data
 # directories that TrueNAS itself creates — so existing TrueNAS deployments keep working without
 # any extra configuration. On any other host, set PUID/PGID (see .env.example / docker/README.md)
 # to whatever owns your bind-mounted data directory; the entrypoint adjusts this user to match at
 # container start, before dropping privileges to it (see backend-entrypoint.sh).
 # The image itself is therefore not tied to TrueNAS — only the *default* still favors it.
-RUN groupadd --gid 568 eduavatars \
-    && useradd --create-home --uid 568 --gid 568 eduavatars \
+RUN groupadd --gid 568 lola \
+    && useradd --create-home --uid 568 --gid 568 lola \
     && mkdir -p /data \
-    && chown -R eduavatars:eduavatars /data /app
-# Deliberately no "USER eduavatars" here — the entrypoint starts as root so it can fix up the app
+    && chown -R lola:lola /data /app
+# Deliberately no "USER lola" here — the entrypoint starts as root so it can fix up the app
 # user's UID/GID and the data directory's ownership first, then drops to that user itself.
 
 EXPOSE 8000

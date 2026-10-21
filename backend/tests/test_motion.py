@@ -10,7 +10,7 @@ import pytest
 from conftest import create_project, parse_sse
 
 from app.features.chat.motion import MOTION_PROMPT, MOTIONS, MotionMark, extract_markers
-from app.features.chat.streaming import SentenceChunker, chunk_text
+from app.features.ai.tts.normalizer import speech_stream
 from app.features.projects.export import parse_project_yaml
 
 FRONTEND_MOTIONS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "vendor" / "motion-engine" / "motions.json"
@@ -66,21 +66,27 @@ def test_text_without_markers_is_unchanged() -> None:
 # --- Chunking ---
 
 
-def test_chunker_keeps_markers_whole_and_does_not_split_at_them() -> None:
-    chunker = SentenceChunker()
-    chunks: list[str] = []
+def raw_chunks(text: str, step: int) -> list[str]:
+    """The raw text of each piece speech_stream releases, fed `step` characters at a time."""
+    stream = speech_stream("de")
+    pieces = [p for i in range(0, len(text), step) for p in stream.feed_pieces(text[i : i + step])]
+    tail = stream.flush_piece()
+    return [p.raw for p in pieces + ([tail] if tail else [])]
+
+
+def test_stream_keeps_markers_whole_and_does_not_split_at_them() -> None:
     # Character by character: the worst case for a marker arriving in pieces.
-    for ch in STREAMED_REPLY:
-        chunks.extend(chunker.feed(ch))
-    tail = chunker.flush()
-    if tail:
-        chunks.append(tail)
-    assert chunks == chunk_text(STREAMED_REPLY)
+    chunks = raw_chunks(STREAMED_REPLY, 1)
+    assert "".join(chunks) == STREAMED_REPLY
+    assert len(chunks) > 1
+    for chunk in chunks[:-1]:
+        # Cut at a sentence end, never inside a marker.
+        assert chunk.rstrip().endswith((".", "!", "?")), chunk
     for chunk in chunks:
         assert chunk.count("::") % 2 == 0, chunk
     # The closing "::" followed by a space is no sentence end.
     sentence = "Schau dir diesen Abschnitt genau an ::point:: das ist der wichtigste Teil."
-    assert chunk_text(sentence) == [sentence]
+    assert raw_chunks(sentence, 1) == [sentence]
 
 
 def test_backend_and_frontend_offer_the_same_gestures() -> None:
@@ -117,6 +123,22 @@ def test_stream_strips_markers_sends_motions_and_saves_their_positions(client, a
     csv = client.post("/conversations/export", json={"conversationIds": [conversation_id]}).text
     assert "Zeitpunkt,Avatar,Schüler:in,Gesten" in csv
     assert f"wave_right@0; thinking_face@{CLEAN_REPLY.index('lass')}; thumbup_right@{len(CLEAN_REPLY)}" in csv
+
+
+def test_stream_speaks_normalized_text_without_glued_markers(anon, chat_project, fake_ai):
+    # The normalizer only silences a marker that stands apart; one glued to a word must still be
+    # cut out of the spoken chunk by motion.py, and the chunk is spoken in its normalized form.
+    fake_ai.llm_reply = "Richtig::nod_yes:: das sind 3,5 kg. Gut::done_1:: gemacht, weiter so mit der Übung!"
+    slug = chat_project["shareSlug"]
+    anon.get(f"/public/{slug}")
+
+    events = parse_sse(anon.post(f"/public/{slug}/messages/stream", json={"message": "Wie viel?"}).text)
+
+    spoken = " ".join(call["input"] for call in fake_ai.speech_calls)
+    assert "::" not in spoken and "nod_yes" not in spoken
+    assert "drei Komma fünf Kilogramm" in spoken
+    chunks = [data for name, data in events if name == "chunk"]
+    assert "3,5 kg" in " ".join(c["text"] for c in chunks)
 
 
 def test_plain_reply_returns_motions_and_speaks_clean_text(anon, chat_project, fake_ai):
@@ -173,12 +195,12 @@ def test_thinking_motions_default_off_and_only_reach_the_public_page_together_wi
 
 
 def test_exports_without_the_thinking_setting_import_with_it_off() -> None:
-    assert parse_project_yaml("eduavatars_export: 2\nproject:\n  title: x\n").thinking_motions_enabled is False
+    assert parse_project_yaml("lola_export: 2\nproject:\n  title: x\n").thinking_motions_enabled is False
 
 
 def test_exports_without_the_setting_import_with_motion_on() -> None:
-    assert parse_project_yaml("eduavatars_export: 2\nproject:\n  title: x\n").motion_enabled is True
-    assert parse_project_yaml("eduavatars_export: 2\nproject:\n  title: x\n  motion_enabled: false\n").motion_enabled is False
+    assert parse_project_yaml("lola_export: 2\nproject:\n  title: x\n").motion_enabled is True
+    assert parse_project_yaml("lola_export: 2\nproject:\n  title: x\n  motion_enabled: false\n").motion_enabled is False
 
 
 # --- Editable motion prompt ---

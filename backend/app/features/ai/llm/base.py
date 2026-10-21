@@ -22,6 +22,8 @@ class ChatRequest:
     # Retrieved knowledge-base passages, already formatted (see features/knowledge/prompt.py) —
     # appended to the system prompt by build_messages, so every provider gets them the same way.
     reference_material: str | None = None
+    # True/False = switch the model's reasoning on/off; None = leave the model's default alone.
+    thinking: bool | None = None
 
 
 class LLMClient(Protocol):

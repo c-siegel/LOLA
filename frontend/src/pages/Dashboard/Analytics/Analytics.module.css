@@ -41,13 +41,7 @@
 }
 
 .card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  composes: card from "../../../styles/dashboard.module.css";
 }
 
 .cardHeader {
@@ -103,26 +97,7 @@
 }
 
 .table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.table th {
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
-  color: var(--text-tertiary);
-  font-weight: 500;
-  border-bottom: 1px solid var(--border-default);
-}
-
-.table td {
-  padding: var(--space-3);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.table tbody tr:last-child td {
-  border-bottom: none;
+  composes: dataTable from "../../../styles/dashboard.module.css";
 }
 
 .emptyRow,

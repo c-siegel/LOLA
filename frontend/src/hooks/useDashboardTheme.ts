@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 export type Theme = "light" | "dark";
 
-export const THEME_STORAGE_KEY = "eduavatars_theme";
+export const THEME_STORAGE_KEY = "lola_theme";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 

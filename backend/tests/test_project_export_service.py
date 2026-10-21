@@ -105,14 +105,14 @@ def test_export_is_format_version_2_and_keeps_a_builtin_avatar() -> None:
         yaml_text = export_project_yaml(project)
         imported = import_project(session, "stranger", parse_project_yaml(yaml_text))
 
-    assert "eduavatars_export: 2" in yaml_text
+    assert "lola_export: 2" in yaml_text
     assert imported.builtin_avatar == "david"
     assert imported.avatar_model_url == "/avatars/david.glb"
 
 
 def test_import_reads_version_1_files_with_urls() -> None:
     v1_file = """
-eduavatars_export: 1
+lola_export: 1
 project:
   title: Old Export
   avatar_model_url: /avatar-models/av1/file
@@ -121,11 +121,11 @@ project:
     data = parse_project_yaml(v1_file)
     assert (data.avatar_model_id, data.builtin_avatar, data.avatar_background_id) == ("av1", None, "bg1")
 
-    builtin = parse_project_yaml("eduavatars_export: 1\nproject:\n  title: x\n  avatar_model_url: /avatars/julia.glb\n")
+    builtin = parse_project_yaml("lola_export: 1\nproject:\n  title: x\n  avatar_model_url: /avatars/julia.glb\n")
     assert (builtin.avatar_model_id, builtin.builtin_avatar) == (None, "julia")
 
     unknown = parse_project_yaml(
-        "eduavatars_export: 1\nproject:\n  title: x\n  avatar_model_url: https://evil.example/x.glb\n"
+        "lola_export: 1\nproject:\n  title: x\n  avatar_model_url: https://evil.example/x.glb\n"
     )
     assert (unknown.avatar_model_id, unknown.builtin_avatar) == (None, None)
 
@@ -139,12 +139,12 @@ def test_chat_layout_round_trips_and_older_exports_map_chat_default_open() -> No
         imported = import_project(session, "owner", parse_project_yaml(export_project_yaml(project)))
     assert imported.chat_layout == "chat_only"
 
-    collapsed = parse_project_yaml("eduavatars_export: 2\nproject:\n  title: x\n  chat_default_open: false\n")
+    collapsed = parse_project_yaml("lola_export: 2\nproject:\n  title: x\n  chat_default_open: false\n")
     assert collapsed.chat_layout == "avatar_chat_collapsed"
-    opened = parse_project_yaml("eduavatars_export: 2\nproject:\n  title: x\n  chat_default_open: true\n")
+    opened = parse_project_yaml("lola_export: 2\nproject:\n  title: x\n  chat_default_open: true\n")
     assert opened.chat_layout == "avatar_chat"
     with_both = parse_project_yaml(
-        "eduavatars_export: 2\nproject:\n  title: x\n  chat_default_open: false\n  chat_layout: avatar_only\n"
+        "lola_export: 2\nproject:\n  title: x\n  chat_default_open: false\n  chat_layout: avatar_only\n"
     )
     assert with_both.chat_layout == "avatar_only"
 

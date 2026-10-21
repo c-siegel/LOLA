@@ -1,78 +1,18 @@
+"""Tests for LOLA's normt2s setup (features/ai/tts/normalizer.py). How numbers, units and math are
+read is normt2s's own job and tested there; these only check what LOLA configures on top."""
+
 import pytest
 
-from app.features.ai.tts.normalizer import normalize_for_speech
-
-
-@pytest.mark.parametrize(
-    ("text", "language", "expected"),
-    [
-        ("Das Ergebnis ist 1,23.", "de", "Das Ergebnis ist 1 Komma 2 3."),
-        ("The result is 1.23.", "en", "The result is 1 point 2 3."),
-        ("Pi ist ungefähr 3,14159.", "de", "Pi ist ungefähr 3 Komma 1 4 1 5 9."),
-    ],
-)
-def test_spells_out_decimal_digits(text: str, language: str, expected: str) -> None:
-    assert normalize_for_speech(text, language) == expected
-
-
-@pytest.mark.parametrize(
-    ("text", "language", "expected"),
-    [
-        ("a \\cdot b", "de", "a mal b"),
-        ("a \\cdot b", "en", "a times b"),
-        ("a \\times b", "de", "a mal b"),
-        ("a \\div b", "de", "a geteilt durch b"),
-        ("a \\div b", "en", "a divided by b"),
-        ("\\frac{1}{2}", "de", "1 geteilt durch 2"),
-        ("\\frac{1}{2}", "en", "1 divided by 2"),
-        ("\\sqrt{9}", "de", "Wurzel aus 9"),
-        ("3 / 4", "de", "3 geteilt durch 4"),
-        ("3 / 4", "en", "3 divided by 4"),
-        ("2^3", "de", "2 hoch 3"),
-        ("3 × 4", "de", "3 mal 4"),
-        ("3 ÷ 4", "de", "3 geteilt durch 4"),
-        # A chained multiplication never pairs up as emphasis (see _ITALIC's own comment on
-        # _strip_markdown) — spaced or not, it reaches here untouched for this rule to rewrite.
-        ("3 * 4 * 5", "de", "3 mal 4 mal 5"),
-        ("3*4*5", "de", "3 mal 4 mal 5"),
-    ],
-)
-def test_rewrites_math_symbols(text: str, language: str, expected: str) -> None:
-    assert normalize_for_speech(text, language) == expected
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        "Die Zahlen 1, 2, 3 sind gerade.",
-        "Bitte Kapitel 1. Nächstes Thema.",
-        "Das machen wir und/oder das.",
-        # Underscore italics require a non-word character on both outsides, so this must not be
-        # mistaken for emphasis and lose its underscores.
-        "Nutze die Variable my_variable_name.",
-    ],
-)
-def test_leaves_unrelated_text_untouched(text: str) -> None:
-    assert normalize_for_speech(text, "de") == text
+from app.features.ai.tts.normalizer import normalize_for_speech, speech_stream
 
 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
         ("Das ist **wichtig** für dich.", "Das ist wichtig für dich."),
-        ("Das ist __wichtig__ für dich.", "Das ist wichtig für dich."),
-        ("Das ist *wichtig* für dich.", "Das ist wichtig für dich."),
-        ("Das ist _wichtig_ für dich.", "Das ist wichtig für dich."),
-        ("**3 * 4** ist 12.", "3 mal 4 ist 12."),
-        ("Das ist ~~falsch~~ richtig.", "Das ist falsch richtig."),
-        ("Nutze die `print()`-Funktion.", "Nutze die print()-Funktion."),
-        ("## Übung 3\nRechne das aus.", "Übung 3\nRechne das aus."),
-        ("> Ein Zitat.", "Ein Zitat."),
-        ("- Erster Punkt\n- Zweiter Punkt", "Erster Punkt\nZweiter Punkt"),
-        ("1. Erster Schritt\n2. Zweiter Schritt", "Erster Schritt\nZweiter Schritt"),
+        ("## Übung\n- Erster Punkt\n- Zweiter Punkt", "Übung\nErster Punkt\nZweiter Punkt"),
         ("Mehr dazu: [hier](https://example.com).", "Mehr dazu: hier."),
-        ("Text davor\n---\nText danach", "Text davor\n\nText danach"),
-        ("```python\nprint(1)\n```", "print(1)\n"),
+        ("Nutze die Variable my_variable_name.", "Nutze die Variable my_variable_name."),
     ],
 )
 def test_strips_markdown(text: str, expected: str) -> None:
@@ -82,41 +22,75 @@ def test_strips_markdown(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("text", "language", "expected"),
     [
-        ("Das Ergebnis — ein Erfolg — war klar.", "de", "Das Ergebnis, ein Erfolg, war klar."),
-        ("5 - 3 = 2", "de", "5 - 3 = 2"),
-        # En dash is left alone — see _despeak_em_dash's docstring comment: it's normally a range
-        # ("10 to 20"), and rewriting it to a comma would silently turn that into a list.
-        ("Von 10–20 Minuten.", "de", "Von 10–20 Minuten."),
+        ("::wave_right:: Hallo! ::done_2:: Weiter ::undone_10:: so.", "de", "Hallo! Weiter so."),
+        (":: nod_yes :: Yes.", "en", "Yes."),
+        # Code with "::" is no marker (same rule as features/chat/motion.py).
+        ("Nutze std::vector::size.", "de", "Nutze std::vector::size."),
     ],
 )
-def test_despeaks_em_dash_without_touching_minus(text: str, language: str, expected: str) -> None:
+def test_markers_are_silent(text: str, language: str, expected: str) -> None:
     assert normalize_for_speech(text, language) == expected
 
 
 @pytest.mark.parametrize(
     ("text", "language", "expected"),
     [
-        ("Die Formel ist $$a \\cdot b$$.", "de", "Die Formel ist a mal b."),
-        ("Die Formel ist $a \\cdot b$.", "de", "Die Formel ist a mal b."),
-        ("The formula is $$1.23$$.", "en", "The formula is 1 point 2 3."),
-        ("$$\\frac{1}{2}$$ ist ein halb.", "de", "1 geteilt durch 2 ist ein halb."),
+        ("Es sind 1,5 m/s.", "de", "Es sind eins Komma fünf Meter pro Sekunde."),
+        ("It is 1.5 m/s.", "en", "It is one point five meters per second."),
+        # Unknown languages fall back to German.
+        ("Es sind 1,5 m/s.", "fr", "Es sind eins Komma fünf Meter pro Sekunde."),
     ],
 )
-def test_strips_math_delimiters(text: str, language: str, expected: str) -> None:
+def test_speaks_each_language(text: str, language: str, expected: str) -> None:
     assert normalize_for_speech(text, language) == expected
 
 
 @pytest.mark.parametrize(
     ("text", "language", "expected"),
     [
-        ("Pflanzen nehmen CO2 auf.", "de", "Pflanzen nehmen C O Zwei auf."),
-        ("Pflanzen nehmen CO_2 auf.", "de", "Pflanzen nehmen C O Zwei auf."),
-        ("Plants absorb CO2.", "en", "Plants absorb C O Two."),
-        ("Plants absorb CO_2.", "en", "Plants absorb C O Two."),
-        # Must not fire inside a larger token or on a different number.
-        ("ECO2000 ist ein Gerät.", "de", "ECO2000 ist ein Gerät."),
-        ("CO23 ist keine Formel.", "de", "CO23 ist keine Formel."),
+        # A German decimal comma inside math is a decimal, not a list (normt2s >= 0.4.1).
+        ("Die Formel ist $$1,23 \\cdot x$$.", "de", "Die Formel ist eins Komma zwei drei mal x."),
+        ("The formula is $1.23 \\cdot x$.", "en", "The formula is one point two three times x."),
+        # LLMs often write LaTeX without $...$ — it is read, not spelled out.
+        ("\\frac{1}{2} und 3 \\cdot 4", "de", "ein halb und drei mal vier"),
+        # A multiplication dot outside $...$ is read between operands only (normt2s >= 0.5) —
+        # not in a gender-inclusive word.
+        ("F = m · a", "de", "F gleich m mal a"),
+        ("F = m · a", "en", "F equals m times a"),
+        ("Liebe Lehrer·innen", "de", "Liebe Lehrer·innen"),
     ],
 )
-def test_spells_out_co2(text: str, language: str, expected: str) -> None:
+def test_speaks_math(text: str, language: str, expected: str) -> None:
     assert normalize_for_speech(text, language) == expected
+
+
+def stream_pieces(text: str, step: int = 1) -> list:
+    """The pieces speech_stream releases for `text`, fed `step` characters at a time."""
+    stream = speech_stream("de")
+    pieces = [p for i in range(0, len(text), step) for p in stream.feed_pieces(text[i : i + step])]
+    tail = stream.flush_piece()
+    return pieces + ([tail] if tail else [])
+
+
+def test_stream_releases_a_short_first_chunk_then_longer_ones() -> None:
+    first = "Das ist der erste Satz hier."  # over the 25-character first-chunk minimum
+    rest = "Kurz. " * 10 + "Ende."
+    pieces = stream_pieces(f"{first} {rest}")
+    assert pieces[0].raw.strip() == first
+    # Later chunks wait for 80 characters instead of releasing every short sentence.
+    assert all(len(p.raw) >= 80 for p in pieces[1:-1])
+
+
+def test_stream_never_cuts_inside_a_number_unit_or_abbreviation() -> None:
+    text = "Ein Auto fährt hier mit 120 km/h. Dr. Müller sagt, z. B. 3,5 kg sind genug für heute."
+    pieces = stream_pieces(text)
+    assert "".join(p.raw for p in pieces) == text
+    assert "".join(p.spoken for p in pieces) == normalize_for_speech(text, "de")
+    for piece in pieces:
+        assert not piece.raw.rstrip().endswith(("Dr.", "z.", "B.", "120")), piece
+
+
+def test_stream_cuts_a_long_run_without_sentence_ends() -> None:
+    pieces = stream_pieces("wort " * 120)
+    assert len(pieces) >= 2
+    assert all(len(p.raw) <= 300 for p in pieces)

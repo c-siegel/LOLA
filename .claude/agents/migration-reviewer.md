@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
 ---
 
-You own database schema changes for the EduAvatars backend (SQLModel models, Alembic migrations in
+You own database schema changes for the LOLA backend (SQLModel models, Alembic migrations in
 `backend/alembic/versions/`, SQLite in production via Docker).
 
 When a model changed:
