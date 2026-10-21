@@ -205,7 +205,7 @@ CI runs only on tagged releases ([docker-publish.yml](.github/workflows/docker-p
 
 ## Credits and licence
 
-LOLA is MIT-licensed, see [LICENSE](LICENSE). Every third-party component, model and font with its licence is listed in **[ATTRIBUTION.md](ATTRIBUTION.md)**; the same credits are in the app at `/credits`. Key ones: [TalkingHead](https://github.com/met4citizen/TalkingHead) and [HeadAudio](https://github.com/met4citizen/HeadAudio) (Mika Suominen, MIT), [MotionEngine](https://github.com/lhupyn/motion-engine) (lhupyn, MIT), Kyutai's [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) (CC BY 4.0 weights and voices). Brand marks: [docs/lola-icon-svgs/](docs/lola-icon-svgs/README.txt).
+LOLA is MIT-licensed, see [LICENSE](LICENSE). Every third-party component, model and font with its licence is listed in **[ATTRIBUTION.md](ATTRIBUTION.md)**; the same credits are in the app at `/credits`. Key ones: [TalkingHead](https://github.com/met4citizen/TalkingHead) and [HeadAudio](https://github.com/met4citizen/HeadAudio) (Mika Suominen, MIT), [MotionEngine](https://github.com/lhupyn/motion-engine) (lhupyn, MIT), Kyutai's [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) (CC BY 4.0 weights and voices).
 
 ## AI notice
 
