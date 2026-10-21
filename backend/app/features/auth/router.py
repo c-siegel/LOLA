@@ -11,7 +11,7 @@ JWT (JSON Web Token) — the browser sends it automatically on later requests, a
 can't read it. There's no bearer token in request headers to manage on the frontend.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from sqlmodel import Session
 
 from app.core.cookies import clear_auth_cookie, set_auth_cookie
@@ -78,10 +78,15 @@ def logout(response: Response):
 
 
 @router.post("/forgot-password")
-def forgot_password(data: ForgotPasswordRequest, request: Request, session: Session = Depends(get_session)):
+def forgot_password(
+    data: ForgotPasswordRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+):
     """Start a password reset for the given email, if an account with it exists."""
     enforce_password_reset_rate_limit(request, data.email)
-    request_password_reset(session, data.email)
+    request_password_reset(session, data.email, background_tasks)
     # Always the same response, whether or not the email exists or SMTP is configured — this
     # prevents enumerating which accounts are registered (see features/auth/password_reset.py).
     return {"detail": "Falls ein Konto mit dieser E-Mail existiert, wurde eine Nachricht verschickt."}

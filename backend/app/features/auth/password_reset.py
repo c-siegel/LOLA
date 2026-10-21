@@ -7,13 +7,15 @@ is stored) and emails a reset link, then verifies that token and sets the new pa
 How to use:
     from app.features.auth.password_reset import request_password_reset, reset_password
 
-    request_password_reset(session, email)
+    request_password_reset(session, email, background_tasks)
 """
 
 import hashlib
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
+from fastapi import BackgroundTasks
 from sqlalchemy import update
 from sqlmodel import Session, select
 
@@ -23,6 +25,8 @@ from app.features.auth.email import send_password_reset_email
 from app.features.auth.models import PasswordResetToken
 from app.features.users.models import User
 from app.features.users.service import find_user_by_email
+
+logger = logging.getLogger(__name__)
 
 
 def _hash_token(raw_token: str) -> str:
@@ -40,8 +44,17 @@ def _invalidate_unused_tokens(session: Session, user_id: str, now: datetime) -> 
     )
 
 
-def request_password_reset(session: Session, email: str) -> None:
-    """Issue a password-reset token and email the reset link, if an account with `email` exists."""
+def _send_reset_email_safely(to_email: str, reset_link: str) -> None:
+    """Send the reset email, logging (not raising) a failure; runs after the response is sent."""
+    try:
+        send_password_reset_email(to_email, reset_link)
+    except Exception:
+        # Not logged with the address or link: both are personal data / a live credential.
+        logger.exception("Sending the password-reset email failed")
+
+
+def request_password_reset(session: Session, email: str, background_tasks: BackgroundTasks) -> None:
+    """Issue a password-reset token and queue the reset email, if an account with `email` exists."""
     # Always responds the same way to the caller (see features/auth/router.py), whether or not the email
     # exists — this prevents using it to enumerate registered accounts.
     user = find_user_by_email(session, email)
@@ -66,7 +79,9 @@ def request_password_reset(session: Session, email: str) -> None:
         return
 
     reset_link = f"{settings.frontend_base_url}/reset-password?token={raw_token}"
-    send_password_reset_email(user.email, reset_link)
+    # Sent after the response: SMTP latency or errors would otherwise make a known email
+    # distinguishable from an unknown one (slower, or a 500).
+    background_tasks.add_task(_send_reset_email_safely, user.email, reset_link)
 
 
 def reset_password(session: Session, raw_token: str, new_password: str) -> User | None:
