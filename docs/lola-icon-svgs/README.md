@@ -1,8 +1,5 @@
-LOLA – Leipzig's Open Learning Avatar · brand marks (draft, concept C3)
-
-All text is converted to outlines, so the files display correctly without the fonts installed.
+LOLA – Leipzig's Open Learning Avatar: logos
 Letters: Plus Jakarta Sans ExtraBold; tagline: Inter SemiBold (both SIL Open Font License 1.1).
-The face in the bubble is a cut-out (mask), so it shows the background behind the logo.
 
 lola-logo-en / -de             main logo with tagline, for light backgrounds
 lola-logo-*-dark-bg            same, for dark backgrounds
@@ -19,4 +16,3 @@ Colours
   Leipzig blue  #1F4E9C   tagline (light)                light blue   #7AA5EF  (dark)
   Leipzig yellow#F2B705   spark (light)                              #F5C33B  (dark)
   Letters       #171717   (light)                                    #F2F4F3  (dark)
-Never set yellow as text on a light background (contrast 1.8:1).
