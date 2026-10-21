@@ -183,6 +183,10 @@ export async function sendMessageStream(
         }
       }
     }
+    // The connection closed without a "done" event. If part of the reply already arrived it
+    // stands as the final one; with nothing shown yet (e.g. a proxy dropped the stream), fail so
+    // the caller falls back to the plain endpoint instead of leaving the student without an answer.
+    if (!receivedAnyChunk) throw new ApiError(503, JSON.stringify({ detail: "STREAM_ENDED_EARLY" }));
   } catch (error) {
     // A user-initiated stop (see pages/PublicChat/index.tsx::interruptResponse) — never falls back
     // to the plain endpoint, unlike a genuine failure below, since the student explicitly ended it.
