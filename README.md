@@ -23,7 +23,7 @@
 
 ## Contents
 
-[Features](#features) · [Quick start](#quick-start) · [Optional services](#optional-services) · [Architecture](#architecture) · [AI providers](#ai-providers) · [Using LOLA](#using-lola) · [Data privacy](#data-privacy) · [Tech stack](#tech-stack) · [Documentation](#documentation) · [Contributing](#contributing) · [Credits and licence](#credits-and-licence) · [AI notice](#ai-notice)
+[Features](#features) · [Quick start](#quick-start) · [Optional services](#optional-services) · [Architecture](#architecture) · [AI providers](#ai-providers) · [Using LOLA](#using-lola) · [Data privacy](#data-privacy) · [Tech stack](#tech-stack) · [Documentation](#documentation) · [Credits and licence](#credits-and-licence) · [AI notice](#ai-notice)
 
 ## Features
 
