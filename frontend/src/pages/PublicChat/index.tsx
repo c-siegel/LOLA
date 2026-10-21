@@ -391,6 +391,9 @@ export function PublicChatPage() {
           avatarRef.current?.stopSpeaking();
           return { kind: "streamed" as const };
         } catch (error) {
+          // The plain endpoint would be rejected the same way (rate limit, password, validation),
+          // and the retry would count against the rate limit a second time.
+          if (error instanceof ApiError && error.status >= 400 && error.status < 500) throw error;
           // Nothing was shown/spoken yet at this point (see sendMessageStream's contract) — safe
           // to retry via the always-available plain endpoint below instead of failing outright.
           console.error("Streaming chat failed, falling back to a plain request.", error);
