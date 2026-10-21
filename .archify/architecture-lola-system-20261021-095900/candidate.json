@@ -1,0 +1,647 @@
+{
+ "schema_version": 1,
+ "diagram_type": "architecture",
+ "meta": {
+  "title": "LOLA system architecture",
+  "output": ".archify/architecture-lola-system-20261021-095900/lola-architecture.html",
+  "quality_profile": "showcase",
+  "locale": "en",
+  "repository": {
+   "url": "https://github.com/c-siegel/LOLA.git",
+   "revision": "efa8ce6e3f6a5cc26813a2054961647c14150006"
+  }
+ },
+ "components": [
+  {
+   "id": "dashboard",
+   "type": "frontend",
+   "label": "Project dashboard",
+   "sublabel": "configurator, analytics",
+   "pos": [
+    50,
+    160
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "frontend/src/App.tsx",
+     "line": 92,
+     "end_line": 108
+    }
+   ]
+  },
+  {
+   "id": "avatar",
+   "type": "frontend",
+   "label": "3D avatar",
+   "sublabel": "TalkingHead, WebGL",
+   "pos": [
+    450,
+    250
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "frontend/src/components/TalkingHeadAvatar/headAudioIntegration.ts",
+     "line": 1,
+     "end_line": 6
+    }
+   ]
+  },
+  {
+   "id": "apiclient",
+   "type": "frontend",
+   "label": "API modules",
+   "sublabel": "api/*.ts + shared fetch",
+   "pos": [
+    50,
+    440
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "frontend/src/api/client.ts",
+     "line": 10
+    },
+    {
+     "path": "frontend/src/api/publicChat.ts",
+     "line": 199
+    }
+   ]
+  },
+  {
+   "id": "publicchat",
+   "type": "frontend",
+   "label": "Chat page",
+   "sublabel": "/c/:slug, typed or spoken",
+   "pos": [
+    240,
+    280
+   ],
+   "size": [
+    130,
+    100
+   ],
+   "sources": [
+    {
+     "path": "frontend/src/App.tsx",
+     "line": 110
+    },
+    {
+     "path": "frontend/src/pages/PublicChat/index.tsx",
+     "line": 13,
+     "end_line": 17
+    }
+   ]
+  },
+  {
+   "id": "stt",
+   "type": "frontend",
+   "label": "On-device STT",
+   "sublabel": "Parakeet, onnxruntime",
+   "pos": [
+    450,
+    380
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "frontend/src/workers/parakeetWorker.ts",
+     "line": 10
+    }
+   ]
+  },
+  {
+   "id": "ttsdev",
+   "type": "frontend",
+   "label": "On-device TTS",
+   "sublabel": "Pocket TTS worker",
+   "pos": [
+    240,
+    440
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "frontend/src/workers/pocketWorker.ts",
+     "line": 10,
+     "end_line": 14
+    },
+    {
+     "path": "frontend/src/pages/PublicChat/index.tsx",
+     "line": 17
+    }
+   ]
+  },
+  {
+   "id": "users",
+   "type": "external",
+   "label": "Visitors & teachers",
+   "sublabel": "chat, or configure",
+   "pos": [
+    145,
+    30
+   ],
+   "size": [
+    130,
+    60
+   ]
+  },
+  {
+   "id": "tunnel",
+   "type": "cloud",
+   "label": "Reverse proxy",
+   "sublabel": "e.g. Cloudflare Tunnel",
+   "pos": [
+    40,
+    600
+   ],
+   "size": [
+    150,
+    60
+   ],
+   "sources": [
+    {
+     "path": "docker/Caddyfile",
+     "line": 5,
+     "end_line": 11
+    }
+   ]
+  },
+  {
+   "id": "caddy",
+   "type": "frontend",
+   "label": "Caddy (web)",
+   "sublabel": "SPA + /models :80",
+   "pos": [
+    355,
+    600
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "docker/Caddyfile",
+     "line": 62,
+     "end_line": 96
+    }
+   ]
+  },
+  {
+   "id": "backend",
+   "type": "backend",
+   "label": "FastAPI backend",
+   "sublabel": "/api/v1 :8000",
+   "pos": [
+    650,
+    565
+   ],
+   "size": [
+    140,
+    130
+   ],
+   "sources": [
+    {
+     "path": "backend/app/main.py",
+     "line": 75,
+     "end_line": 93
+    }
+   ]
+  },
+  {
+   "id": "data",
+   "type": "database",
+   "label": "SQLite + uploads",
+   "sublabel": "/data volume",
+   "pos": [
+    655,
+    750
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "backend/app/db/session.py",
+     "line": 58
+    }
+   ]
+  },
+  {
+   "id": "providers",
+   "type": "external",
+   "label": "LLM / TTS / STT APIs",
+   "sublabel": "cloud providers",
+   "pos": [
+    655,
+    230
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "backend/app/features/ai/llm/litellm_provider.py",
+     "line": 14
+    }
+   ]
+  },
+  {
+   "id": "tts",
+   "type": "backend",
+   "label": "local-tts",
+   "sublabel": "Pocket TTS :8080",
+   "pos": [
+    920,
+    330
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "local-tts/app/main.py",
+     "line": 47
+    },
+    {
+     "path": "local-tts/app/synthesis.py",
+     "line": 40
+    }
+   ]
+  },
+  {
+   "id": "evalsvc",
+   "type": "backend",
+   "label": "rag-eval",
+   "sublabel": "Ragas judge :8091",
+   "pos": [
+    920,
+    460
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "rag-eval/app/main.py",
+     "line": 33
+    }
+   ]
+  },
+  {
+   "id": "rag",
+   "type": "backend",
+   "label": "rag",
+   "sublabel": "knowledge :8090",
+   "pos": [
+    920,
+    600
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "rag/app/main.py",
+     "line": 73
+    },
+    {
+     "path": "rag/app/store.py",
+     "line": 96
+    }
+   ]
+  },
+  {
+   "id": "docling",
+   "type": "backend",
+   "label": "docling-serve",
+   "sublabel": "layout + OCR :5001",
+   "pos": [
+    920,
+    740
+   ],
+   "size": [
+    130,
+    60
+   ],
+   "sources": [
+    {
+     "path": "rag/app/parsing/docling.py",
+     "line": 30,
+     "end_line": 31
+    }
+   ]
+  }
+ ],
+ "boundaries": [
+  {
+   "kind": "region",
+   "label": "React SPA (runs in the browser)",
+   "wraps": [
+    "dashboard",
+    "avatar",
+    "apiclient",
+    "publicchat",
+    "stt",
+    "ttsdev"
+   ]
+  },
+  {
+   "kind": "security-group",
+   "label": "Optional Compose profiles",
+   "wraps": [
+    "tts",
+    "evalsvc",
+    "rag",
+    "docling"
+   ]
+  }
+ ],
+ "connections": [
+  {
+   "id": "users-dash",
+   "from": "users",
+   "to": "dashboard",
+   "label": "configure",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "users-chat",
+   "from": "users",
+   "to": "publicchat",
+   "label": "chat",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "chat-users",
+   "from": "publicchat",
+   "to": "users",
+   "label": "reply",
+   "fromSide": "top",
+   "toSide": "bottom"
+  },
+  {
+   "id": "dash-api",
+   "from": "dashboard",
+   "to": "apiclient",
+   "label": "react-query",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "chat-api",
+   "from": "publicchat",
+   "to": "apiclient",
+   "label": "calls",
+   "fromSide": "left",
+   "toSide": "top"
+  },
+  {
+   "id": "api-tunnel",
+   "from": "apiclient",
+   "to": "tunnel",
+   "label": "HTTPS /api/v1",
+   "variant": "emphasis",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "tunnel-api",
+   "from": "tunnel",
+   "to": "apiclient",
+   "label": "response",
+   "variant": "emphasis",
+   "fromSide": "top",
+   "toSide": "bottom"
+  },
+  {
+   "id": "chat-avatar",
+   "from": "publicchat",
+   "to": "avatar",
+   "label": "renders",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "chat-stt",
+   "from": "publicchat",
+   "to": "stt",
+   "label": "mic",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "stt-chat",
+   "from": "stt",
+   "to": "publicchat",
+   "label": "transcript",
+   "fromSide": "left",
+   "toSide": "right"
+  },
+  {
+   "id": "chat-tts",
+   "from": "publicchat",
+   "to": "ttsdev",
+   "label": "speak",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "tunnel-caddy",
+   "from": "tunnel",
+   "to": "caddy",
+   "label": "plain HTTP",
+   "variant": "emphasis"
+  },
+  {
+   "id": "caddy-tunnel",
+   "from": "caddy",
+   "to": "tunnel",
+   "label": "SPA, models, API replies",
+   "variant": "emphasis"
+  },
+  {
+   "id": "caddy-backend",
+   "from": "caddy",
+   "to": "backend",
+   "label": "/api",
+   "variant": "emphasis"
+  },
+  {
+   "id": "backend-caddy",
+   "from": "backend",
+   "to": "caddy",
+   "label": "response",
+   "variant": "emphasis"
+  },
+  {
+   "id": "backend-data",
+   "from": "backend",
+   "to": "data",
+   "label": "SQL, files",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "data-backend",
+   "from": "data",
+   "to": "backend",
+   "label": "rows, files",
+   "fromSide": "top",
+   "toSide": "bottom"
+  },
+  {
+   "id": "backend-providers",
+   "from": "backend",
+   "to": "providers",
+   "label": "litellm",
+   "variant": "dashed",
+   "fromSide": "top",
+   "toSide": "bottom"
+  },
+  {
+   "id": "providers-backend",
+   "from": "providers",
+   "to": "backend",
+   "label": "result",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "backend-tts",
+   "from": "backend",
+   "to": "tts",
+   "label": "text / audio",
+   "variant": "dashed",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "backend-eval",
+   "from": "backend",
+   "to": "evalsvc",
+   "label": "run / scores",
+   "variant": "dashed",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "backend-rag",
+   "from": "backend",
+   "to": "rag",
+   "label": "retrieve",
+   "variant": "dashed"
+  },
+  {
+   "id": "rag-backend",
+   "from": "rag",
+   "to": "backend",
+   "label": "passages",
+   "variant": "dashed"
+  },
+  {
+   "id": "eval-rag",
+   "from": "evalsvc",
+   "to": "rag",
+   "label": "embed",
+   "variant": "security",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "rag-eval",
+   "from": "rag",
+   "to": "evalsvc",
+   "label": "vectors",
+   "variant": "security",
+   "fromSide": "top",
+   "toSide": "bottom"
+  },
+  {
+   "id": "rag-docling",
+   "from": "rag",
+   "to": "docling",
+   "label": "parse",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "docling-rag",
+   "from": "docling",
+   "to": "rag",
+   "label": "text",
+   "variant": "dashed",
+   "fromSide": "top",
+   "toSide": "bottom"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "Edge",
+   "items": [
+    "Caddy is never reachable directly from outside: every request and response, including the SPA bundle and the model files, passes the reverse proxy, which terminates TLS",
+    "Any reverse proxy or tunnel works (the docs use a Cloudflare Tunnel); it talks plain HTTP to Caddy (auto_https off)"
+   ]
+  },
+  {
+   "dot": "violet",
+   "title": "Frontend to backend",
+   "items": [
+    "Components never call the backend directly: they go through api/*.ts, one module per backend area, on a shared fetch wrapper (client.ts) that handles errors and session expiry",
+    "The dashboard uses react-query for those calls; the public chat streams its reply via fetch POST to /public/{slug}/messages/stream",
+    "Requests leave the browser through the reverse proxy and Caddy, which forwards /api to the backend"
+   ]
+  },
+  {
+   "dot": "amber",
+   "title": "In the browser",
+   "items": [
+    "Speech recognition (Parakeet) and, optionally, speech output (Pocket TTS) run on the visitor's device",
+    "Both load their model files from Caddy /models via the reverse proxy; the stt-model and tts-model download containers fill that directory",
+    "Without the STT model the browser falls back to server-side transcription"
+   ]
+  },
+  {
+   "dot": "emerald",
+   "title": "Core",
+   "items": [
+    "The backend owns the database, uploads, auth and the chat pipeline"
+   ]
+  },
+  {
+   "dot": "rose",
+   "title": "Optional services",
+   "items": [
+    "tts-local, rag, rag-eval and docling start only with their Compose profile",
+    "They publish no port; only the backend (and rag-eval to rag) calls them, with a shared token"
+   ]
+  }
+ ]
+}
