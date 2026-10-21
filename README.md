@@ -8,6 +8,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-059669"></a>
   <a href=".github/workflows/docker-publish.yml"><img alt="Release workflow" src="https://img.shields.io/badge/release-docker%20images-1F4E9C"></a>
+  <a href="ATTRIBUTION.md"><img alt="Third-party licences" src="https://img.shields.io/badge/third--party-attribution-555"></a>
   <img alt="Status: research prototype" src="https://img.shields.io/badge/status-research%20prototype-F2B705">
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white">
   <img alt="FastAPI" src="https://img.shields.io/badge/backend-FastAPI-009688?logo=fastapi&logoColor=white">
@@ -179,7 +180,7 @@ Speech-to-text needs no key. Details, the Thinking setting and custom endpoints:
 | Backend | FastAPI, SQLite via SQLModel/SQLAlchemy, Alembic migrations, JWT + bcrypt |
 | LLM / TTS | [litellm](https://github.com/BerriAI/litellm) |
 | Speech-to-text | [Parakeet Redux](https://huggingface.co/moondream/parakeet-redux) on the device ([onnxruntime-web](https://onnxruntime.ai/) + WebGPU); [faster-whisper](https://github.com/SYSTRAN/faster-whisper) on the server as fallback |
-| Text-to-speech normalisation | normt2s |
+| Text-to-speech normalisation | [normt2s](https://github.com/c-siegel/normt2s) |
 | Local TTS (optional) | Kyutai [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) sidecar; also in the browser for the latency test |
 | Frontend | React 18, TypeScript, Vite, TanStack Query |
 | 3D avatar | three.js, [TalkingHead](https://github.com/met4citizen/TalkingHead), [HeadAudio](https://github.com/met4citizen/HeadAudio), [MotionEngine](https://github.com/lhupyn/motion-engine) |
@@ -204,7 +205,7 @@ CI runs only on tagged releases ([docker-publish.yml](.github/workflows/docker-p
 
 ## Credits and licence
 
-MIT, see [LICENSE](LICENSE). Avatar rendering and lip-sync build on [TalkingHead](https://github.com/met4citizen/TalkingHead) and [HeadAudio](https://github.com/met4citizen/HeadAudio) by Mika Suominen, gestures on [MotionEngine](https://github.com/lhupyn/motion-engine) by lhupyn (all MIT). Local speech output uses Kyutai's [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) (CC BY 4.0 weights and voices; attribution on the in-app Credits page). Brand marks: [docs/lola-icon-svgs/](docs/lola-icon-svgs/README.txt).
+LOLA is MIT-licensed, see [LICENSE](LICENSE). Every third-party component, model and font with its licence is listed in **[ATTRIBUTION.md](ATTRIBUTION.md)**; the same credits are in the app at `/credits`. Key ones: [TalkingHead](https://github.com/met4citizen/TalkingHead) and [HeadAudio](https://github.com/met4citizen/HeadAudio) (Mika Suominen, MIT), [MotionEngine](https://github.com/lhupyn/motion-engine) (lhupyn, MIT), Kyutai's [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) (CC BY 4.0 weights and voices). Brand marks: [docs/lola-icon-svgs/](docs/lola-icon-svgs/README.txt).
 
 ## AI notice
 
