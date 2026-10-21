@@ -347,9 +347,18 @@ export function PublicChatPage() {
       // cheap to guard against: don't resurrect a message the student already interrupted.
       if (abortControllerRef.current?.signal.aborted) return;
       setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        // A blank reply (e.g. a reasoning model out of tokens, or a content filter) streams no
+        // chunks, so no assistant message exists yet and the last one is the student's own —
+        // never overwrite that.
+        if (last?.role !== "assistant") {
+          return doneData.reply.trim()
+            ? [...prev, { role: "assistant", content: doneData.reply, checks: doneData.checks }]
+            : prev;
+        }
         const next = [...prev];
         // The complete list of ticks replaces the per-chunk ones (identical unless a chunk was lost).
-        next[next.length - 1] = { ...next[next.length - 1], content: doneData.reply, checks: doneData.checks };
+        next[next.length - 1] = { ...last, content: doneData.reply, checks: doneData.checks };
         return next;
       });
     });
