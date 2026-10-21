@@ -119,19 +119,21 @@ def _enforce(key: str, *, max_requests: int, window_seconds: int, message: str) 
 
 def enforce_public_chat_rate_limit(request: Request, visitor_id: str) -> None:
     """Limit how often chat messages can be sent to a public chat, per visitor and per IP."""
-    # The IP limit is checked FIRST and counts every attempt: a caller who rotates the
-    # visitor cookie to dodge the per-visitor limit still consumes this budget, which is the
-    # one they can't reset from the client side.
+    # The visitor limit is checked FIRST so a request it rejects never reaches the shared IP
+    # budget: a school class sits behind one NAT IP, and one stuck tab hammering past its own
+    # limit would otherwise use that budget up and lock out every other student. A caller who
+    # rotates the visitor cookie to dodge the per-visitor limit passes this check each time, but
+    # then consumes the IP budget, which is the one they can't reset from the client side.
     message = ErrorCode.RATE_LIMIT_CHAT
     _enforce(
-        f"chat-ip:{_client_ip(request)}",
-        max_requests=settings.chat_max_per_ip,
+        f"chat-visitor:{visitor_id}",
+        max_requests=settings.chat_max_per_visitor,
         window_seconds=settings.chat_window_seconds,
         message=message,
     )
     _enforce(
-        f"chat-visitor:{visitor_id}",
-        max_requests=settings.chat_max_per_visitor,
+        f"chat-ip:{_client_ip(request)}",
+        max_requests=settings.chat_max_per_ip,
         window_seconds=settings.chat_window_seconds,
         message=message,
     )
@@ -139,18 +141,18 @@ def enforce_public_chat_rate_limit(request: Request, visitor_id: str) -> None:
 
 def enforce_public_transcribe_rate_limit(request: Request, visitor_id: str) -> None:
     """Limit how often voice recordings can be submitted for transcription, per visitor and per IP."""
-    # Same two-dimension reasoning as the chat limit above — transcription is more expensive
+    # Same two-dimension reasoning and check order as the chat limit above — transcription is more expensive
     # per call (Whisper runs in-process), hence enforced on its own settings.
     message = ErrorCode.RATE_LIMIT_TRANSCRIBE
     _enforce(
-        f"transcribe-ip:{_client_ip(request)}",
-        max_requests=settings.transcribe_max_per_ip,
+        f"transcribe-visitor:{visitor_id}",
+        max_requests=settings.transcribe_max_per_visitor,
         window_seconds=settings.transcribe_window_seconds,
         message=message,
     )
     _enforce(
-        f"transcribe-visitor:{visitor_id}",
-        max_requests=settings.transcribe_max_per_visitor,
+        f"transcribe-ip:{_client_ip(request)}",
+        max_requests=settings.transcribe_max_per_ip,
         window_seconds=settings.transcribe_window_seconds,
         message=message,
     )
@@ -158,16 +160,17 @@ def enforce_public_transcribe_rate_limit(request: Request, visitor_id: str) -> N
 
 def enforce_chat_unlock_rate_limit(request: Request, visitor_id: str) -> None:
     """Limit chat-password unlock attempts, per visitor and per IP."""
+    # Visitor first, like the chat limit above: rejected attempts must not drain the shared IP budget.
     message = ErrorCode.RATE_LIMIT_CHAT_UNLOCK
     _enforce(
-        f"chat-unlock-ip:{_client_ip(request)}",
-        max_requests=_UNLOCK_MAX_PER_IP,
+        f"chat-unlock-visitor:{visitor_id}",
+        max_requests=_UNLOCK_MAX_PER_VISITOR,
         window_seconds=_UNLOCK_WINDOW_SECONDS,
         message=message,
     )
     _enforce(
-        f"chat-unlock-visitor:{visitor_id}",
-        max_requests=_UNLOCK_MAX_PER_VISITOR,
+        f"chat-unlock-ip:{_client_ip(request)}",
+        max_requests=_UNLOCK_MAX_PER_IP,
         window_seconds=_UNLOCK_WINDOW_SECONDS,
         message=message,
     )
