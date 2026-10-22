@@ -91,6 +91,7 @@ There is no linter/formatter config. CI (`.github/workflows/tests.yml`) runs `py
 - Before developing, ask on which branch it shall be committed.
 - Pull requests always target `working-branch`.
 - `.github/workflows/sync-working-branch.yml` merges `main` back into `working-branch` after every push to `main`.
+- Dependency updates come from Renovate (`renovate.json`, overview in the "Dependency dashboard" issue). When you add or remove a version cap in a `pyproject.toml`, update the matching `packageRules` entry there.
 - Commit subjects: imperative, sentence case, no prefix, no trailing period — e.g.
   "Add avatar-only and chat-only layouts for the public chat". The body explains why.
 - Every commit message and PR description ends with one `Co-Authored-By:` line per model that contributed, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Nothing comes after these lines: no session link, no `Claude-Session:` line, no session ID, no "Generated with" footer.
