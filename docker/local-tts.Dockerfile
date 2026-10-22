@@ -17,11 +17,13 @@ RUN apt-get update \
 # found while validating this service — see the project's local-TTS plan, Phase 0) can exhaust a
 # small tmpfs /tmp mid-download. Once this is installed, pocket-tts' own torch requirement is
 # already satisfied and pip won't touch it again.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+# The torch version comes from constraints.txt; "==X" also matches the index's "X+cpu" build.
+COPY local-tts/constraints.txt ./constraints.txt
+RUN pip install --no-cache-dir -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
 
 COPY local-tts/pyproject.toml ./pyproject.toml
 COPY local-tts/app ./app
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir -c constraints.txt .
 
 COPY docker/local-tts-entrypoint.sh /usr/local/bin/local-tts-entrypoint.sh
 RUN chmod +x /usr/local/bin/local-tts-entrypoint.sh

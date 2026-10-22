@@ -73,7 +73,7 @@ On Windows use `py -3.11 scripts/dev.py …`. Name services to pick them, e.g. `
 ```bash
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -e . -c constraints.txt
 python -m alembic upgrade head
 uvicorn app.main:app --reload        # http://localhost:8000, health: GET /health
 ```

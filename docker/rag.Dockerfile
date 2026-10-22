@@ -12,8 +12,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app/rag
 
 COPY rag/pyproject.toml ./pyproject.toml
+COPY rag/constraints.txt ./constraints.txt
 COPY rag/app ./app
-RUN pip install --no-cache-dir .
+# Pinned versions, same reasoning as docker/backend.Dockerfile.
+RUN pip install --no-cache-dir -c constraints.txt .
 
 # Optional: bake the local embedding model into the image for hosts without internet access,
 #   docker build --build-arg PRELOAD_EMBEDDING_MODEL=jinaai/jina-embeddings-v2-base-de ...

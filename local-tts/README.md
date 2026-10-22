@@ -34,8 +34,8 @@ python3 -m venv .venv
 
 # CPU-only build — the default PyPI torch wheel pulls several GB of unused CUDA/NVIDIA
 # libraries even on a machine with no GPU.
-./.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
-./.venv/bin/pip install -e ".[dev]"
+./.venv/bin/pip install -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
+./.venv/bin/pip install -e ".[dev]" -c constraints.txt
 
 export TTS_MODEL_CACHE_DIR="$PWD/.cache"
 export TTS_CUSTOM_VOICES_DIR="$PWD/.data/custom-voices"

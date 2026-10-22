@@ -14,23 +14,26 @@ LOLA lets researchers (primarily education researchers; teachers are a secondary
 ## Commands
 
 ```bash
-# Backend (from backend/)
-pip install -e ".[dev]"
+# Backend (from backend/) — "-c constraints.txt" installs the pinned versions CI and Docker use
+pip install -e ".[dev]" -c constraints.txt
 python -m pytest                          # conftest.py sets throwaway secrets; no .env needed
 python -m alembic upgrade head
 python -m alembic revision --autogenerate -m "Add foo to project"   # then review by hand
 uvicorn app.main:app --reload             # http://localhost:8000, needs .env (see README)
 
 # Local TTS sidecar (from local-tts/) — tests fake Pocket TTS, nothing is downloaded
-pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install -e ".[dev]"
+pip install -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu && pip install -e ".[dev]" -c constraints.txt
 python -m pytest
 
 # Knowledge service (from rag/) — tests fake the embedding model, nothing is downloaded
-pip install -e ".[dev]"
+pip install -e ".[dev]" -c constraints.txt
 RAG_SERVICE_TOKEN=test python -m pytest
 
 # Evaluation service (from rag-eval/) — tests fake the judge LLM at the litellm seam
-pip install -e ".[dev]"
+pip install -e ".[dev]" -c constraints.txt
+
+# After changing a component's dependencies in pyproject.toml (from that component's folder)
+uv pip compile pyproject.toml --extra=dev --universal --python-version=3.11 --output-file=constraints.txt
 RAG_SERVICE_TOKEN=test python -m pytest
 
 # Everything at once (from repo root): set up / start backend, frontend and the services enabled in .env
@@ -75,6 +78,7 @@ There is no linter/formatter config. CI (`.github/workflows/tests.yml`) runs `py
 
 **Dependencies**
 - Only permissive licences (MIT, BSD, Apache-2.0, ISC, PSF, MPL-2.0 unmodified) — no GPL/LGPL/AGPL,  SSPL or non-commercial licences, also for model weights (CC BY 4.0 weights and voices are fine when credited on the Credits page, as for Pocket TTS). `scripts/check-licences.sh` enforces this in CI; local embedding models are allowlisted in `rag/app/embedding.py`.
+- Each Python component pins its whole dependency tree in a generated `constraints.txt`, which Docker, CI and `scripts/dev.py` install with. A dependency change in `pyproject.toml` needs the regenerated `constraints.txt` in the same commit (command above). Keep the `--option=value` form: Renovate re-runs the command from the file's header and can't parse `--option value`.
 
 **Docs**
 - New env variable → `.env.example` (with a comment saying which deploy path uses it) and the matching README. New feature/provider/route → update the relevant README section.

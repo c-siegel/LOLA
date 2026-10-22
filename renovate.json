@@ -9,7 +9,11 @@
   "dependencyDashboardTitle": "Dependency dashboard",
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
+    "enabled": true,
     "schedule": ["at any time"]
+  },
+  "pip-compile": {
+    "managerFilePatterns": ["/(^|/)constraints\\.txt$/"]
   },
   "lockFileMaintenance": {
     "enabled": true,
@@ -23,22 +27,28 @@
       "groupName": "frontend minor and patch updates"
     },
     {
-      "matchManagers": ["pep621"],
+      "matchManagers": ["pep621", "pip-compile"],
       "matchFileNames": ["backend/**"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "backend minor and patch updates"
     },
     {
-      "matchManagers": ["pep621"],
+      "matchManagers": ["pep621", "pip-compile"],
       "matchFileNames": ["rag/**", "rag-eval/**"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "knowledge services minor and patch updates"
     },
     {
-      "matchManagers": ["pep621"],
+      "matchManagers": ["pep621", "pip-compile"],
       "matchFileNames": ["local-tts/**"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "local TTS minor and patch updates"
+    },
+    {
+      "description": "Transitive pins in constraints.txt don't get a PR each: the monthly lock file maintenance refreshes them, security fixes still come immediately.",
+      "matchManagers": ["pip-compile"],
+      "matchDepTypes": ["indirect"],
+      "enabled": false
     },
     {
       "matchManagers": ["github-actions"],

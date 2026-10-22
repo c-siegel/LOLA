@@ -501,6 +501,24 @@ How to use: the dashboard's latency test page (`/dashboard/latency`, routes
 round trip, time to first audio, playback) per message and compares configurations; the `chunk`
 and `done` fields are the same there. See [docs/latency-test.md](../docs/latency-test.md).
 
+## Dependency pins
+
+`pyproject.toml` states which versions are compatible; `constraints.txt` pins the exact version of
+every package, transitive ones included, and is what the Docker image, CI and `scripts/dev.py`
+install with (`pip install -c constraints.txt …`). So a rebuild installs what CI tested, and
+GitHub's vulnerability alerts know the real versions. The same applies to `rag/`, `rag-eval/` and
+`local-tts/`.
+
+The file is generated — don't edit it by hand. After changing dependencies in `pyproject.toml`,
+regenerate it with uv (the command is also in the file's header):
+
+```bash
+uv pip compile pyproject.toml --extra=dev --universal --python-version=3.11 --output-file=constraints.txt
+```
+
+`--universal` makes one file valid on Linux, macOS and Windows. Renovate (`renovate.json`) updates
+the direct dependencies in their own PRs and refreshes all pins once a month.
+
 ## Tests
 
 `tests/` covers the pure functions and schema validators (text-stream parsers, the `api_base`

@@ -12,8 +12,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app/rag-eval
 
 COPY rag-eval/pyproject.toml ./pyproject.toml
+COPY rag-eval/constraints.txt ./constraints.txt
 COPY rag-eval/app ./app
-RUN pip install --no-cache-dir .
+# Pinned versions, same reasoning as docker/backend.Dockerfile.
+RUN pip install --no-cache-dir -c constraints.txt .
 
 RUN groupadd --gid 568 rageval && useradd --create-home --uid 568 --gid 568 rageval
 USER 568:568

@@ -150,11 +150,13 @@ def setup(names: list[str]) -> None:
         if not python.exists():
             run([sys.executable, "-m", "venv", ".venv"], cwd)
         run([str(python), "-m", "pip", "install", "--upgrade", "pip"], cwd)
+        # The same pinned versions as CI and the Docker images.
+        pins = ["-c", "constraints.txt"]
         if name == "local-tts":
             # CPU-only build — the default PyPI torch wheel pulls several GB of unused CUDA libraries.
-            run([str(python), "-m", "pip", "install", "torch",
+            run([str(python), "-m", "pip", "install", *pins, "torch",
                  "--index-url", "https://download.pytorch.org/whl/cpu"], cwd)
-        run([str(python), "-m", "pip", "install", "-e", f".{service.pip_extras}"], cwd)
+        run([str(python), "-m", "pip", "install", *pins, "-e", f".{service.pip_extras}"], cwd)
         if name == "backend" and (ROOT / ".env").exists():
             run([str(python), "-m", "alembic", "upgrade", "head"], cwd)
 

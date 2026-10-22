@@ -58,7 +58,7 @@ after that, or as soon as the document is deleted.
 ```bash
 cd rag
 python3 -m venv .venv
-./.venv/bin/pip install -e ".[dev]"
+./.venv/bin/pip install -e ".[dev]" -c constraints.txt    # pinned versions, as in CI and Docker
 
 export RAG_SERVICE_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
 export RAG_DATA_DIR="$PWD/.data"

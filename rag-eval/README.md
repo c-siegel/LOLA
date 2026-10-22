@@ -74,7 +74,7 @@ is used.
 ```bash
 cd rag-eval
 python3 -m venv .venv
-./.venv/bin/pip install -e ".[dev]"
+./.venv/bin/pip install -e ".[dev]" -c constraints.txt    # pinned versions, as in CI and Docker
 
 export RAG_SERVICE_TOKEN=...            # the same value as for the backend and knowledge service
 export RAG_SERVICE_URL=http://127.0.0.1:8090

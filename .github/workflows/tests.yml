@@ -37,7 +37,7 @@ jobs:
 
       - name: Install backend package + test dependencies
         working-directory: backend
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" -c constraints.txt
 
       - name: Run backend tests
         working-directory: backend
@@ -61,7 +61,7 @@ jobs:
 
       - name: Install knowledge service + test dependencies
         working-directory: rag
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" -c constraints.txt
 
       # The tests fake the embedding model; nothing is downloaded.
       - name: Run knowledge service tests
@@ -87,7 +87,7 @@ jobs:
 
       - name: Install evaluation service + test dependencies
         working-directory: rag-eval
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" -c constraints.txt
 
       # The tests fake the judge LLM and the knowledge service; no provider is called.
       - name: Run evaluation service tests
@@ -115,8 +115,8 @@ jobs:
       - name: Install local TTS service + test dependencies
         working-directory: local-tts
         run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[dev]"
+          pip install -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]" -c constraints.txt
 
       # The tests fake Pocket TTS; nothing is downloaded.
       - name: Run local TTS service tests

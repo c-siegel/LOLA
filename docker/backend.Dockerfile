@@ -23,14 +23,13 @@ RUN apt-get update \
 # COPY pyproject.toml + RUN pip install — the image never actually built that way, reproduced and
 # verified locally with a bare "pip install ." missing app/).
 # No separate dependency-layer caching is possible either, since pip install . always needs the
-# package code — a lockfile-less requirements-only layer wouldn't be reproducible anyway (see the
-# comment about the missing lockfile below).
+# package code.
 COPY backend/pyproject.toml ./pyproject.toml
+COPY backend/constraints.txt ./constraints.txt
 COPY backend/app ./app
-# No lockfile in the repo (see backend/pyproject.toml) — pip resolves the pinned lower bounds in
-# dependencies at build time. A `uv export`/`pip freeze` lockfile could be added later for
-# reproducible rebuilds.
-RUN pip install --no-cache-dir .
+# constraints.txt pins every dependency (generated from pyproject.toml, see backend/README.md), so
+# a rebuild installs the same versions CI tested instead of whatever is newest that day.
+RUN pip install --no-cache-dir -c constraints.txt .
 
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./alembic.ini
