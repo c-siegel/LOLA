@@ -1,0 +1,148 @@
+name: Tests
+
+# Shared by pull requests and the release workflow (docker-publish.yml calls it before publishing
+# images), so both run exactly the same checks.
+on:
+  pull_request:
+    branches: [working-branch, main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_call:
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    # Dummy values, valid enough to pass app/core/config.py's startup checks — never used for
+    # anything real. The shared root .env (real secrets) is gitignored and isn't present here.
+    env:
+      JWT_SECRET: ci-test-only-W1zjYoC7I4MjZalXID7Jof5UNnXtnc-nwnNQ6bQeEigpjqkcvpPam63bMYwWHzrw
+      API_KEY_ENCRYPTION_SECRET: fYiWjeCc-F4eXts_g5lOyKoI3CNbtu2eA83s-aNdMpo=
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install backend package + test dependencies
+        working-directory: backend
+        run: pip install -e ".[dev]"
+
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest
+
+      # Only permissive licences in what ships (see scripts/check-licences.sh).
+      - name: Check dependency licences
+        run: pip install pip-licenses && sh scripts/check-licences.sh
+
+  rag-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install knowledge service + test dependencies
+        working-directory: rag
+        run: pip install -e ".[dev]"
+
+      # The tests fake the embedding model; nothing is downloaded.
+      - name: Run knowledge service tests
+        working-directory: rag
+        env:
+          RAG_SERVICE_TOKEN: ci-test-only-rag-token
+        run: pytest
+
+      - name: Check dependency licences
+        run: pip install pip-licenses && sh scripts/check-licences.sh
+
+  rag-eval-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install evaluation service + test dependencies
+        working-directory: rag-eval
+        run: pip install -e ".[dev]"
+
+      # The tests fake the judge LLM and the knowledge service; no provider is called.
+      - name: Run evaluation service tests
+        working-directory: rag-eval
+        env:
+          RAG_SERVICE_TOKEN: ci-test-only-rag-token
+        run: pytest
+
+      - name: Check dependency licences
+        run: pip install pip-licenses && sh scripts/check-licences.sh
+
+  local-tts-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # CPU-only torch first, as in docker/local-tts.Dockerfile — the default wheel pulls in CUDA.
+      - name: Install local TTS service + test dependencies
+        working-directory: local-tts
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+
+      # The tests fake Pocket TTS; nothing is downloaded.
+      - name: Run local TTS service tests
+        working-directory: local-tts
+        run: pytest
+
+      - name: Check dependency licences
+        run: pip install pip-licenses && sh scripts/check-licences.sh
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck and build frontend
+        working-directory: frontend
+        run: npm run build

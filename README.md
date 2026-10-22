@@ -201,7 +201,7 @@ Speech-to-text needs no key. Details, the Thinking setting and custom endpoints:
 | Open work, deployment checklist | [docs/open-work.md](docs/open-work.md) · [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) |
 | Working on the repo with AI agents | [AGENTS.md](AGENTS.md) |
 
-CI runs only on tagged releases ([docker-publish.yml](.github/workflows/docker-publish.yml)): backend tests, the licence gate and the frontend build must pass before images are published. There is no gate on regular pull requests yet.
+CI ([tests.yml](.github/workflows/tests.yml)) runs the backend and service tests, the licence gate and the frontend build on every pull request to `working-branch` or `main`. Tagged releases ([docker-publish.yml](.github/workflows/docker-publish.yml)) run the same checks before images are published. [Renovate](renovate.json) keeps a *Dependency dashboard* issue listing every dependency (Python, npm, Docker images, GitHub Actions) and opens grouped update PRs against `working-branch` every Monday.
 
 ## Credits and licence
 

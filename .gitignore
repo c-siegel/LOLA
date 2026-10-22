@@ -44,4 +44,6 @@ local-tts/.data/
 uv.lock
 local-tts/build/
 
+#doc generation
 LOLA.cc.json.gz
+.archify/
