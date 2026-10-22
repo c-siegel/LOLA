@@ -520,5 +520,5 @@ values and keeps the repo root `.env` out (`LOLA_ENV_FILE=""` for the settings,
 the results. Outside tests, `LOLA_ENV_FILE` (a real environment variable — it can't be set
 from inside a `.env`) points the backend at a different `.env` file.
 
-CI (`.github/workflows/docker-publish.yml`) runs this suite, plus the frontend build, before a
-tagged release's Docker images are published.
+CI (`.github/workflows/tests.yml`) runs this suite, plus the frontend build, on every pull request
+and before a tagged release's Docker images are published.

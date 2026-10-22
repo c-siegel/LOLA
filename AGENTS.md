@@ -46,7 +46,7 @@ npm run build                             # tsc -b + vite build — this is the 
 npm run dev                               # http://localhost:5173, proxies /api to :8000
 ```
 
-There is no linter/formatter config and no CI on pull requests — CI only runs on tagged releases (`.github/workflows/docker-publish.yml`: `pytest` and the licence gate for backend, `rag/`, `rag-eval/` and `local-tts/`, plus frontend `npm run build`). So run the ones you touched yourself before you push.
+There is no linter/formatter config. CI (`.github/workflows/tests.yml`) runs `pytest` and the licence gate for backend, `rag/`, `rag-eval/` and `local-tts/`, plus frontend `npm run build`, on pull requests to `working-branch`/`main` and before tagged releases (`docker-publish.yml`). Direct pushes aren't checked, so still run the ones you touched yourself before you push.
 
 ## Where things live
 
