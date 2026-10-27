@@ -4,7 +4,7 @@
 # read-only root filesystem (see docker/docker-compose.yml), so unlike the backend image there's
 # no root entrypoint adjusting UID/GID: Compose starts it directly as PUID:PGID, and the backend's
 # entrypoint creates and chowns the shared data directory it writes to.
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

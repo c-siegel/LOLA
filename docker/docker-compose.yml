@@ -171,7 +171,7 @@ services:
   # Check the tag against https://github.com/docling-project/docling-serve/releases before
   # deploying; override with DOCLING_SERVE_IMAGE.
   docling:
-    image: ${DOCLING_SERVE_IMAGE:-quay.io/docling-project/docling-serve-cpu:v1.36.0}
+    image: ${DOCLING_SERVE_IMAGE:-quay.io/docling-project/docling-serve-cpu:v1.38.2}
     profiles: ["docling"]
     environment:
       DOCLING_SERVE_ENABLE_UI: "false"
