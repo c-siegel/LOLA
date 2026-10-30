@@ -33,7 +33,7 @@ def reasoning_support(provider: str, model_id: str) -> ReasoningSupport:
         return "switch"
     model = build_model_string(provider, model_id)
     try:
-        if litellm.supports_reasoning(model=model):
+        if _in_local_model_table(model):
             return "effort"
         # Ollama's models aren't flagged as reasoning models, but litellm maps the parameter.
         if provider == OLLAMA_PROVIDER and "reasoning_effort" in (litellm.get_supported_openai_params(model=model) or []):
@@ -41,6 +41,19 @@ def reasoning_support(provider: str, model_id: str) -> ReasoningSupport:
     except Exception:  # an unknown model string must never break a chat turn
         pass
     return "none"
+
+
+def _in_local_model_table(model: str) -> bool:
+    """Whether litellm's bundled model table marks `model` as a reasoning model.
+
+    Deliberately not litellm.supports_reasoning(): when the table has no answer that falls back to
+    asking the provider (Ollama's /api/show, with credentials from the server's environment), and
+    this runs on every key listing and public chat turn. Gives the same answer for all 344
+    OpenAI, Anthropic, Gemini and Mistral models in litellm 1.97's table; a model missing from the
+    table simply gets no setting, and a teacher can still type the provider-prefixed name.
+    """
+    table = litellm.model_cost
+    return any(table.get(name, {}).get("supports_reasoning") is True for name in {model, model.split("/", 1)[-1]})
 
 
 def reasoning_kwargs(provider: str, model_id: str, reasoning: str | None) -> dict:

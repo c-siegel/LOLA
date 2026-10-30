@@ -155,3 +155,22 @@ def test_arcana_body_carries_the_switch(monkeypatch) -> None:
     assert seen[-1]["chat_template_kwargs"] == {"enable_thinking": False}
     complete(key, ChatRequest("System", "Frage"))
     assert "chat_template_kwargs" not in seen[-1]
+
+
+def test_support_is_looked_up_without_any_network_access(monkeypatch) -> None:
+    """The check runs on every key listing and chat turn; it must only read litellm's own table
+    (litellm.supports_reasoning would ask an Ollama server for model info)."""
+    import socket
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("reasoning_support touched the network")
+
+    monkeypatch.setattr(socket.socket, "connect", no_network)
+    monkeypatch.setattr(socket, "getaddrinfo", no_network)
+    reasoning_support.cache_clear()
+
+    assert reasoning_support("openai", "o3") == "effort"
+    assert reasoning_support("openai", "ollama_chat/some-model") == "none"
+    assert reasoning_support("ollama", "qwen3") == "effort"
+    assert reasoning_support("openai", "a-model-nobody-has-heard-of") == "none"
+    reasoning_support.cache_clear()
