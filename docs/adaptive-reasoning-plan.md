@@ -1,7 +1,9 @@
 # Plan: adaptive reasoning for LOLA avatars
 
-Status: **phases 0-2 implemented** (self-escalation and the classifier are not; see [open-work.md](open-work.md)). Written as a draft; the sections below describe the plan, with deviations noted in open-work.md. Written 2026-10-20, reviewed against the code on 2026-10-20
-and again on 2026-10-30 (see "Changes from the first draft"). Open work: [open-work.md](open-work.md).
+Status: **phases 0-2 implemented**; self-escalation and the classifier are not (see
+[open-work.md](open-work.md), which also lists where the implementation deviates from this plan).
+Written 2026-10-20, reviewed against the code on 2026-10-20 and 2026-10-30 (see "Changes from the
+first draft").
 
 The goal is to answer simple turns fast and give hard turns (theses, arguments, counterarguments) a
 reasoning model, without the student waiting in silence.
