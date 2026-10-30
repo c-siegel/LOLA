@@ -78,7 +78,7 @@ the frontend uses them as-is.
 | Login required, own resource | Same, but also 404s (not 403) if the resource belongs to someone else — this hides whether it even exists, an IDOR (Insecure Direct Object Reference) defense. Checked by `app/core/ownership.py::get_owned` (or `find_owned`, which returns `None` instead). |
 | Admin only | Login required, and the account's `is_admin` flag must be set (`get_current_admin`). |
 | Owner, or public if published | 404 unless you own the resource — *or* it's attached to a published project, in which case anonymous visitors can fetch it too (e.g. an avatar file the public chat needs to display). |
-| Visitor, rate-limited | No login — a published project's public chat. Visitors are tracked by an anonymous `ah_visitor_id` cookie, not a `User` account, and every route here is rate-limited per visitor. |
+| Visitor, rate-limited | No login — a published project's public chat. Visitors are tracked by an anonymous `ah_visitor_id` cookie, not a `User` account, and every route here is rate-limited per visitor. Replies with reasoning (`reasoning_mode` "always") also spend a separate budget per visitor, IP and project (`DEEP_*` in `.env.example`); over it the reply comes without reasoning. |
 
 Every error response is `{"detail": "<CODE>"}` (a few routes nest it as
 `{"detail": {"code": "<CODE>", "message": "..."}}` to add provider error text) — see

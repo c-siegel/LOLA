@@ -29,10 +29,18 @@ delete the plan once nothing in it is open.
 
 ## Adaptive reasoning ([plan](adaptive-reasoning-plan.md))
 
-Nothing is implemented. Start with phase 0:
-- Add time to first token and cached-token counts to the Latency Lab and measure the `off` baseline.
-- Add `ThinkTagGuard`: a model that emits `<think>` in its content is spoken aloud today. This is a
-  bug on its own, so it needs a regression test.
-- Decide, from the baseline, whether moving per-turn material behind the history (prompt order)
-  pays off.
+Done: phase 0a (`ThinkTagGuard`), 0b (token and cache counts in the Latency Lab) and most of phase 1
+(`reasoning_mode` off/always with effort, per-model provider mapping, deep-turn budgets).
+
+Phase 1 still open: the deep-route timeout with fallback to the fast route, SSE keep-alives while
+the model is silent, and the route in the Latency Lab and per saved message.
+
+Phase 0c, prompt order, waits for measurements:
+- Run the Latency Lab script with reasoning `off` on each target provider (OpenAI, GWDG, Ollama or
+  vLLM) and note first-token time and cached prompt tokens against prompt tokens.
+- Decide from those numbers whether moving the per-turn material (checklist status line, knowledge
+  passages) behind the history pays off; if so, do it as its own PR and re-check answer quality with
+  `rag-eval`. Test cases to write then: the system prompt is identical across turns of one
+  conversation, the late material still reaches every provider (including the Arcana body), and a
+  provider that rejects a second system message gets the user-role preface.
 - Open: the ethics process for labelled lesson data, and whether students see a thinking indicator.

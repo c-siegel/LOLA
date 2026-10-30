@@ -17,7 +17,7 @@ import base64
 import logging
 import time
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -117,6 +117,9 @@ class ChatTurn:
     received_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     # The plan steps done so far, replayed from the visitor's history (see checklist.py::replay).
     checklist_done: frozenset[str] = frozenset()
+    # Spends one reasoning reply and says whether there was room (see core/rate_limit.py::
+    # deep_turn_budget). None: unlimited, for the owner's own preview and latency tests.
+    deep_budget: Callable[[], bool] | None = None
 
 
 @dataclass
@@ -192,8 +195,14 @@ def _retrieve(context: ChatContext, turn: ChatTurn) -> tuple[list[Passage], floa
     return passages, (time.perf_counter() - start) * 1000
 
 
-def _route(context: ChatContext) -> RouteDecision:
-    return decide(context.llm_key.provider, context.llm_key.model_id or "", context.reasoning_mode, context.reasoning_effort)
+def _route(context: ChatContext, turn: ChatTurn) -> RouteDecision:
+    return decide(
+        context.llm_key.provider,
+        context.llm_key.model_id or "",
+        context.reasoning_mode,
+        context.reasoning_effort,
+        turn.deep_budget,
+    )
 
 
 def _chat_request(
@@ -288,7 +297,7 @@ def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> Ch
     # Timed for the client-side latency-test log (see pages/PublicChat/index.tsx) — not used by
     # the default UI, just extra fields riding along in the response.
     passages, retrieval_ms = _retrieve(context, turn)
-    route = _route(context)
+    route = _route(context, turn)
     usage = llm.LLMUsage() if context.report_usage else None
     llm_start = time.perf_counter()
     try:
@@ -342,7 +351,7 @@ def answer_for_evaluation(context: ChatContext, question: str) -> EvaluationAnsw
     try:
         # Without the gesture instructions: the evaluation judges the answer's content, and stray
         # markers would only add noise to it.
-        text = llm.complete(context.llm_key, _chat_request(context, turn, passages, _route(context), plain=True))
+        text = llm.complete(context.llm_key, _chat_request(context, turn, passages, _route(context, turn), plain=True))
     except Exception as exc:
         raise LLMFailed() from exc
     return EvaluationAnswer(text, passages, retrieval_ms, (time.perf_counter() - llm_start) * 1000)
@@ -438,7 +447,7 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
     passages, retrieval_ms = _retrieve(context, turn)
 
     llm_error: Exception | None = None
-    route = _route(context)
+    route = _route(context, turn)
     usage = llm.LLMUsage() if context.report_usage else None
     try:
         for delta in llm.stream(context.llm_key, _chat_request(context, turn, passages, route), usage):
