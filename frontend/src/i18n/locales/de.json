@@ -409,7 +409,7 @@
       "reasoning": "Nachdenken",
       "reasoningHint": "Ob das Modell vor der Antwort nachdenkt (Reasoning). „Modell-Standard“ ändert nichts. „Aus“ überspringt das Nachdenken, die Antwort beginnt dann deutlich früher. „Immer“ verlangt es bei jeder Antwort: Das passt zu Argumenten und Beweisen, macht die Antworten aber langsamer und bei den meisten Anbietern teurer. „Nur bei Argumenten“ entscheidet pro Nachricht: Smalltalk wird schnell beantwortet, eine Nachricht, die argumentiert oder widerspricht, bekommt das Nachdenken. Diese Regel funktioniert für Deutsch und Englisch; bei anderen Sprachen wird jede Nachricht schnell beantwortet. Nur Modelle, die das Nachdenken umschalten können, reagieren darauf.",
       "reasoningOptions": {"default": "Modell-Standard", "off": "Aus", "always": "Immer", "adaptive": "Nur bei Argumenten"},
-      "deepModel": "Modell für schwierige Runden",
+      "deepModel": "Modell für schwierige Nachrichten",
       "deepModelHint": "Ein zweites Modell, das die Nachrichten mit Nachdenken beantwortet, während das Modell oben den Rest beantwortet. So kann ein kleines, schnelles Modell den Smalltalk übernehmen und ein größeres die Argumente. Ohne Auswahl antwortet dasselbe Modell auf beides.",
       "deepModelSame": "Dasselbe Modell",
       "bridge": "Kurzer Satz beim Nachdenken",
