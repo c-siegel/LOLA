@@ -297,13 +297,16 @@ export function PublicChatPage() {
     // chained callback, so the check has to happen here, not just at the click itself.
     const signal = abortControllerRef.current?.signal;
     if (signal?.aborted) return;
+    // The bridge phrase is only said: it isn't part of the reply, and the thinking gestures go on
+    // until the reply's own first chunk.
+    const reveal = chunk.bridge ? () => undefined : () => revealStreamedChunk(chunk);
     if (chunk.index === 0) avatarRef.current?.stopThinking();
     if (chunk.spoken !== undefined) {
-      await speakOnDevice(chunk.spoken, () => revealStreamedChunk(chunk), signal);
+      await speakOnDevice(chunk.spoken, reveal, signal);
       return;
     }
     if (!chunk.audioBase64) {
-      revealStreamedChunk(chunk);
+      reveal();
       return;
     }
     let audioBuffer: AudioBuffer | null = null;
@@ -314,7 +317,7 @@ export function PublicChatPage() {
     }
     // Revealed right as the audio is about to start (or right after we know it won't) — not
     // earlier — so the bubble text stays in step with what's actually audible.
-    revealStreamedChunk(chunk);
+    reveal();
     if (!audioBuffer) return;
     try {
       avatarRef.current?.speakBuffer(audioBuffer);

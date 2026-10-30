@@ -18,6 +18,8 @@ export interface LabConfig {
   streaming: boolean;
   ttsMode: TtsMode;
   avatar: boolean;
+  /** Which reasoning route to force; "auto" lets the project's mode and rules decide. */
+  route: "auto" | "fast" | "deep";
 }
 
 export type InputKind = "text" | "clip" | "mic";

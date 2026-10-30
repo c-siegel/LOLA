@@ -20,6 +20,8 @@ export interface ConfiguratorDraft {
   topP: number;
   reasoningMode: ReasoningMode;
   reasoningEffort: ReasoningEffort | null;
+  deepLlmApiKeyId: string | null;
+  bridgeEnabled: boolean;
   saveConversations: boolean;
   requireVisitorName: boolean;
   surveyBeforeUrl: string;

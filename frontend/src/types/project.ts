@@ -34,6 +34,11 @@ export interface Project {
   reasoningMode: ReasoningMode;
   // Level for models that take one; null = the provider's own default.
   reasoningEffort: ReasoningEffort | null;
+  // A second model for the turns that reason; null: the main model answers those too.
+  deepLlmApiKeyId: string | null;
+  deepLlmModel: string | null;
+  // Speak a short phrase while a reasoning turn is still thinking.
+  bridgeEnabled: boolean;
   published: boolean;
   shareSlug: string | null;
   saveConversations: boolean;
@@ -137,8 +142,8 @@ export const KNOWLEDGE_MODES: KnowledgeMode[] = ["off", "supplement", "strict"];
 // The local server STT engines (backend Settings.stt_engine / Project.stt_server_engine).
 export type SttServerEngine = "whisper" | "parakeet";
 
-export type ReasoningMode = "default" | "off" | "always";
-export const REASONING_MODES: ReasoningMode[] = ["default", "off", "always"];
+export type ReasoningMode = "default" | "off" | "always" | "adaptive";
+export const REASONING_MODES: ReasoningMode[] = ["default", "off", "always", "adaptive"];
 
 export type ReasoningEffort = "low" | "medium" | "high";
 export const REASONING_EFFORTS: ReasoningEffort[] = ["low", "medium", "high"];

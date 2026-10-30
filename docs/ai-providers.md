@@ -21,7 +21,7 @@ Every project picks its own LLM (large language model, generates the replies) an
 
 ## Reasoning setting
 
-Projects whose model can reason get a **Reasoning** setting in the configurator's technical step: *Model default* (nothing is sent), *Off*, or *Always*, plus a level (low, medium, high) where the model takes one. Whether a model can be switched is decided per model, not per provider (`gpt-4o` can't, `o3` can); the setting is hidden when it couldn't do anything. What is sent:
+Projects whose model can reason get a **Reasoning** setting in the configurator's technical step: *Model default* (nothing is sent), *Off*, *Always*, or *Only for arguments*, plus a level (low, medium, high) where the model takes one. Whether a model can be switched is decided per model, not per provider (`gpt-4o` can't, `o3` can); the setting is hidden when it couldn't do anything. What is sent:
 
 | Model | Off | Always |
 |---|---|---|
@@ -33,7 +33,15 @@ Projects whose model can reason get a **Reasoning** setting in the configurator'
 
 Temperature and top P are not sent along with a level to OpenAI and Anthropic, which reject them for reasoning. If a provider still rejects the setting, the request is repeated once without it, so a chat never fails because of it. Mainly useful to compare one model's latency with and without reasoning in the Latency Lab, which shows prompt, cached and reasoning tokens per turn.
 
-Projects created before this setting existed keep their old choice (*On* became *Always*), and old project exports still import.
+### Only for arguments, a second model and the bridge phrase
+
+*Only for arguments* decides per message, without calling a model. A message escalates when it has an argument cue ("weil", "ich behaupte", "because", "I disagree" …), is long (40 words or more), or is a longer answer (8 words or more) to a question the avatar just asked; greetings and short replies never do. The rules exist for German and English; in any other language every message is answered without reasoning. The word lists are in `backend/app/features/chat/escalation_rules.py`.
+
+An escalated message reasons on the same model, or on a **second model** if the project names one ("Model for difficult turns", any other LLM key of yours): a small fast model then answers the small talk and a larger one the arguments. If the second model fails or takes longer than 60 s, the first one answers. Every escalated message counts against the reasoning budget (`DEEP_*` in `.env.example`), and the route and model of each reply are saved with the conversation and appear in the CSV export (column "Antwortweg") and in the analytics tile "Replies with reasoning".
+
+With speech output and streaming on, a message that reasons starts with a short neutral **bridge phrase** ("Einen Augenblick, ich denke kurz darüber nach.") so the student isn't left in silence. The phrases are rendered by the project's own voice in the background the first time a reasoning project is used and kept in memory; a turn whose phrases aren't ready yet (the first one after a server start) goes without. Switch it off with "Short phrase while thinking". With on-device speech the device speaks the phrase.
+
+Projects created before the Reasoning setting existed keep their old choice (*On* became *Always*), and old project exports still import.
 
 Whatever the setting, a reply's `<think>…</think>` and `<reasoning>…</reasoning>` blocks are cut out before the text reaches the avatar or the transcript (`ThinkTagGuard`), because some servers write reasoning into the reply text. An unterminated block is dropped to the end of the reply.
 

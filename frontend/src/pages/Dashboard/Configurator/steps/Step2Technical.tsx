@@ -133,6 +133,10 @@ export function Step2Technical({ draft, onChange }: StepProps) {
   // a model that can't, the choice would silently do nothing.
   const selectedLlmKey = llmKeys.find((key) => key.id === draft.llmApiKeyId);
   const reasoningSupport = selectedLlmKey?.reasoningSupport ?? "none";
+  const reasons = draft.reasoningMode === "always" || draft.reasoningMode === "adaptive";
+  // The level applies to whichever model reasons: the second one if there is one.
+  const deepKey = llmKeys.find((key) => key.id === draft.deepLlmApiKeyId);
+  const deepSupport = (deepKey ?? selectedLlmKey)?.reasoningSupport ?? "none";
   const hasNoTtsKeys = keysLoaded && ttsKeys.length === 0;
 
   const showTtsKeyChoice = !(hasNoTtsKeys && !localTtsAvailable);
@@ -180,7 +184,7 @@ export function Step2Technical({ draft, onChange }: StepProps) {
         )}
       </div>
 
-      {reasoningSupport !== "none" && (
+      {(reasoningSupport !== "none" || llmKeys.length > 1) && (
         <>
           <div className={styles.field}>
             <LabelWithInfo
@@ -202,28 +206,63 @@ export function Step2Technical({ draft, onChange }: StepProps) {
               ))}
             </select>
           </div>
-          {draft.reasoningMode === "always" && reasoningSupport === "effort" && (
-            <div className={styles.field}>
-              <LabelWithInfo
-                label={t("configurator.step2.reasoningEffort")}
-                htmlFor="reasoning-effort"
-                className={styles.label}
-                info={t("configurator.step2.reasoningEffortHint")}
-              />
-              <select
-                id="reasoning-effort"
-                className={styles.select}
-                value={draft.reasoningEffort ?? ""}
-                onChange={(e) => onChange({ reasoningEffort: (e.target.value || null) as ReasoningEffort | null })}
-              >
-                <option value="">{t("configurator.step2.reasoningEffortOptions.default")}</option>
-                {REASONING_EFFORTS.map((effort) => (
-                  <option key={effort} value={effort}>
-                    {t(`configurator.step2.reasoningEffortOptions.${effort}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {reasons && (
+            <>
+              <div className={styles.field}>
+                <LabelWithInfo
+                  label={t("configurator.step2.deepModel")}
+                  htmlFor="deep-llm-key"
+                  className={styles.label}
+                  info={t("configurator.step2.deepModelHint")}
+                />
+                <select
+                  id="deep-llm-key"
+                  className={styles.select}
+                  value={draft.deepLlmApiKeyId ?? ""}
+                  onChange={(e) => onChange({ deepLlmApiKeyId: e.target.value || null })}
+                >
+                  <option value="">{t("configurator.step2.deepModelSame")}</option>
+                  {llmKeys
+                    .filter((key) => key.id !== draft.llmApiKeyId)
+                    .map((key) => (
+                      <option key={key.id} value={key.id}>
+                        {modelLabel(key, specs) ?? key.modelId ?? key.provider}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              {deepSupport === "effort" && (
+                <div className={styles.field}>
+                  <LabelWithInfo
+                    label={t("configurator.step2.reasoningEffort")}
+                    htmlFor="reasoning-effort"
+                    className={styles.label}
+                    info={t("configurator.step2.reasoningEffortHint")}
+                  />
+                  <select
+                    id="reasoning-effort"
+                    className={styles.select}
+                    value={draft.reasoningEffort ?? ""}
+                    onChange={(e) => onChange({ reasoningEffort: (e.target.value || null) as ReasoningEffort | null })}
+                  >
+                    <option value="">{t("configurator.step2.reasoningEffortOptions.default")}</option>
+                    {REASONING_EFFORTS.map((effort) => (
+                      <option key={effort} value={effort}>
+                        {t(`configurator.step2.reasoningEffortOptions.${effort}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {draft.ttsEnabled && draft.streamingEnabled && (
+                <ToggleWithInfo
+                  title={t("configurator.step2.bridge")}
+                  checked={draft.bridgeEnabled}
+                  onChange={(e) => onChange({ bridgeEnabled: e.target.checked })}
+                  info={t("configurator.step2.bridgeHint")}
+                />
+              )}
+            </>
           )}
         </>
       )}

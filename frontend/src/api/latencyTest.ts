@@ -15,11 +15,15 @@ export interface LatencyMessageRequest {
   llmApiKeyId: string | null;
   ttsMode: ServerTtsMode;
   streaming: boolean;
+  /** "auto": the project's mode and rules decide; the others force the route. */
+  route: "auto" | "fast" | "deep";
 }
 
 /** Server-side times, each in ms since the backend received the request. */
 export interface LatencyChunkEvent {
   index: number;
+  /** The bridge phrase said while a reasoning reply is thought out (index -1, not part of the reply). */
+  bridge?: boolean;
   text: string;
   audioBase64: string | null;
   contentType: string | null;

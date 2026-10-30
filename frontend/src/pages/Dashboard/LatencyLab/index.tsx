@@ -47,7 +47,7 @@ const POCKET_MODEL_URL = sitePath("/models/pocket-tts-de/v1/");
 const SETTINGS_KEY = "lola.latencyLab";
 const DEFAULT_SCRIPT = "Hallo! Wer bist du?\nKannst du mir das in einem Satz erklären?";
 
-const DEFAULT_CONFIG: LabConfig = { sttMode: "device", llmKeyId: null, streaming: true, ttsMode: "project", avatar: true };
+const DEFAULT_CONFIG: LabConfig = { sttMode: "device", llmKeyId: null, streaming: true, ttsMode: "project", avatar: true, route: "auto" };
 
 interface StoredSettings {
   projectId?: string;
@@ -234,6 +234,7 @@ export function LatencyLabPage() {
     `STT ${config.sttMode}`,
     llmModel,
     config.streaming ? "stream" : "plain",
+    ...(config.route === "auto" ? [] : [`route ${config.route}`]),
     `TTS ${config.ttsMode}`,
     config.avatar ? "avatar" : "audio only",
   ].join(" · ");
@@ -459,6 +460,19 @@ export function LatencyLabPage() {
               </option>
               <option value="browser-pocket">{t("latencyLab.ttsBrowserPocket")}</option>
               <option value="none">{t("latencyLab.ttsNone")}</option>
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{t("latencyLab.routeSetting")}</span>
+            <select
+              className={styles.select}
+              value={config.route}
+              onChange={(e) => set("route", e.target.value as LabConfig["route"])}
+              disabled={locked}
+            >
+              <option value="auto">{t("latencyLab.routeAuto")}</option>
+              <option value="fast">{t("latencyLab.routeFast")}</option>
+              <option value="deep">{t("latencyLab.routeDeep")}</option>
             </select>
           </label>
         </div>

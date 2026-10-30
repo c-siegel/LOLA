@@ -33,7 +33,17 @@ Done: phase 0a (`ThinkTagGuard`), 0b (token and cache counts in the Latency Lab)
 (`reasoning_mode` default/off/always with effort, per-model provider mapping, reasoning budgets,
 timeout with fallback to the fast route, SSE keep-alives, the route in the Latency Lab).
 
-Next is phase 2 (`adaptive`: rules router, second key, bridge phrases, route per saved message).
+Phase 2 is done except for the experimental self-escalation (the fast model starting a reply with
+`::deep::`), which was left out on purpose: build it only if the Latency Lab shows the rules miss too
+many arguments. Decided differently from the plan: the bridge audio is rendered lazily into an
+in-memory cache (per voice and key) instead of a stored file per project.
+
+Open after phase 2:
+- Phase 3, the evaluation (plan §10): router precision and recall against human labels, answer
+  quality, perceived latency. Needs the ethics process before real lesson turns are labelled.
+- A classifier only if the rules prove too weak (plan §7).
+- Show the route in the transcript view of the analytics page (the API already returns it).
+- Warm the bridge phrases when a project is opened instead of on its first turn.
 
 Phase 0c, prompt order, waits for measurements:
 - Run the Latency Lab script with reasoning `off` on each target provider (OpenAI, GWDG, Ollama or

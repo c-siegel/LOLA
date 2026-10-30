@@ -97,6 +97,9 @@ export interface StreamChunkEvent {
   motions: string[];
   // Plan steps ticked in this chunk, applied when its audio starts like the gestures.
   checks: ChecklistCheck[];
+  // A short phrase the avatar says while a reasoning reply is still being thought out (index -1,
+  // outside the reply): spoken, but neither shown nor part of the history.
+  bridge?: boolean;
   // What the device should say for this chunk (normalized, pronunciation list applied) — only
   // sent with speakOnDevice, and then audioBase64 is null.
   spoken?: string;

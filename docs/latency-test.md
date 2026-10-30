@@ -39,7 +39,7 @@ Every turn also records what the language model reports about its call: **prompt
 
 ## Reasoning route
 
-The **Reasoning** column shows how a turn was routed: *deep* (the model was asked to reason), *fast* (reasoning was switched off, or the turn fell back to that because the reasoning budget was used up or the reasoning call failed or timed out after 60 s), or *default* (nothing was sent). The route is shown here only; the public chat doesn't report it.
+The **Reasoning** column shows how a turn was routed: *deep* (the model was asked to reason), *fast* (reasoning was switched off, or the turn fell back to that because the reasoning budget was used up or the reasoning call failed or timed out after 60 s), or *default* (nothing was sent). The route is shown here only; the public chat doesn't report it. Under "Reasoning route" in the settings you can force *fast* or *deep* on every message, to compare the two on the same script; the configuration label of the results then says which. A project with a bridge phrase speaks it first on a deep turn: "First audio" is then the bridge, and "LLM first token" is the real wait for the answer.
 
 ## Speech recognition only
 
