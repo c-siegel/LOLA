@@ -108,6 +108,12 @@ class FakeAI:
     def __init__(self) -> None:
         self.llm_reply: str | None = LLM_REPLY
         self.llm_error: Exception | None = None
+        self.llm_usage = SimpleNamespace(
+            prompt_tokens=1200,
+            completion_tokens=40,
+            prompt_tokens_details=SimpleNamespace(cached_tokens=1024),
+            completion_tokens_details=SimpleNamespace(reasoning_tokens=0),
+        )
         self.tts_error: Exception | None = None
         self.stt_text = " hallo welt "
         self.completion_calls: list[dict] = []
@@ -121,10 +127,14 @@ class FakeAI:
         if kwargs.get("stream"):
             words = self.llm_reply.split(" ")
             deltas = [w + (" " if i < len(words) - 1 else "") for i, w in enumerate(words)]
-            return iter(
-                SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=d))]) for d in deltas
-            )
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=self.llm_reply))])
+            chunks = [SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=d))]) for d in deltas]
+            if kwargs.get("stream_options", {}).get("include_usage"):
+                # Like the real API: a last chunk with no choices that carries the token counts.
+                chunks.append(SimpleNamespace(choices=[], usage=self.llm_usage))
+            return iter(chunks)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=self.llm_reply))], usage=self.llm_usage
+        )
 
     def speech(self, **kwargs):
         self.speech_calls.append(kwargs)

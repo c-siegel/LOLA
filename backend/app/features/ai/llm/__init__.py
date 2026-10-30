@@ -19,11 +19,11 @@ from collections.abc import Iterator
 
 from app.core.providers import GWDG_ARCANA_PROVIDER
 from app.features.ai.llm.arcana import ArcanaClient, strip_arcana_references
-from app.features.ai.llm.base import ChatRequest, LLMClient
+from app.features.ai.llm.base import ChatRequest, LLMClient, LLMUsage
 from app.features.ai.llm.litellm_provider import LiteLLMClient
 from app.features.api_keys.models import UserApiKey
 
-__all__ = ["ChatRequest", "LLMClient", "complete", "get_llm_client", "strip_arcana_references", "stream"]
+__all__ = ["ChatRequest", "LLMClient", "LLMUsage", "complete", "get_llm_client", "strip_arcana_references", "stream"]
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +35,12 @@ def get_llm_client(api_key_record: UserApiKey) -> LLMClient:
     return LiteLLMClient(api_key_record)
 
 
-def complete(api_key_record: UserApiKey, request: ChatRequest) -> str:
-    """Send a chat turn to the key's LLM and return the reply text."""
-    return get_llm_client(api_key_record).complete(request)
+def complete(api_key_record: UserApiKey, request: ChatRequest, usage: LLMUsage | None = None) -> str:
+    """Send a chat turn to the key's LLM and return the reply text; fills `usage` if given."""
+    return get_llm_client(api_key_record).complete(request, usage)
 
 
-def stream(api_key_record: UserApiKey, request: ChatRequest) -> Iterator[str]:
+def stream(api_key_record: UserApiKey, request: ChatRequest, usage: LLMUsage | None = None) -> Iterator[str]:
     """Yield reply text deltas. Arcana's citation block is filtered out mid-stream.
 
     If streaming fails before the very first delta, this falls back to the plain non-streamed call
@@ -53,7 +53,7 @@ def stream(api_key_record: UserApiKey, request: ChatRequest) -> Iterator[str]:
     client = get_llm_client(api_key_record)
     yielded = False
     try:
-        for delta in client.stream(request):
+        for delta in client.stream(request, usage):
             yielded = True
             yield delta
     except Exception as exc:
@@ -62,6 +62,6 @@ def stream(api_key_record: UserApiKey, request: ChatRequest) -> Iterator[str]:
         if yielded:
             raise
         logger.warning("Streaming failed, falling back to a plain request: %s", exc)
-        reply = client.complete(request)
+        reply = client.complete(request, usage)
         if reply:
             yield reply

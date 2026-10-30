@@ -33,6 +33,10 @@ server — fetch it first with `scripts/fetch-tts-model.sh` — and speaks with 
 to see whether in-browser speech output is fast enough on a device — the public chat doesn't use
 it.
 
+## Token counts and the prompt cache
+
+Every turn also records what the language model reports about its call: **prompt tokens**, how many of them came from the provider's **prompt cache**, **reply tokens** and hidden **reasoning tokens**. Together with "LLM first token" this shows whether a slow start is the model thinking or a cold cache. A column stays empty when the provider doesn't report it (cached and reasoning counts vary a lot between providers; many cache only prompts above about 1,000 tokens). The counts are numbers only, no message text, and only the dashboard's latency test sees them — the public chat's replies don't carry them.
+
 ## Speech recognition only
 
 Under "Device", **Measure speech recognition only** runs the loaded on-device model by itself — on

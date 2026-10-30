@@ -389,7 +389,7 @@ export function LatencyLabPage() {
   }
 
   const summary = summarize(results);
-  const headlineColumns: MetricColumn[] = ["sttMs", "llmFirstTokenMs", "firstChunkTtsMs", "requestToFirstChunkMs", "firstAudioMs", "playbackEndMs", "playbackGapMs", "avatarFps"];
+  const headlineColumns: MetricColumn[] = ["sttMs", "llmFirstTokenMs", "promptTokens", "cachedTokens", "firstChunkTtsMs", "requestToFirstChunkMs", "firstAudioMs", "playbackEndMs", "playbackGapMs", "avatarFps"];
   const exportName = `latency-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}`;
 
   const set = <K extends keyof LabConfig>(key: K, value: LabConfig[K]) => setConfig((prev) => ({ ...prev, [key]: value }));

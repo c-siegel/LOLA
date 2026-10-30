@@ -210,6 +210,10 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
     retrievalMs: null,
     llmFirstTokenMs: null,
     llmTotalMs: null,
+    promptTokens: null,
+    cachedTokens: null,
+    completionTokens: null,
+    reasoningTokens: null,
     firstChunkTextReadyMs: null,
     firstChunkTtsMs: null,
     ttsTotalMs: null,
@@ -318,6 +322,10 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
     result.retrievalMs = done.retrievalMs ?? null;
     result.llmFirstTokenMs = done.llmFirstTokenMs;
     result.llmTotalMs = done.llmMs;
+    result.promptTokens = done.usage?.promptTokens ?? null;
+    result.cachedTokens = done.usage?.cachedTokens ?? null;
+    result.completionTokens = done.usage?.completionTokens ?? null;
+    result.reasoningTokens = done.usage?.reasoningTokens ?? null;
     result.firstChunkTextReadyMs = done.firstChunkTextReadyMs;
     result.ttsTotalMs = done.ttsMs;
     result.replyChars = done.reply.length;

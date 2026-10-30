@@ -48,6 +48,13 @@ export interface TurnResult {
   /** Server-side, since the backend received the message. */
   llmFirstTokenMs: number | null;
   llmTotalMs: number | null;
+  /** Token counts of the language model call (null: the provider doesn't report them). */
+  promptTokens: number | null;
+  /** Prompt tokens the provider served from its cache; compare with promptTokens. */
+  cachedTokens: number | null;
+  completionTokens: number | null;
+  /** Hidden reasoning tokens, billed as output. */
+  reasoningTokens: number | null;
   firstChunkTextReadyMs: number | null;
   /** Synthesis time of the first chunk: server TTS, or the browser engine until first audio. */
   firstChunkTtsMs: number | null;
@@ -81,6 +88,10 @@ export const METRIC_COLUMNS = [
   "retrievalMs",
   "llmFirstTokenMs",
   "llmTotalMs",
+  "promptTokens",
+  "cachedTokens",
+  "completionTokens",
+  "reasoningTokens",
   "firstChunkTextReadyMs",
   "firstChunkTtsMs",
   "ttsTotalMs",

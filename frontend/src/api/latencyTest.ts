@@ -39,6 +39,13 @@ export interface LatencyDoneEvent {
   ttsMs: number | null;
   /** Knowledge-base lookup before the LLM call; null when the project uses no knowledge base. */
   retrievalMs?: number | null;
+  /** The language model's token counts; each is null when the provider doesn't report it. */
+  usage?: {
+    promptTokens: number | null;
+    completionTokens: number | null;
+    cachedTokens: number | null;
+    reasoningTokens: number | null;
+  };
 }
 
 export interface LatencyTranscription {

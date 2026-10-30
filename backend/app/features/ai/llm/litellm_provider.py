@@ -15,7 +15,7 @@ import litellm
 
 from app.core.error_codes import ErrorCode
 from app.core.providers import build_model_string, get_provider
-from app.features.ai.llm.base import ChatRequest
+from app.features.ai.llm.base import ChatRequest, LLMUsage
 from app.features.ai.llm.history import build_messages, sampling_params, thinking_extra_body
 from app.features.ai.llm.think_guard import ThinkTagGuard, strip_think_tags
 from app.features.api_keys.crypto import reveal_api_key_for_litellm
@@ -92,7 +92,7 @@ class LiteLLMClient:
     def __init__(self, api_key_record: UserApiKey) -> None:
         self._key = api_key_record
 
-    def complete(self, request: ChatRequest) -> str:
+    def complete(self, request: ChatRequest, usage: LLMUsage | None = None) -> str:
         """Send the request and return the reply text."""
         api_key = reveal_api_key_for_litellm(self._key.encrypted_api_key)
         model, extra = _resolve_call(self._key, self._key.model_id or "")
@@ -106,6 +106,8 @@ class LiteLLMClient:
                 **extra,
             )
         )
+        if usage is not None:
+            usage.update_from(getattr(response, "usage", None))
         content = response.choices[0].message.content
         # None (not "") when e.g. a content filter blocked the reply or the model answered with a
         # tool call — raised so callers treat it as the failed LLM call it is.
@@ -113,7 +115,7 @@ class LiteLLMClient:
             raise ValueError("LLM returned an empty reply")
         return strip_think_tags(content)
 
-    def stream(self, request: ChatRequest) -> Iterator[str]:
+    def stream(self, request: ChatRequest, usage: LLMUsage | None = None) -> Iterator[str]:
         """Streamed chat, retrying transient provider failures.
 
         Retrying is only safe while nothing has been yielded yet: once the caller holds a delta
@@ -134,11 +136,19 @@ class LiteLLMClient:
                     api_key=api_key,
                     messages=build_messages(request),
                     stream=True,
+                    # Without this the providers send no token counts while streaming. Only asked
+                    # for when the caller wants them: not every OpenAI-compatible server knows it.
+                    **({"stream_options": {"include_usage": True}} if usage is not None else {}),
                     **sampling_params(request),
                     **_thinking_kwargs(self._key, request),
                     **extra,
                 )
                 for chunk in response:
+                    if usage is not None and getattr(chunk, "usage", None) is not None:
+                        usage.update_from(chunk.usage)
+                    # The usage chunk has no choices at all.
+                    if not chunk.choices:
+                        continue
                     # litellm emits role-only and finish chunks with delta.content == None.
                     delta = chunk.choices[0].delta.content
                     if delta is not None:

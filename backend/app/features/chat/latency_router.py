@@ -53,7 +53,7 @@ def _test_context(session: Session, project: Project, data: LatencyTestMessageIn
         context = dataclasses.replace(
             context, tts_enabled=True, tts_key=None, voice_clip=voice_reference_for_project(session, project)
         )
-    return dataclasses.replace(context, save_conversations=False)
+    return dataclasses.replace(context, save_conversations=False, report_usage=True)
 
 
 def _plain_turn_events(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dict]]:
@@ -83,6 +83,7 @@ def _plain_turn_events(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[s
         "firstChunkTextReadyMs": reply.llm_ms,
         "ttsMs": reply.tts_ms,
         "retrievalMs": reply.retrieval_ms,
+        "usage": reply.usage,
     }
 
 
