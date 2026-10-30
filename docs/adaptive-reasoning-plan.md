@@ -211,7 +211,7 @@ history.
   today; `done` gains `route`. `routeReason`, `routerMs`, `bridgeMs` and `model` go to the
   teacher-only surfaces (Latency Lab, analytics), **not** into the public `done` event, because they
   reveal the router's rules to anonymous visitors.
-- **Deep-route failure handling:** the deep call has its own timeout (a module constant at first).
+- **Deep-route failure handling** (done in phase 1: `DEEP_TIMEOUT_SECONDS`, `_stream_with_fallback`, `sse_stream`): the deep call has its own timeout (a module constant at first).
   On a timeout or provider error before the first content token the turn falls back to FAST instead
   of failing. While the deep model is silent, the stream sends keep-alive events so proxies don't
   close it (this matters for text-only projects, which get no bridge). Check litellm's request

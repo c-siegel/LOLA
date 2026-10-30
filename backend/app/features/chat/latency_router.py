@@ -28,7 +28,7 @@ from app.features.api_keys.resolve import get_owned_key_of_type, resolve_stt_key
 from app.features.chat.audio_upload import read_audio_upload
 from app.features.chat.pipeline import ChatContext, ChatTurn, LLMFailed, prepare_chat, reply_turn, stream_turn
 from app.features.chat.schemas import LatencyTestMessageIn, LatencyTranscriptionOut
-from app.features.chat.streaming import sse_event
+from app.features.chat.streaming import sse_stream
 from app.features.media.service import voice_reference_for_project
 from app.features.projects.models import Project
 
@@ -53,7 +53,7 @@ def _test_context(session: Session, project: Project, data: LatencyTestMessageIn
         context = dataclasses.replace(
             context, tts_enabled=True, tts_key=None, voice_clip=voice_reference_for_project(session, project)
         )
-    return dataclasses.replace(context, save_conversations=False, report_usage=True)
+    return dataclasses.replace(context, save_conversations=False, diagnostics=True)
 
 
 def _plain_turn_events(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dict]]:
@@ -84,6 +84,7 @@ def _plain_turn_events(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[s
         "ttsMs": reply.tts_ms,
         "retrievalMs": reply.retrieval_ms,
         "usage": reply.usage,
+        "route": reply.route,
     }
 
 
@@ -100,7 +101,7 @@ def latency_test_message(
     turn = ChatTurn(data.message, [{"role": h.role, "content": h.content} for h in data.history])
     events = stream_turn(context, turn) if data.streaming else _plain_turn_events(context, turn)
     return StreamingResponse(
-        (sse_event(event, payload) for event, payload in events),
+        sse_stream(events),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

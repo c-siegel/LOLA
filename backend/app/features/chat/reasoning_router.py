@@ -28,6 +28,10 @@ class RouteDecision:
     reasoning: str | None
 
 
+# How long a reasoning call may stay silent before the turn is answered without reasoning instead.
+# A constant until measurements show a project needs its own (docs/adaptive-reasoning-plan.md).
+DEEP_TIMEOUT_SECONDS = 60.0
+
 DEFAULT_ROUTE = RouteDecision("default", None)
 FAST_ROUTE = RouteDecision("fast", "off")
 

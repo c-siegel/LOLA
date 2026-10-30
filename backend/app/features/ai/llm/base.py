@@ -25,6 +25,14 @@ class ChatRequest:
     # "off", "on" or an effort level ("low"/"medium"/"high"); None = leave the model's default alone
     # and send nothing (see ai/llm/reasoning.py for what each provider receives).
     reasoning: str | None = None
+    # Seconds the provider may stay silent (litellm's request timeout); None = its default. Set for
+    # reasoning requests, which can legitimately think for long but must not hang a visitor.
+    timeout: float | None = None
+
+    @property
+    def reasons(self) -> bool:
+        """Whether this request asks the model to reason."""
+        return self.reasoning not in (None, "off")
 
 
 @dataclass

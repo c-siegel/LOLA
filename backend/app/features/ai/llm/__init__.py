@@ -61,6 +61,10 @@ def stream(api_key_record: UserApiKey, request: ChatRequest, usage: LLMUsage | N
         # function it may already have been spoken, so a mid-stream failure has to stay a failure.
         if yielded:
             raise
+        # A reasoning request that failed would only wait out the same timeout again; the caller
+        # (chat/pipeline.py) falls back to an answer without reasoning instead.
+        if request.reasons:
+            raise
         logger.warning("Streaming failed, falling back to a plain request: %s", exc)
         reply = client.complete(request, usage)
         if reply:

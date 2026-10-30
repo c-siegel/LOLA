@@ -35,7 +35,7 @@ from app.features.api_keys.resolve import resolve_llm_key, resolve_tts_key
 from app.features.chat.conversation_store import save_turn
 from app.features.chat.checklist import Check, Checklist, checklist_for, checklist_prompt
 from app.features.chat.motion import MotionMark, compose_system_prompt, extract_markers
-from app.features.chat.reasoning_router import RouteDecision, decide
+from app.features.chat.reasoning_router import DEEP_TIMEOUT_SECONDS, FAST_ROUTE, RouteDecision, decide
 from app.features.knowledge.prompt import reference_block
 from app.features.knowledge.retrieval import KnowledgeContext, Passage, prepare_knowledge, retrieve, sources_for_transcript
 from app.features.media.service import voice_reference_for_project
@@ -99,9 +99,10 @@ class ChatContext:
     # the reply's spoken form goes out instead — normalized and with the teacher's pronunciation
     # list applied, exactly what the server's TTS would have read.
     speak_on_device: bool = False
-    # Adds the provider's token counts (prompt, cached, reasoning) to the reply. Only the
-    # owner-only latency test sets it; the public chat's events stay as they are.
-    report_usage: bool = False
+    # Adds teacher-only diagnostics to the reply: the provider's token counts and the reasoning
+    # route taken. Only the owner-only latency test sets it; the public chat's events stay as they
+    # are, so visitors learn nothing about how a turn was routed.
+    diagnostics: bool = False
 
 
 @dataclass
@@ -139,8 +140,10 @@ class ChatReply:
     checks: list[Check] = field(default_factory=list)
     # What the visitor's device should say — only with ChatContext.speak_on_device.
     spoken: str | None = None
-    # The LLM call's token counts, only with ChatContext.report_usage.
+    # The LLM call's token counts, only with ChatContext.diagnostics.
     usage: dict[str, int | None] | None = None
+    # The reasoning route taken (see chat/reasoning_router.py), only with ChatContext.diagnostics.
+    route: str | None = None
 
 
 class LLMFailed(Exception):
@@ -221,7 +224,48 @@ def _chat_request(
         turn.history,
         reference_material=reference,
         reasoning=route.reasoning,
+        timeout=DEEP_TIMEOUT_SECONDS if route.route == "deep" else None,
     )
+
+
+def _complete_with_fallback(
+    context: ChatContext, turn: ChatTurn, passages: list[Passage], route: RouteDecision, usage: llm.LLMUsage | None
+) -> tuple[str, RouteDecision]:
+    """The plain reply and the route it came from. A failed reasoning call is repeated once
+    without reasoning, so a slow or unsupported reasoning model doesn't cost the visitor the answer."""
+    try:
+        return llm.complete(context.llm_key, _chat_request(context, turn, passages, route), usage), route
+    except Exception as exc:
+        if route.route != "deep":
+            raise
+        logger.warning("Reasoning call failed, answering without reasoning (project_id=%s): %s", context.project_id, exc)
+    return llm.complete(context.llm_key, _chat_request(context, turn, passages, FAST_ROUTE), usage), FAST_ROUTE
+
+
+class _Run:
+    """The route a streamed reply actually took, which a fallback can change midway."""
+
+    def __init__(self, route: RouteDecision) -> None:
+        self.route = route
+
+
+def _stream_with_fallback(
+    context: ChatContext, turn: ChatTurn, passages: list[Passage], run: _Run, usage: llm.LLMUsage | None
+) -> Iterator[str]:
+    """The reply's text deltas. Like _complete_with_fallback, but only while nothing was yielded:
+    once part of the reply may have been spoken, starting over would say it twice."""
+    started = False
+    try:
+        for delta in llm.stream(context.llm_key, _chat_request(context, turn, passages, run.route), usage):
+            started = True
+            yield delta
+        return
+    except Exception as exc:
+        if started or run.route.route != "deep":
+            raise
+        logger.warning("Reasoning call failed, answering without reasoning (project_id=%s): %s", context.project_id, exc)
+    run.route = FAST_ROUTE
+    yield from llm.stream(context.llm_key, _chat_request(context, turn, passages, run.route), usage)
 
 
 def _save(
@@ -298,10 +342,10 @@ def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> Ch
     # the default UI, just extra fields riding along in the response.
     passages, retrieval_ms = _retrieve(context, turn)
     route = _route(context, turn)
-    usage = llm.LLMUsage() if context.report_usage else None
+    usage = llm.LLMUsage() if context.diagnostics else None
     llm_start = time.perf_counter()
     try:
-        reply = llm.complete(context.llm_key, _chat_request(context, turn, passages, route), usage)
+        reply, route = _complete_with_fallback(context, turn, passages, route, usage)
     except Exception as exc:
         raise LLMFailed() from exc
     llm_ms = (time.perf_counter() - llm_start) * 1000
@@ -331,6 +375,7 @@ def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> Ch
         checks,
         spoken,
         usage.to_client() if usage is not None else None,
+        route.route if context.diagnostics else None,
     )
 
 
@@ -447,10 +492,10 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
     passages, retrieval_ms = _retrieve(context, turn)
 
     llm_error: Exception | None = None
-    route = _route(context, turn)
-    usage = llm.LLMUsage() if context.report_usage else None
+    run = _Run(_route(context, turn))
+    usage = llm.LLMUsage() if context.diagnostics else None
     try:
-        for delta in llm.stream(context.llm_key, _chat_request(context, turn, passages, route), usage):
+        for delta in _stream_with_fallback(context, turn, passages, run, usage):
             if first_token_ms is None:
                 first_token_ms = (time.perf_counter() - start_time) * 1000
             full_text_parts.append(delta)
@@ -503,5 +548,5 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
         "firstChunkTextReadyMs": first_chunk_ready_ms,
         "ttsMs": total_tts_ms,
         "retrievalMs": retrieval_ms,
-        **({"usage": usage.to_client()} if usage is not None else {}),
+        **({"usage": usage.to_client(), "route": run.route.route} if usage is not None else {}),
     }

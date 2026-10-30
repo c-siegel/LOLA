@@ -29,11 +29,11 @@ delete the plan once nothing in it is open.
 
 ## Adaptive reasoning ([plan](adaptive-reasoning-plan.md))
 
-Done: phase 0a (`ThinkTagGuard`), 0b (token and cache counts in the Latency Lab) and most of phase 1
-(`reasoning_mode` off/always with effort, per-model provider mapping, deep-turn budgets).
+Done: phase 0a (`ThinkTagGuard`), 0b (token and cache counts in the Latency Lab) and phase 1
+(`reasoning_mode` default/off/always with effort, per-model provider mapping, reasoning budgets,
+timeout with fallback to the fast route, SSE keep-alives, the route in the Latency Lab).
 
-Phase 1 still open: the deep-route timeout with fallback to the fast route, SSE keep-alives while
-the model is silent, and the route in the Latency Lab and per saved message.
+Next is phase 2 (`adaptive`: rules router, second key, bridge phrases, route per saved message).
 
 Phase 0c, prompt order, waits for measurements:
 - Run the Latency Lab script with reasoning `off` on each target provider (OpenAI, GWDG, Ollama or

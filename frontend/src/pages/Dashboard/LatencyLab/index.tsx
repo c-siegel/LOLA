@@ -737,6 +737,7 @@ export function LatencyLabPage() {
                     {METRIC_COLUMNS.map((column) => (
                       <th key={column}>{t(`latencyLab.metric.${column}`)}</th>
                     ))}
+                    <th title={t("latencyLab.routeHint")}>{t("latencyLab.route")}</th>
                     <th>{t("latencyLab.chunks")}</th>
                     <th>{t("latencyLab.contextLosses")}</th>
                     <th>{t("latencyLab.errorColumn")}</th>
@@ -755,6 +756,7 @@ export function LatencyLabPage() {
                           {column === "avatarFps" ? (row.avatarFps?.toFixed(1) ?? "–") : ms(row[column])}
                         </td>
                       ))}
+                      <td>{row.route ? t(`latencyLab.routeValue.${row.route}`) : "–"}</td>
                       <td>{row.chunks}</td>
                       <td>{row.contextLosses}</td>
                       <td className={styles.error}>{row.error ?? ""}</td>

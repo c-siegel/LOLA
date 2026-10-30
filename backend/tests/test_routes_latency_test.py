@@ -164,3 +164,16 @@ def test_public_chat_never_asks_for_or_sends_token_usage(anon, chat_project, fak
     assert "usage" not in done
     assert "stream_options" not in fake_ai.completion_calls[-1]
     assert "usage" not in anon.post(f"/public/{slug}/messages", json={"message": "Hi"}).json()
+
+
+def test_done_reports_the_reasoning_route_only_to_the_owner(client, chat_project, fake_ai, anon) -> None:
+    for streaming in (True, False):
+        assert parse_sse(_send(client, chat_project["id"], streaming=streaming).text)[-1][1]["route"] == "default"
+
+    client.put(f"/projects/{chat_project['id']}", json={"reasoningMode": "off"})
+    assert parse_sse(_send(client, chat_project["id"]).text)[-1][1]["route"] == "fast"
+
+    slug = chat_project["shareSlug"]
+    anon.get(f"/public/{slug}")
+    assert "route" not in parse_sse(anon.post(f"/public/{slug}/messages/stream", json={"message": "Hi"}).text)[-1][1]
+    assert "route" not in anon.post(f"/public/{slug}/messages", json={"message": "Hi"}).json()

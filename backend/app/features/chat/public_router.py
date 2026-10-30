@@ -43,7 +43,7 @@ from app.features.chat.schemas import (
     PublicProjectOut,
     TranscriptionOut,
 )
-from app.features.chat.streaming import sse_event
+from app.features.chat.streaming import sse_stream
 from app.features.chat.unlock import assert_unlocked, is_unlocked, issue_unlock_token, verify_chat_password
 from app.features.chat.visitor_log import log_access
 from app.features.chat.visitor_name import assert_visitor_name_provided, clean_visitor_name
@@ -245,7 +245,7 @@ def send_message_stream(
     session.close()
 
     streaming = StreamingResponse(
-        (sse_event(event, payload) for event, payload in stream_turn(context, turn)),
+        sse_stream(stream_turn(context, turn)),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

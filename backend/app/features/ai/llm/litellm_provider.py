@@ -60,7 +60,7 @@ def _resolve_call(api_key_record: UserApiKey, model_id: str) -> tuple[str, dict]
     return model, ({"api_base": api_base} if api_base else {})
 
 
-def _retry_transient(call):
+def _retry_transient(call, transient=_TRANSIENT_LLM_ERRORS):
     """Call `call`, retrying a transient provider failure up to _LLM_MAX_ATTEMPTS times.
 
     Only safe for calls that produce nothing until they return — a streamed reply hands out text
@@ -69,7 +69,7 @@ def _retry_transient(call):
     for attempt in range(1, _LLM_MAX_ATTEMPTS + 1):
         try:
             return call()
-        except _TRANSIENT_LLM_ERRORS as exc:
+        except transient as exc:
             if attempt == _LLM_MAX_ATTEMPTS:
                 raise
             logger.warning(
@@ -85,7 +85,15 @@ def _request_params(api_key_record: UserApiKey, request: ChatRequest) -> dict:
     """Sampling and reasoning keyword arguments for litellm, kept consistent with each other."""
     reasoning = reasoning_kwargs(api_key_record.provider, api_key_record.model_id or "", request.reasoning)
     sampling = sampling_params(request) if sampling_allowed(api_key_record.provider, reasoning) else {}
-    return {**sampling, **reasoning}
+    return {**sampling, **reasoning, **({"timeout": request.timeout} if request.timeout is not None else {})}
+
+
+def _transient_errors(request: ChatRequest) -> tuple[type[Exception], ...]:
+    """The errors worth another attempt. A timeout set on the request is the caller's decision that
+    waiting longer is pointless (the pipeline falls back to a faster answer), so it isn't retried."""
+    if request.timeout is None:
+        return _TRANSIENT_LLM_ERRORS
+    return tuple(error for error in _TRANSIENT_LLM_ERRORS if error is not litellm.Timeout)
 
 
 class LiteLLMClient:
@@ -115,7 +123,8 @@ class LiteLLMClient:
                 messages=build_messages(request),
                 **_request_params(self._key, request),
                 **extra,
-            )
+            ),
+            _transient_errors(request),
         )
         if usage is not None:
             usage.update_from(getattr(response, "usage", None))
@@ -184,7 +193,7 @@ class LiteLLMClient:
                 if tail:
                     yield tail
                 return
-            except _TRANSIENT_LLM_ERRORS as exc:
+            except _transient_errors(request) as exc:
                 if yielded or attempt == _LLM_MAX_ATTEMPTS:
                     raise
                 logger.warning(

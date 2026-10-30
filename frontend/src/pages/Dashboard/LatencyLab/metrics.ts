@@ -48,6 +48,8 @@ export interface TurnResult {
   /** Server-side, since the backend received the message. */
   llmFirstTokenMs: number | null;
   llmTotalMs: number | null;
+  /** Reasoning route of the turn: deep, fast or default (see the backend's reasoning_router). */
+  route: string | null;
   /** Token counts of the language model call (null: the provider doesn't report them). */
   promptTokens: number | null;
   /** Prompt tokens the provider served from its cache; compare with promptTokens. */
