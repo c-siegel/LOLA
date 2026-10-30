@@ -102,8 +102,8 @@ class ChatContext:
     # list applied, exactly what the server's TTS would have read.
     speak_on_device: bool = False
     # Adds teacher-only diagnostics to the reply: the provider's token counts and the reasoning
-    # route taken. Only the owner-only latency test sets it; the public chat's events stay as they
-    # are, so visitors learn nothing about how a turn was routed.
+    # route taken. Only the owner-only latency test sets it. The public chat's events carry neither,
+    # though a visitor can tell a reasoning turn by its bridge phrase.
     diagnostics: bool = False
     # The project's second key for turns that reason (None: the main key answers those too).
     deep_llm_key: UserApiKey | None = None
@@ -401,7 +401,7 @@ def _warm_bridge_audio(context: ChatContext) -> None:
 def _render_bridge_phrase(context: ChatContext, phrase: str, cache_key: tuple) -> None:
     audio_base64, content_type, _ = _synthesize(context, phrase)
     if audio_base64 is None or content_type is None:
-        bridge.audio_cache.release(cache_key)  # a failed attempt may be retried on a later turn
+        bridge.audio_cache.release(cache_key, failed=True)  # retried only after a while
         return
     bridge.audio_cache.put(cache_key, (audio_base64, content_type))
 

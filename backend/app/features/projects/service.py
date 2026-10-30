@@ -23,6 +23,7 @@ from app.core.providers import KEY_TYPE_LLM, KEY_TYPE_STT, KEY_TYPE_TTS, build_m
 from app.core.security import hash_password
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.resolve import get_owned_key_of_type
+from app.features.chat.bridge import audio_cache as bridge_audio_cache
 from app.features.chat.models import Conversation, ProjectAccess
 from app.features.evaluation import cleanup as evaluation_cleanup
 from app.features.knowledge.models import KnowledgeBase
@@ -120,6 +121,7 @@ def delete_project(session: Session, project: Project) -> None:
     evaluation_cleanup.delete_for_project(session, project.id)
     session.delete(project)
     session.commit()
+    bridge_audio_cache.forget_project(project.id)
 
 
 def set_or_clear_chat_password(project: Project, password: str | None) -> None:

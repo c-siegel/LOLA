@@ -143,3 +143,55 @@ def test_rendered_audio_belongs_to_the_voice_it_was_made_with(client, engine, pr
 
     assert _bridge_audio_key(context, "Hallo") != _bridge_audio_key(other_voice, "Hallo")
     assert _bridge_audio_key(context, "Hallo") != _bridge_audio_key(dataclasses.replace(context, project_id="x"), "Hallo")
+
+
+def test_rendered_audio_is_dropped_with_its_project_voice_clip_and_account() -> None:
+    def key(project: str, clip: str | None) -> tuple:
+        return (project, "Hallo", "de", "voice", clip, "local")
+
+    cache = bridge.AudioCache()
+    for project, clip in (("p1", "sha-a"), ("p2", "sha-a"), ("p3", "sha-b"), ("p4", None)):
+        cache.put(key(project, clip), ("audio", "audio/mpeg"))
+
+    cache.forget_project("p1")
+    assert cache.get(key("p1", "sha-a")) is None and cache.get(key("p2", "sha-a")) is not None
+
+    cache.forget_voice_clip("sha-a")
+    assert cache.get(key("p2", "sha-a")) is None
+    assert cache.get(key("p3", "sha-b")) is not None and cache.get(key("p4", None)) is not None
+
+
+def test_deleting_a_project_voice_clip_or_account_forgets_its_bridge_audio(client, engine, project, fake_ai) -> None:
+    created, slug = project
+    _stream(client, slug, SMALL_TALK)
+    _wait_until_rendered()
+    assert bridge.audio_cache._items
+
+    assert client.delete(f"/projects/{created['id']}").status_code in (200, 204)
+
+    assert not bridge.audio_cache._items
+
+
+def test_the_least_recently_used_rendering_is_evicted_first(monkeypatch) -> None:
+    monkeypatch.setattr(bridge, "_MAX_CACHED", 2)
+    cache = bridge.AudioCache()
+    cache.put(("a",), ("1", "x"))
+    cache.put(("b",), ("2", "x"))
+    cache.get(("a",))  # a is in use, b is not
+    cache.put(("c",), ("3", "x"))
+
+    assert cache.get(("a",)) is not None and cache.get(("b",)) is None
+
+
+def test_a_failed_rendering_is_not_retried_every_turn(monkeypatch) -> None:
+    clock = [100.0]
+    monkeypatch.setattr(bridge.time, "monotonic", lambda: clock[0])
+    cache = bridge.AudioCache()
+    key = ("p", "Hallo")
+
+    assert cache.claim(key) is True
+    cache.release(key, failed=True)
+    assert cache.claim(key) is False  # backing off
+
+    clock[0] += bridge._RETRY_AFTER_FAILURE_SECONDS + 1
+    assert cache.claim(key) is True
