@@ -7,6 +7,7 @@ endpoint, and secret all come from the stored key record the project references
 (Project.llm_api_key_id).
 """
 
+import dataclasses
 import logging
 import time
 from collections.abc import Iterator
@@ -16,7 +17,8 @@ import litellm
 from app.core.error_codes import ErrorCode
 from app.core.providers import build_model_string, get_provider
 from app.features.ai.llm.base import ChatRequest, LLMUsage
-from app.features.ai.llm.history import build_messages, sampling_params, thinking_extra_body
+from app.features.ai.llm.history import build_messages, sampling_params
+from app.features.ai.llm.reasoning import reasoning_kwargs, sampling_allowed
 from app.features.ai.llm.think_guard import ThinkTagGuard, strip_think_tags
 from app.features.api_keys.crypto import reveal_api_key_for_litellm
 from app.features.api_keys.models import UserApiKey
@@ -79,11 +81,11 @@ def _retry_transient(call):
             time.sleep(_LLM_RETRY_DELAYS[attempt - 1])
 
 
-def _thinking_kwargs(api_key_record: UserApiKey, request: ChatRequest) -> dict:
-    """litellm kwargs for the project's thinking switch, only for providers that honour it."""
-    spec = get_provider(api_key_record.provider)
-    body = thinking_extra_body(request) if spec and spec.thinking_switch else {}
-    return {"extra_body": body} if body else {}
+def _request_params(api_key_record: UserApiKey, request: ChatRequest) -> dict:
+    """Sampling and reasoning keyword arguments for litellm, kept consistent with each other."""
+    reasoning = reasoning_kwargs(api_key_record.provider, api_key_record.model_id or "", request.reasoning)
+    sampling = sampling_params(request) if sampling_allowed(api_key_record.provider, reasoning) else {}
+    return {**sampling, **reasoning}
 
 
 class LiteLLMClient:
@@ -94,6 +96,16 @@ class LiteLLMClient:
 
     def complete(self, request: ChatRequest, usage: LLMUsage | None = None) -> str:
         """Send the request and return the reply text."""
+        try:
+            return self._complete(request, usage)
+        except litellm.BadRequestError as exc:
+            if request.reasoning is None:
+                raise
+            # A model that doesn't take the reasoning setting must still answer, just not as asked.
+            logger.warning("Provider rejected the reasoning setting, retrying without it: %s", exc)
+            return self._complete(dataclasses.replace(request, reasoning=None), usage)
+
+    def _complete(self, request: ChatRequest, usage: LLMUsage | None) -> str:
         api_key = reveal_api_key_for_litellm(self._key.encrypted_api_key)
         model, extra = _resolve_call(self._key, self._key.model_id or "")
         response = _retry_transient(
@@ -101,8 +113,7 @@ class LiteLLMClient:
                 model=model,
                 api_key=api_key,
                 messages=build_messages(request),
-                **sampling_params(request),
-                **_thinking_kwargs(self._key, request),
+                **_request_params(self._key, request),
                 **extra,
             )
         )
@@ -116,6 +127,20 @@ class LiteLLMClient:
         return strip_think_tags(content)
 
     def stream(self, request: ChatRequest, usage: LLMUsage | None = None) -> Iterator[str]:
+        """Streamed chat; like complete(), drops a reasoning setting the provider rejects."""
+        yielded = False
+        try:
+            for delta in self._stream(request, usage):
+                yielded = True
+                yield delta
+            return
+        except litellm.BadRequestError as exc:
+            if yielded or request.reasoning is None:
+                raise
+            logger.warning("Provider rejected the reasoning setting, retrying without it: %s", exc)
+        yield from self._stream(dataclasses.replace(request, reasoning=None), usage)
+
+    def _stream(self, request: ChatRequest, usage: LLMUsage | None) -> Iterator[str]:
         """Streamed chat, retrying transient provider failures.
 
         Retrying is only safe while nothing has been yielded yet: once the caller holds a delta
@@ -139,8 +164,7 @@ class LiteLLMClient:
                     # Without this the providers send no token counts while streaming. Only asked
                     # for when the caller wants them: not every OpenAI-compatible server knows it.
                     **({"stream_options": {"include_usage": True}} if usage is not None else {}),
-                    **sampling_params(request),
-                    **_thinking_kwargs(self._key, request),
+                    **_request_params(self._key, request),
                     **extra,
                 )
                 for chunk in response:

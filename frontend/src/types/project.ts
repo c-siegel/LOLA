@@ -30,8 +30,10 @@ export interface Project {
   // ::_sampling_params). temperature 0.0-2.0, topP 0.0-1.0 — the backend checks the same limits.
   temperature: number;
   topP: number;
-  // Reasoning switch for models that support it; "default" leaves the model's own behaviour.
-  thinkingMode: ThinkingMode;
+  // Reasoning for models that support it; "default" leaves the model's own behaviour alone.
+  reasoningMode: ReasoningMode;
+  // Level for models that take one; null = the provider's own default.
+  reasoningEffort: ReasoningEffort | null;
   published: boolean;
   shareSlug: string | null;
   saveConversations: boolean;
@@ -135,8 +137,11 @@ export const KNOWLEDGE_MODES: KnowledgeMode[] = ["off", "supplement", "strict"];
 // The local server STT engines (backend Settings.stt_engine / Project.stt_server_engine).
 export type SttServerEngine = "whisper" | "parakeet";
 
-export type ThinkingMode = "default" | "on" | "off";
-export const THINKING_MODES: ThinkingMode[] = ["default", "on", "off"];
+export type ReasoningMode = "default" | "off" | "always";
+export const REASONING_MODES: ReasoningMode[] = ["default", "off", "always"];
+
+export type ReasoningEffort = "low" | "medium" | "high";
+export const REASONING_EFFORTS: ReasoningEffort[] = ["low", "medium", "high"];
 
 export type ChatLayout = "avatar_chat" | "avatar_chat_collapsed" | "avatar_only" | "chat_only";
 export const CHAT_LAYOUTS: ChatLayout[] = ["avatar_chat", "avatar_chat_collapsed", "avatar_only", "chat_only"];

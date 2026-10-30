@@ -413,6 +413,16 @@
             "title": "Provider",
             "type": "string"
           },
+          "reasoningSupport": {
+            "default": "none",
+            "enum": [
+              "none",
+              "switch",
+              "effort"
+            ],
+            "title": "Reasoningsupport",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -2684,6 +2694,31 @@
             "title": "Published",
             "type": "boolean"
           },
+          "reasoningEffort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoningeffort"
+          },
+          "reasoningMode": {
+            "enum": [
+              "default",
+              "off",
+              "always"
+            ],
+            "title": "Reasoningmode",
+            "type": "string"
+          },
           "requireVisitorName": {
             "title": "Requirevisitorname",
             "type": "boolean"
@@ -2805,15 +2840,6 @@
             "title": "Temperature",
             "type": "number"
           },
-          "thinkingMode": {
-            "enum": [
-              "default",
-              "on",
-              "off"
-            ],
-            "title": "Thinkingmode",
-            "type": "string"
-          },
           "thinkingMotionsEnabled": {
             "title": "Thinkingmotionsenabled",
             "type": "boolean"
@@ -2885,7 +2911,8 @@
           "gradeLevel",
           "temperature",
           "topP",
-          "thinkingMode",
+          "reasoningMode",
+          "reasoningEffort",
           "published",
           "shareSlug",
           "saveConversations",
@@ -3173,6 +3200,38 @@
             ],
             "title": "Preprompt"
           },
+          "reasoningEffort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoningeffort"
+          },
+          "reasoningMode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "default",
+                  "off",
+                  "always"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoningmode"
+          },
           "requireVisitorName": {
             "anyOf": [
               {
@@ -3330,22 +3389,6 @@
               }
             ],
             "title": "Temperature"
-          },
-          "thinkingMode": {
-            "anyOf": [
-              {
-                "enum": [
-                  "default",
-                  "on",
-                  "off"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Thinkingmode"
           },
           "thinkingMotionsEnabled": {
             "anyOf": [
@@ -3856,11 +3899,6 @@
             },
             "title": "Supportedtypes",
             "type": "array"
-          },
-          "thinkingSwitch": {
-            "default": false,
-            "title": "Thinkingswitch",
-            "type": "boolean"
           },
           "ttsModelFixed": {
             "default": false,

@@ -14,7 +14,8 @@ dependencies = [
     "bcrypt>=4.1",
     "pyjwt>=2.9",
     "cryptography>=43.0",
-    "litellm>=1.48",
+    # 1.97: reasoning_effort mapping (Anthropic thinking, Gemini thinkingConfig, Ollama think) and supports_reasoning() verified on this version.
+    "litellm>=1.97",
     "httpx>=0.27",
     "faster-whisper>=1.0",
     # PyAV is faster-whisper's audio decoder. faster-whisper 1.2.1 (latest) still calls

@@ -35,6 +35,7 @@ from app.features.api_keys.resolve import resolve_llm_key, resolve_tts_key
 from app.features.chat.conversation_store import save_turn
 from app.features.chat.checklist import Check, Checklist, checklist_for, checklist_prompt
 from app.features.chat.motion import MotionMark, compose_system_prompt, extract_markers
+from app.features.chat.reasoning_router import RouteDecision, decide
 from app.features.knowledge.prompt import reference_block
 from app.features.knowledge.retrieval import KnowledgeContext, Passage, prepare_knowledge, retrieve, sources_for_transcript
 from app.features.media.service import voice_reference_for_project
@@ -71,7 +72,9 @@ class ChatContext:
     preprompt: str
     temperature: float | None
     top_p: float | None
-    thinking: bool | None
+    # The project's reasoning setting, see chat/reasoning_router.py.
+    reasoning_mode: str
+    reasoning_effort: str | None
     start_prompt: str | None
     tts_voice: str | None
     spoken_language: str
@@ -164,7 +167,8 @@ def prepare_chat(session: Session, project: Project, llm_key: UserApiKey | None 
         preprompt=project.preprompt or "",
         temperature=project.temperature,
         top_p=project.top_p,
-        thinking={"on": True, "off": False}.get(project.thinking_mode),
+        reasoning_mode=project.reasoning_mode,
+        reasoning_effort=project.reasoning_effort,
         start_prompt=project.start_prompt,
         tts_voice=project.tts_voice,
         spoken_language=project.spoken_language,
@@ -188,7 +192,13 @@ def _retrieve(context: ChatContext, turn: ChatTurn) -> tuple[list[Passage], floa
     return passages, (time.perf_counter() - start) * 1000
 
 
-def _chat_request(context: ChatContext, turn: ChatTurn, passages: list[Passage], *, plain: bool = False) -> llm.ChatRequest:
+def _route(context: ChatContext) -> RouteDecision:
+    return decide(context.llm_key.provider, context.llm_key.model_id or "", context.reasoning_mode, context.reasoning_effort)
+
+
+def _chat_request(
+    context: ChatContext, turn: ChatTurn, passages: list[Passage], route: RouteDecision, *, plain: bool = False
+) -> llm.ChatRequest:
     """The LLM request for `turn`; `plain` leaves out the gesture instructions and the plan."""
     reference = reference_block(context.knowledge.mode, passages) if context.knowledge else None
     plan = None if plain or context.checklist is None else checklist_prompt(context.checklist, set(turn.checklist_done))
@@ -201,7 +211,7 @@ def _chat_request(context: ChatContext, turn: ChatTurn, passages: list[Passage],
         context.start_prompt,
         turn.history,
         reference_material=reference,
-        thinking=context.thinking,
+        reasoning=route.reasoning,
     )
 
 
@@ -278,10 +288,11 @@ def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> Ch
     # Timed for the client-side latency-test log (see pages/PublicChat/index.tsx) — not used by
     # the default UI, just extra fields riding along in the response.
     passages, retrieval_ms = _retrieve(context, turn)
+    route = _route(context)
     usage = llm.LLMUsage() if context.report_usage else None
     llm_start = time.perf_counter()
     try:
-        reply = llm.complete(context.llm_key, _chat_request(context, turn, passages), usage)
+        reply = llm.complete(context.llm_key, _chat_request(context, turn, passages, route), usage)
     except Exception as exc:
         raise LLMFailed() from exc
     llm_ms = (time.perf_counter() - llm_start) * 1000
@@ -331,7 +342,7 @@ def answer_for_evaluation(context: ChatContext, question: str) -> EvaluationAnsw
     try:
         # Without the gesture instructions: the evaluation judges the answer's content, and stray
         # markers would only add noise to it.
-        text = llm.complete(context.llm_key, _chat_request(context, turn, passages, plain=True))
+        text = llm.complete(context.llm_key, _chat_request(context, turn, passages, _route(context), plain=True))
     except Exception as exc:
         raise LLMFailed() from exc
     return EvaluationAnswer(text, passages, retrieval_ms, (time.perf_counter() - llm_start) * 1000)
@@ -427,9 +438,10 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
     passages, retrieval_ms = _retrieve(context, turn)
 
     llm_error: Exception | None = None
+    route = _route(context)
     usage = llm.LLMUsage() if context.report_usage else None
     try:
-        for delta in llm.stream(context.llm_key, _chat_request(context, turn, passages), usage):
+        for delta in llm.stream(context.llm_key, _chat_request(context, turn, passages, route), usage):
             if first_token_ms is None:
                 first_token_ms = (time.perf_counter() - start_time) * 1000
             full_text_parts.append(delta)

@@ -20,7 +20,8 @@ from app.core.error_codes import ErrorCode
 from app.core.providers import GWDG_ARCANA_PROVIDER, get_provider
 from app.features.ai.http import make_ipv4_client
 from app.features.ai.llm.base import ChatRequest, LLMUsage
-from app.features.ai.llm.history import build_messages, sampling_params, thinking_extra_body
+from app.features.ai.llm.history import build_messages, sampling_params
+from app.features.ai.llm.reasoning import reasoning_kwargs
 from app.features.ai.llm.think_guard import ThinkTagGuard, strip_think_tags
 from app.features.api_keys.crypto import reveal_api_key
 from app.features.api_keys.models import UserApiKey
@@ -206,7 +207,8 @@ class ArcanaClient:
         }
         if stream:
             body["stream"] = True
-        return {**body, **sampling_params(request), **thinking_extra_body(request)}
+        reasoning = reasoning_kwargs(GWDG_ARCANA_PROVIDER, self._key.model_id or "", request.reasoning)
+        return {**body, **sampling_params(request), **reasoning.get("extra_body", {})}
 
     def complete(self, request: ChatRequest, usage: LLMUsage | None = None) -> str:
         """Send the request and return the reply with Arcana's references block removed."""

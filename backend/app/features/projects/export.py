@@ -80,6 +80,7 @@ def parse_project_yaml(raw: bytes | str) -> ProjectExportData:
     fields = document["project"]
     if document.get("lola_export", 1) == 1:
         fields = _upgrade_v1(fields)
+    fields = _upgrade_thinking_mode(fields)
     try:
         return ProjectExportData.model_validate(fields)
     except ValidationError as exc:
@@ -97,6 +98,16 @@ def _upgrade_v1(fields: dict) -> dict:
         fields["builtin_avatar"] = match.group(1)
     if match := _V1_BACKGROUND_RE.match(background_url):
         fields["avatar_background_id"] = match.group(1)
+    return fields
+
+
+def _upgrade_thinking_mode(fields: dict) -> dict:
+    """Files exported before reasoning_mode existed carry thinking_mode ("default"/"on"/"off")."""
+    if "thinking_mode" not in fields:
+        return fields
+    fields = dict(fields)
+    legacy = fields.pop("thinking_mode")
+    fields.setdefault("reasoning_mode", "always" if legacy == "on" else legacy)
     return fields
 
 

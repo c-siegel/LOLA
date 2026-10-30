@@ -155,6 +155,9 @@ class ApiKeyOut(CamelModel):
     # Number of projects using this key as a model source — lets the frontend warn before
     # deleting a key that's still referenced by projects.
     used_by_projects: int = 0
+    # What the key's model can do with a project's reasoning setting (see ai/llm/reasoning.py):
+    # nothing, on/off only, or on/off plus an effort level. Decides what the configurator offers.
+    reasoning_support: Literal["none", "switch", "effort"] = "none"
 
 
 class ApiKeyTestResult(CamelModel):
@@ -229,7 +232,5 @@ class ProviderSpecOut(CamelModel):
     stt_model_fixed: bool = False
     # Extra required "Arcana ID" field in the key form (currently only GWDG Arcana).
     requires_arcana_id: bool = False
-    # The project's "thinking" switch is offered for keys of this provider (see ProviderSpec).
-    thinking_switch: bool = False
     # Curated models for embedding keys (knowledge bases); empty means free text only.
     embedding_models: list[ProviderModelOut] = []

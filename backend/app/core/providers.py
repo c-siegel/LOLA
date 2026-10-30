@@ -90,10 +90,10 @@ class ProviderSpec:
     # Only relevant for GWDG Arcana — requires an Arcana ID (which knowledge base to query) in
     # addition to the model, see features/ai/llm/arcana.py::ArcanaClient.
     requires_arcana_id: bool = False
-    # The model behind this provider may be able to switch its reasoning ("thinking") on and off
-    # per request (features/ai/llm/history.py::thinking_extra_body). Only set for endpoints that
-    # run vLLM-style servers, where `chat_template_kwargs` reaches the chat template; native
-    # OpenAI/Anthropic/Gemini have their own, different parameters and are not covered yet.
+    # The model behind this provider can switch its reasoning ("thinking") on and off per request
+    # via `chat_template_kwargs` (features/ai/llm/reasoning.py). Only set for endpoints that run
+    # vLLM-style servers; native OpenAI/Anthropic/Gemini/Ollama go through litellm's own
+    # `reasoning_effort` mapping instead, decided per model.
     thinking_switch: bool = False
     # Curated embedding models for KEY_TYPE_EMBEDDING keys (value without prefix, label), shown in
     # the key form like `models` is for LLM keys.

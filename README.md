@@ -144,7 +144,7 @@ Each project picks its own LLM and, optionally, a TTS voice. Users connect them 
 | Cartesia, Google Cloud TTS | TTS |
 | GWDG Arcana | LLM (with its own knowledge base) |
 
-Speech-to-text needs no key. Details, the Thinking setting and custom endpoints: [docs/ai-providers.md](docs/ai-providers.md).
+Speech-to-text needs no key. Details, the Reasoning setting and custom endpoints: [docs/ai-providers.md](docs/ai-providers.md).
 
 ## Using LOLA
 

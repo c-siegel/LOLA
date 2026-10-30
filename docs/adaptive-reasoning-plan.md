@@ -106,7 +106,7 @@ router serve both. GWDG currently needs two models (the fast Instruct model can'
 
 | Column | Type | Default | Meaning |
 |---|---|---|---|
-| `reasoning_mode` | str | `'off'` | `off` (as today) · `always` · `adaptive` |
+| `reasoning_mode` | str | `'default'` | `default` (send nothing, as before) · `off` (explicitly no reasoning) · `always` · `adaptive` (phase 2). Phase 1 migrates `Project.thinking_mode` into it (`on` → `always`) |
 | `reasoning_effort` | str \| null | null | `low`/`medium`/`high` for the deep route; null = provider default |
 | `deep_llm_api_key_id` | FK userapikey \| null | null | Second key for the deep route; null = same key as `llm_api_key_id` |
 | `deep_llm_model` | str \| null | null | Denormalised like `llm_model`, for analytics and project cards |
@@ -129,7 +129,7 @@ router serve both. GWDG currently needs two models (the fast Instruct model can'
 ## 4. Backend changes
 
 ### 4.1 Passing reasoning parameters per provider
-Build on the existing `thinking_extra_body` / `ProviderSpec.thinking_switch` path (see §2) and decide in phase 1 whether `Project.thinking_mode` is migrated into `reasoning_mode` or kept as the fixed override for the `enable_thinking` case.
+Phase 1 builds on the existing `enable_thinking` path (see §2): `Project.thinking_mode` was migrated into `reasoning_mode`, the mapping lives in `ai/llm/reasoning.py`, and support is decided per model (`reasoning_support`, exposed as `reasoningSupport` on API keys).
 
 `ChatRequest` (`ai/llm/base.py`) gains `reasoning: Literal["off","low","medium","high"] | None`.
 `None` means *unset*: send nothing, exactly as today (`reasoning_mode=off`). `"off"` means

@@ -18,7 +18,7 @@ import {
   useServerSttStatus,
 } from "@/lib/providers";
 import { SPOKEN_LANGUAGE_VALUES } from "@/lib/speechOptions";
-import { THINKING_MODES, type SttServerEngine, type ThinkingMode } from "@/types/project";
+import { REASONING_EFFORTS, REASONING_MODES, type ReasoningEffort, type ReasoningMode, type SttServerEngine } from "@/types/project";
 import type { StepProps } from "../types";
 import styles from "./shared.module.css";
 
@@ -129,10 +129,10 @@ export function Step2Technical({ draft, onChange }: StepProps) {
   }
   const keysLoaded = keysQuery.isSuccess && providersQuery.isSuccess;
   const hasNoModels = keysLoaded && llmKeys.length === 0;
-  // Only providers that run vLLM-style servers (OpenAI-compatible endpoints, GWDG Arcana) can
-  // switch reasoning per request; for the others the choice would silently do nothing.
+  // What the chosen model can do with a reasoning setting (decided per model by the backend); for
+  // a model that can't, the choice would silently do nothing.
   const selectedLlmKey = llmKeys.find((key) => key.id === draft.llmApiKeyId);
-  const thinkingSwitchAvailable = selectedLlmKey ? (findProvider(specs, selectedLlmKey.provider)?.thinkingSwitch ?? false) : false;
+  const reasoningSupport = selectedLlmKey?.reasoningSupport ?? "none";
   const hasNoTtsKeys = keysLoaded && ttsKeys.length === 0;
 
   const showTtsKeyChoice = !(hasNoTtsKeys && !localTtsAvailable);
@@ -180,27 +180,52 @@ export function Step2Technical({ draft, onChange }: StepProps) {
         )}
       </div>
 
-      {thinkingSwitchAvailable && (
-        <div className={styles.field}>
-          <LabelWithInfo
-            label={t("configurator.step2.thinking")}
-            htmlFor="thinking-mode"
-            className={styles.label}
-            info={t("configurator.step2.thinkingHint")}
-          />
-          <select
-            id="thinking-mode"
-            className={styles.select}
-            value={draft.thinkingMode}
-            onChange={(e) => onChange({ thinkingMode: e.target.value as ThinkingMode })}
-          >
-            {THINKING_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {t(`configurator.step2.thinkingOptions.${mode}`)}
-              </option>
-            ))}
-          </select>
-        </div>
+      {reasoningSupport !== "none" && (
+        <>
+          <div className={styles.field}>
+            <LabelWithInfo
+              label={t("configurator.step2.reasoning")}
+              htmlFor="reasoning-mode"
+              className={styles.label}
+              info={t("configurator.step2.reasoningHint")}
+            />
+            <select
+              id="reasoning-mode"
+              className={styles.select}
+              value={draft.reasoningMode}
+              onChange={(e) => onChange({ reasoningMode: e.target.value as ReasoningMode })}
+            >
+              {REASONING_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {t(`configurator.step2.reasoningOptions.${mode}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {draft.reasoningMode === "always" && reasoningSupport === "effort" && (
+            <div className={styles.field}>
+              <LabelWithInfo
+                label={t("configurator.step2.reasoningEffort")}
+                htmlFor="reasoning-effort"
+                className={styles.label}
+                info={t("configurator.step2.reasoningEffortHint")}
+              />
+              <select
+                id="reasoning-effort"
+                className={styles.select}
+                value={draft.reasoningEffort ?? ""}
+                onChange={(e) => onChange({ reasoningEffort: (e.target.value || null) as ReasoningEffort | null })}
+              >
+                <option value="">{t("configurator.step2.reasoningEffortOptions.default")}</option>
+                {REASONING_EFFORTS.map((effort) => (
+                  <option key={effort} value={effort}>
+                    {t(`configurator.step2.reasoningEffortOptions.${effort}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </>
       )}
 
       <div className={styles.field}>

@@ -68,10 +68,12 @@ class Project(SQLModel, table=True):
     # 1.0 = no nucleus filtering, which is what every provider defaults to.
     top_p: float = 1.0
     # Whether the model reasons ("thinks") before it answers: "default" leaves the model's own
-    # behaviour alone, "on"/"off" are sent to providers that can switch it (see
-    # features/ai/llm/history.py::thinking_extra_body). Mainly for comparing latency with and
-    # without reasoning on the same model.
-    thinking_mode: str = "default"
+    # behaviour alone, "off" switches it off and "always" on, for models that can be switched (see
+    # features/ai/llm/reasoning.py). "adaptive" (reasoning only for hard turns) is planned, see
+    # docs/adaptive-reasoning-plan.md.
+    reasoning_mode: str = "default"
+    # "low"/"medium"/"high" for models that take a level; None = the provider's own default.
+    reasoning_effort: str | None = None
     published: bool = False
     share_slug: str | None = Field(default=None, unique=True, index=True)
     save_conversations: bool = False
