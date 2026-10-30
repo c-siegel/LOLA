@@ -233,6 +233,9 @@ class LatencyTestMessageIn(ChatMessageIn):
     tts_mode: Literal["project", "local", "none"] = "project"
     # False: the whole reply is generated and synthesized first, like the plain /messages route.
     streaming: bool = True
+    # "auto": the project's reasoning mode and rules decide; "fast"/"deep" force the route to compare
+    # them on the same message.
+    route: Literal["auto", "fast", "deep"] = "auto"
 
 
 class LatencyTranscriptionOut(CamelModel):

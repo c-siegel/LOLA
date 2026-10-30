@@ -2001,6 +2001,16 @@
             "title": "Retryafterfailure",
             "type": "boolean"
           },
+          "route": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "fast",
+              "deep"
+            ],
+            "title": "Route",
+            "type": "string"
+          },
           "speakOnDevice": {
             "default": false,
             "title": "Speakondevice",
@@ -2557,6 +2567,10 @@
             ],
             "title": "Avatarmodelurl"
           },
+          "bridgeEnabled": {
+            "title": "Bridgeenabled",
+            "type": "boolean"
+          },
           "builtinAvatar": {
             "anyOf": [
               {
@@ -2601,6 +2615,28 @@
             "format": "date-time",
             "title": "Createdat",
             "type": "string"
+          },
+          "deepLlmApiKeyId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deepllmapikeyid"
+          },
+          "deepLlmModel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deepllmmodel"
           },
           "description": {
             "anyOf": [
@@ -2724,7 +2760,8 @@
             "enum": [
               "default",
               "off",
-              "always"
+              "always",
+              "adaptive"
             ],
             "title": "Reasoningmode",
             "type": "string"
@@ -2923,6 +2960,9 @@
           "topP",
           "reasoningMode",
           "reasoningEffort",
+          "deepLlmApiKeyId",
+          "deepLlmModel",
+          "bridgeEnabled",
           "published",
           "shareSlug",
           "saveConversations",
@@ -3012,6 +3052,17 @@
             ],
             "title": "Avatarmodelid"
           },
+          "bridgeEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bridgeenabled"
+          },
           "builtinAvatar": {
             "anyOf": [
               {
@@ -3098,6 +3149,17 @@
               }
             ],
             "title": "Checklistvisible"
+          },
+          "deepLlmApiKeyId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deepllmapikeyid"
           },
           "description": {
             "anyOf": [
@@ -3232,7 +3294,8 @@
                 "enum": [
                   "default",
                   "off",
-                  "always"
+                  "always",
+                  "adaptive"
                 ],
                 "type": "string"
               },

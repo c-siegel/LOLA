@@ -98,7 +98,11 @@ def latency_test_message(
     the server-side timings of every step — see pipeline.py::stream_turn for the event fields."""
     context = _test_context(session, project, data)
     session.close()
-    turn = ChatTurn(data.message, [{"role": h.role, "content": h.content} for h in data.history])
+    turn = ChatTurn(
+        data.message,
+        [{"role": h.role, "content": h.content} for h in data.history],
+        force_route=None if data.route == "auto" else data.route,
+    )
     events = stream_turn(context, turn) if data.streaming else _plain_turn_events(context, turn)
     return StreamingResponse(
         sse_stream(events),

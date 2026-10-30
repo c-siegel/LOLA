@@ -68,11 +68,15 @@ def sync_llm_model(session: Session, project: Project) -> None:
     additionally kept denormalized because analytics (features/analytics/service.py) and the project
     cards can then avoid a join. Done centrally here so the two never drift apart.
     """
-    key = find_owned(session, UserApiKey, project.llm_api_key_id, project.user_id) if project.llm_api_key_id else None
+    project.llm_model = _model_string_of(session, project, project.llm_api_key_id)
+    project.deep_llm_model = _model_string_of(session, project, project.deep_llm_api_key_id)
+
+
+def _model_string_of(session: Session, project: Project, key_id: str | None) -> str | None:
+    key = find_owned(session, UserApiKey, key_id, project.user_id) if key_id else None
     if key is None or not key.model_id:
-        project.llm_model = None
-        return
-    project.llm_model = build_model_string(key.provider, key.model_id)
+        return None
+    return build_model_string(key.provider, key.model_id)
 
 
 # Fields where an explicitly sent null is a deliberate clear (e.g. deselecting a model or
@@ -82,6 +86,7 @@ def sync_llm_model(session: Session, project: Project) -> None:
 _CLEARABLE_FIELDS = {
     "motion_prompt",
     "llm_api_key_id",
+    "deep_llm_api_key_id",
     "avatar_model_id",
     "builtin_avatar",
     "avatar_background_id",
@@ -145,7 +150,7 @@ def update_project(session: Session, project: Project, data: dict) -> Project:
     for field, value in data.items():
         if value is not None or field in _CLEARABLE_FIELDS:
             setattr(project, field, value)
-    if "llm_api_key_id" in data:
+    if "llm_api_key_id" in data or "deep_llm_api_key_id" in data:
         sync_llm_model(session, project)
     session.add(project)
     session.commit()
@@ -168,6 +173,8 @@ def _check_references(session: Session, user_id: str, data: ProjectUpdate) -> No
     # reference wouldn't belong in the DB either way).
     if data.llm_api_key_id:
         _require_owned_key_of_type(session, user_id, data.llm_api_key_id, KEY_TYPE_LLM)
+    if data.deep_llm_api_key_id:
+        _require_owned_key_of_type(session, user_id, data.deep_llm_api_key_id, KEY_TYPE_LLM)
     if data.tts_api_key_id:
         _require_owned_key_of_type(session, user_id, data.tts_api_key_id, KEY_TYPE_TTS)
     if data.stt_api_key_id:

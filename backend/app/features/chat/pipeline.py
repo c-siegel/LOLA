@@ -31,7 +31,7 @@ from app.features.ai import llm
 from app.features.ai.tts import VoiceReference, synthesize_speech
 from app.features.ai.tts.normalizer import normalize_for_speech, speech_stream
 from app.features.api_keys.models import UserApiKey
-from app.features.api_keys.resolve import resolve_llm_key, resolve_tts_key
+from app.features.api_keys.resolve import resolve_deep_llm_key, resolve_llm_key, resolve_tts_key
 from app.features.chat.conversation_store import save_turn
 from app.features.chat.checklist import Check, Checklist, checklist_for, checklist_prompt
 from app.features.chat.motion import MotionMark, compose_system_prompt, extract_markers
@@ -103,6 +103,10 @@ class ChatContext:
     # route taken. Only the owner-only latency test sets it; the public chat's events stay as they
     # are, so visitors learn nothing about how a turn was routed.
     diagnostics: bool = False
+    # The project's second key for turns that reason (None: the main key answers those too).
+    deep_llm_key: UserApiKey | None = None
+    # Whether a reasoning turn is introduced by a short spoken phrase (chat/bridge.py).
+    bridge_enabled: bool = False
 
 
 @dataclass
@@ -123,6 +127,8 @@ class ChatTurn:
     deep_budget: Callable[[], bool] | None = None
     # Answer without reasoning and without spending the budget: a repeat of a failed attempt.
     fast_only: bool = False
+    # The Latency Lab's override of the route: "fast" or "deep" (None: as the project decides).
+    force_route: str | None = None
 
 
 @dataclass
@@ -164,7 +170,10 @@ def prepare_chat(session: Session, project: Project, llm_key: UserApiKey | None 
     if api_key is None:
         return None
     tts_api_key = resolve_tts_key(session, project) if project.tts_enabled else None
+    deep_key = resolve_deep_llm_key(session, project)
     session.expunge(api_key)
+    if deep_key is not None and deep_key is not api_key:
+        session.expunge(deep_key)
     if tts_api_key is not None:
         session.expunge(tts_api_key)
     return ChatContext(
@@ -177,6 +186,8 @@ def prepare_chat(session: Session, project: Project, llm_key: UserApiKey | None 
         top_p=project.top_p,
         reasoning_mode=project.reasoning_mode,
         reasoning_effort=project.reasoning_effort,
+        deep_llm_key=deep_key if deep_key is not api_key else None,
+        bridge_enabled=project.bridge_enabled,
         start_prompt=project.start_prompt,
         tts_voice=project.tts_voice,
         spoken_language=project.spoken_language,
@@ -201,14 +212,24 @@ def _retrieve(context: ChatContext, turn: ChatTurn) -> tuple[list[Passage], floa
 
 
 def _route(context: ChatContext, turn: ChatTurn) -> RouteDecision:
+    deep_key = context.deep_llm_key
     return decide(
-        context.llm_key.provider,
-        context.llm_key.model_id or "",
-        context.reasoning_mode,
-        context.reasoning_effort,
-        turn.deep_budget,
-        turn.fast_only,
+        mode=context.reasoning_mode,
+        effort=context.reasoning_effort,
+        main=(context.llm_key.provider, context.llm_key.model_id or ""),
+        deep=(deep_key.provider, deep_key.model_id or "") if deep_key is not None else None,
+        message=turn.message,
+        history=turn.history,
+        language=context.spoken_language,
+        budget=turn.deep_budget,
+        fast_only=turn.fast_only,
+        forced=turn.force_route,
     )
+
+
+def _key_for(context: ChatContext, route: RouteDecision) -> UserApiKey:
+    """The key that answers on `route`."""
+    return context.deep_llm_key if route.use_deep_key and context.deep_llm_key is not None else context.llm_key
 
 
 def _chat_request(
@@ -237,7 +258,7 @@ def _complete_with_fallback(
     """The plain reply and the route it came from. A failed reasoning call is repeated once
     without reasoning, so a slow or unsupported reasoning model doesn't cost the visitor the answer."""
     try:
-        return llm.complete(context.llm_key, _chat_request(context, turn, passages, route), usage), route
+        return llm.complete(_key_for(context, route), _chat_request(context, turn, passages, route), usage), route
     except Exception as exc:
         if route.route != "deep":
             raise
@@ -261,7 +282,7 @@ def _stream_with_fallback(
     once part of the reply may have been spoken, starting over would say it twice."""
     started = False
     try:
-        for delta in llm.stream(context.llm_key, _chat_request(context, turn, passages, run.route), usage):
+        for delta in llm.stream(_key_for(context, run.route), _chat_request(context, turn, passages, run.route), usage):
             started = True
             yield delta
         return
@@ -272,7 +293,7 @@ def _stream_with_fallback(
             "Reasoning call failed, answering without reasoning (project_id=%s, %s)", context.project_id, type(exc).__name__
         )
     run.route = FAST_ROUTE
-    yield from llm.stream(context.llm_key, _chat_request(context, turn, passages, run.route), usage)
+    yield from llm.stream(_key_for(context, run.route), _chat_request(context, turn, passages, run.route), usage)
 
 
 def _save(
@@ -403,7 +424,8 @@ def answer_for_evaluation(context: ChatContext, question: str) -> EvaluationAnsw
     try:
         # Without the gesture instructions: the evaluation judges the answer's content, and stray
         # markers would only add noise to it.
-        text = llm.complete(context.llm_key, _chat_request(context, turn, passages, _route(context, turn), plain=True))
+        route = _route(context, turn)
+        text = llm.complete(_key_for(context, route), _chat_request(context, turn, passages, route, plain=True))
     except Exception as exc:
         raise LLMFailed() from exc
     return EvaluationAnswer(text, passages, retrieval_ms, (time.perf_counter() - llm_start) * 1000)
