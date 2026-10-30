@@ -21,6 +21,7 @@ from app.core.providers import GWDG_ARCANA_PROVIDER, get_provider
 from app.features.ai.http import make_ipv4_client
 from app.features.ai.llm.base import ChatRequest
 from app.features.ai.llm.history import build_messages, sampling_params, thinking_extra_body
+from app.features.ai.llm.think_guard import ThinkTagGuard, strip_think_tags
 from app.features.api_keys.crypto import reveal_api_key
 from app.features.api_keys.models import UserApiKey
 
@@ -239,7 +240,7 @@ class ArcanaClient:
                     raise
             else:
                 content = response.json()["choices"][0]["message"]["content"]
-                return strip_arcana_references(content)
+                return strip_arcana_references(strip_think_tags(content))
             time.sleep(_GWDG_ARCANA_RETRY_DELAY)
 
     def stream(self, request: ChatRequest) -> Iterator[str]:
@@ -281,6 +282,7 @@ class ArcanaClient:
                     # heard part of the reply, and replaying it would duplicate speech.
                     past_handshake = True
                     guard = ArcanaReferenceGuard()
+                    think_guard = ThinkTagGuard()
                     for line in response.iter_lines():
                         if not line.startswith("data:"):
                             continue
@@ -290,11 +292,15 @@ class ArcanaClient:
                         delta = json.loads(data)["choices"][0]["delta"].get("content")
                         if delta is None:
                             continue
-                        safe_text = guard.feed(delta)
+                        safe_text = guard.feed(think_guard.feed(delta))
                         if safe_text:
                             yield safe_text
                         if guard.finished:
                             return
+                    # A partial tag held back by the think guard still has to pass the reference guard.
+                    safe_text = guard.feed(think_guard.flush())
+                    if safe_text:
+                        yield safe_text
                     tail = guard.flush()
                     if tail:
                         yield tail

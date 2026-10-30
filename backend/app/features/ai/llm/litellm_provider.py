@@ -17,6 +17,7 @@ from app.core.error_codes import ErrorCode
 from app.core.providers import build_model_string, get_provider
 from app.features.ai.llm.base import ChatRequest
 from app.features.ai.llm.history import build_messages, sampling_params, thinking_extra_body
+from app.features.ai.llm.think_guard import ThinkTagGuard, strip_think_tags
 from app.features.api_keys.crypto import reveal_api_key_for_litellm
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.resolve import effective_api_base
@@ -110,7 +111,7 @@ class LiteLLMClient:
         # tool call — raised so callers treat it as the failed LLM call it is.
         if content is None:
             raise ValueError("LLM returned an empty reply")
-        return content
+        return strip_think_tags(content)
 
     def stream(self, request: ChatRequest) -> Iterator[str]:
         """Streamed chat, retrying transient provider failures.
@@ -125,6 +126,8 @@ class LiteLLMClient:
 
         for attempt in range(1, _LLM_MAX_ATTEMPTS + 1):
             yielded = False
+            # Per attempt: a retry only happens before anything was yielded, so no state must carry over.
+            guard = ThinkTagGuard()
             try:
                 response = litellm.completion(
                     model=model,
@@ -139,8 +142,13 @@ class LiteLLMClient:
                     # litellm emits role-only and finish chunks with delta.content == None.
                     delta = chunk.choices[0].delta.content
                     if delta is not None:
-                        yielded = True
-                        yield delta
+                        safe_text = guard.feed(delta)
+                        if safe_text:
+                            yielded = True
+                            yield safe_text
+                tail = guard.flush()
+                if tail:
+                    yield tail
                 return
             except _TRANSIENT_LLM_ERRORS as exc:
                 if yielded or attempt == _LLM_MAX_ATTEMPTS:

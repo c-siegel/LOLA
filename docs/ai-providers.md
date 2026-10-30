@@ -23,6 +23,8 @@ Every project picks its own LLM (large language model, generates the replies) an
 
 Projects on an OpenAI-compatible endpoint or GWDG Arcana get a **Thinking** setting (model default, on, off) in the configurator's technical step. It is sent as `chat_template_kwargs.enable_thinking`, which vLLM-style servers pass to the model's chat template; models that can't switch reasoning ignore it. Mainly useful to compare one model's latency with and without reasoning in the Latency Lab.
 
+Whatever the setting, a reply's `<think>…</think>` and `<reasoning>…</reasoning>` blocks are cut out before the text reaches the avatar or the transcript (`ThinkTagGuard`), because some servers write reasoning into the reply text. An unterminated block is dropped to the end of the reply.
+
 ## Custom endpoints
 
 For Ollama and OpenAI-compatible keys the endpoint can be anything on your own network (e.g. a school's LAN GPU box). The backend rejects only addresses that can never be a real LLM/TTS server: cloud metadata endpoints and this deployment's own Docker services (`rag`, `tts-local`, `docling`, …). `localhost` stays allowed for a local Ollama.
