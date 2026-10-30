@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from normt2s import Piece, RuleSet
 from sqlmodel import Session
 
+from app.core.providers import build_model_string
 from app.core.config import settings
 from app.core.error_codes import ErrorCode
 from app.features.ai import llm
@@ -304,7 +305,10 @@ def _save(
     passages: list[Passage],
     motions: list[MotionMark] | None = None,
     checks: list[Check] | None = None,
+    route: RouteDecision | None = None,
 ) -> None:
+    routed = route is not None and context.reasoning_mode in ("always", "adaptive")
+    answering = _key_for(context, route) if routed else context.llm_key
     save_turn(
         context.project_id,
         turn.visitor_id,
@@ -318,6 +322,9 @@ def _save(
         motions=[m.to_json() for m in motions] if motions else None,
         # Kept so a teacher can see how far each student got through the plan (see analytics).
         checks=[c.to_json() for c in checks] if checks else None,
+        # Only projects that route between a fast and a deep reply record which one this was.
+        route=route.route if routed else None,
+        model=build_model_string(answering.provider, answering.model_id or "") if routed else None,
     )
 
 
@@ -382,7 +389,7 @@ def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> Ch
 
     if save and context.save_conversations:
         try:
-            _save(context, turn, reply, reply_ready_at, passages, motions, checks)
+            _save(context, turn, reply, reply_ready_at, passages, motions, checks, route)
         except Exception:
             # Same as in stream_turn: the reply exists (and was paid for), so a failed save, e.g.
             # "database is locked" under a class-sized burst, mustn't cost the visitor their answer.
@@ -560,7 +567,7 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
 
     if context.save_conversations:
         try:
-            _save(context, turn, full_reply, reply_ready_at, passages, motion_marks, checks)
+            _save(context, turn, full_reply, reply_ready_at, passages, motion_marks, checks, run.route)
         except Exception:
             # The reply itself already reached the visitor via the chunk events above —
             # only the save failed, so log it instead of turning it into an error event

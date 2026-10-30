@@ -25,6 +25,8 @@ def save_turn(
     sources: list[dict] | None = None,
     motions: list[dict] | None = None,
     checks: list[dict] | None = None,
+    route: str | None = None,
+    model: str | None = None,
 ) -> None:
     """Append one exchange to the visitor's saved conversation for this project, creating it on
     the first message.
@@ -47,6 +49,10 @@ def save_turn(
 
     `checks` are the conversation-plan steps the reply ticked off or took back, as {"id", "done",
     "offset"} (see features/chat/checklist.py); None when it ticked none.
+
+    `route` ("fast" or "deep", see features/chat/reasoning_router.py) and `model` (the litellm model
+    string that answered) are stored for projects that use reasoning, so a teacher can see which
+    replies came from the reasoning route; None for projects that don't. Metadata only, no text.
     """
     with Session(engine) as session:
         existing = session.exec(
@@ -61,6 +67,10 @@ def save_turn(
             assistant_entry["motions"] = motions
         if checks:
             assistant_entry["checks"] = checks
+        if route:
+            assistant_entry["route"] = route
+        if model:
+            assistant_entry["model"] = model
 
         if existing:
             messages = json.loads(existing.messages_json)

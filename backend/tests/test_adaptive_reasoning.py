@@ -150,3 +150,33 @@ def test_the_latency_test_can_force_either_route(client, two_models, fake_ai) ->
 
     auto = parse_sse(client.post(path, json={"message": ARGUMENT}).text)[-1][1]
     assert auto["route"] == "deep"
+
+
+def test_routes_and_models_are_saved_per_reply_and_exported(client, two_models, fake_ai, anon) -> None:
+    project, slug, _, _ = two_models
+    client.put(f"/projects/{project['id']}", json={"saveConversations": True})
+    anon.get(f"/public/{slug}")
+    anon.post(f"/public/{slug}/messages", json={"message": SMALL_TALK})
+    anon.post(f"/public/{slug}/messages", json={"message": ARGUMENT})
+
+    session_id = client.get("/conversations").json()["items"][0]["id"]
+    detail = client.get(f"/conversations/{session_id}").json()
+    replies = [m for m in detail["messages"] if m["role"] == "assistant"]
+    assert [(m["route"], m["model"].rsplit("/", 1)[-1]) for m in replies] == [("fast", "small"), ("deep", "big")]
+    assert all(m["route"] is None for m in detail["messages"] if m["role"] == "user")
+
+    csv_text = client.post("/conversations/export", json={"conversationIds": [session_id]}).text
+    assert "Antwortweg" in csv_text and "deep (openai/big)" in csv_text
+
+    stats = client.get("/analytics/stats").json()
+    assert (stats["fastReplies"], stats["deepReplies"]) == (1, 1)
+
+
+def test_projects_without_reasoning_store_no_route(client, chat_project, anon, fake_ai) -> None:
+    slug = chat_project["shareSlug"]
+    anon.get(f"/public/{slug}")
+    anon.post(f"/public/{slug}/messages", json={"message": "Hi"})
+    session_id = client.get("/conversations").json()["items"][0]["id"]
+    messages = client.get(f"/conversations/{session_id}").json()["messages"]
+    assert all(m.get("route") is None and m.get("model") is None for m in messages)
+    assert "Antwortweg" not in client.post("/conversations/export", json={"conversationIds": [session_id]}).text
