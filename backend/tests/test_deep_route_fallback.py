@@ -77,6 +77,15 @@ def test_a_project_without_reasoning_sends_no_timeout(client, teacher, fake_ai) 
     assert "timeout" not in fake_ai.completion_calls[-1]
 
 
+def _collect(frames) -> list[str]:
+    import asyncio
+
+    async def run() -> list[str]:
+        return [frame async for frame in frames]
+
+    return asyncio.run(run())
+
+
 def test_keepalive_frames_fill_the_silence_and_events_still_arrive() -> None:
     from app.features.chat.streaming import sse_stream
 
@@ -85,14 +94,17 @@ def test_keepalive_frames_fill_the_silence_and_events_still_arrive() -> None:
         yield "chunk", {"index": 0}
         yield "done", {}
 
-    frames = list(sse_stream(slow_events(), keepalive_seconds=0.05))
+    frames = _collect(sse_stream(slow_events(), keepalive_seconds=0.05))
 
     assert frames[0] == ": keep-alive\n\n"
     assert frames[-2:] == ['event: chunk\ndata: {"index": 0}\n\n', "event: done\ndata: {}\n\n"]
     assert sum(frame.startswith(":") for frame in frames) >= 2
 
 
-def test_the_producer_stops_when_the_client_goes_away() -> None:
+def test_cancelling_the_stream_stops_the_work_behind_it() -> None:
+    """What a client disconnect or the student's stop button does to the response task."""
+    import asyncio
+
     from app.features.chat.streaming import sse_stream
 
     produced = []
@@ -102,15 +114,24 @@ def test_the_producer_stops_when_the_client_goes_away() -> None:
         try:
             for index in range(1000):
                 produced.append(index)
-                time.sleep(0.01)
+                time.sleep(0.02)
                 yield "chunk", {"index": index}
         finally:
             closed.append(True)
 
-    frames = sse_stream(endless(), keepalive_seconds=1)
-    next(frames)
-    frames.close()
-    time.sleep(0.2)
+    async def run() -> None:
+        async def consume() -> None:
+            async for _ in sse_stream(endless(), keepalive_seconds=1):
+                pass
+
+        task = asyncio.create_task(consume())
+        await asyncio.sleep(0.1)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        await asyncio.sleep(0.2)
+
+    asyncio.run(run())
 
     assert closed and len(produced) < 100
 
@@ -122,10 +143,28 @@ def test_an_error_inside_the_events_reaches_the_caller() -> None:
         yield "chunk", {}
         raise RuntimeError("boom")
 
-    frames = sse_stream(broken())
-    next(frames)
     with pytest.raises(RuntimeError, match="boom"):
-        next(frames)
+        _collect(sse_stream(broken()))
+
+
+def test_a_reply_whose_stream_is_closed_early_is_not_saved(client, engine, chat_project, fake_ai) -> None:
+    """The save sits after the last event, so closing the generator (what sse_stream does for a
+    client that left) skips it; the same turn run to the end is saved."""
+    from sqlmodel import Session
+
+    from app.features.chat.pipeline import ChatTurn, prepare_chat, stream_turn
+    from app.features.projects.models import Project
+
+    with Session(engine) as session:
+        context = prepare_chat(session, session.get(Project, chat_project["id"]))
+
+    abandoned = stream_turn(context, ChatTurn("Hi", [], "visitor-1"))
+    next(abandoned)
+    abandoned.close()
+    assert client.get("/conversations").json()["total"] == 0
+
+    list(stream_turn(context, ChatTurn("Hi", [], "visitor-1")))
+    assert client.get("/conversations").json()["total"] == 1
 
 
 def test_the_latency_test_shows_deep_and_the_fallback_to_fast(client, slug, fake_ai, monkeypatch) -> None:
