@@ -73,7 +73,7 @@ Second review (2026-10-30) changes:
 | Finding | Where | Consequence |
 |---|---|---|
 | One LLM per project: `Project.llm_api_key_id` → `UserApiKey` (provider + `model_id` + `api_base`) | `projects/models.py`, `api_keys/models.py` | No second model and no per-turn choice |
-| The call sends only `messages` + temperature/top_p | `ai/llm/history.py::sampling_params`, `litellm_provider.py`, `arcana.py::_body` | Reasoning can't be switched on or off; the provider's default applies |
+| The call sends `messages` + temperature/top_p, plus a per-project **thinking switch** for vLLM-style endpoints (`Project.thinking_mode` → `history.py::thinking_extra_body`, only where `ProviderSpec.thinking_switch` is set) | `ai/llm/history.py`, `litellm_provider.py::_thinking_kwargs`, `arcana.py::_body`, `core/providers.py` | The `enable_thinking` mapping for Qwen3-style servers **already exists**, but is a fixed per-project setting, not per turn, and has no effort level or other provider mappings. Phase 1 extends it (replace or generalise `thinking_mode`) instead of adding a second switch |
 | The stream yields only `delta.content` | `litellm_provider.py::stream` | Reasoning tokens are dropped, but the first content token arrives only after the thinking phase |
 | No `<think>` filter | (missing) | Qwen3 or DeepSeek-R1 behind Ollama, or vLLM without a reasoning parser, emit `<think>…</think>` as content and the avatar would **speak** it. This is a bug today, independent of this plan |
 | Knowledge passages **and** the checklist status line go into the system prompt | `history.py::build_messages`, `chat/checklist.py` | The system prompt changes per turn, so prefix caching only covers the persona part |
@@ -129,6 +129,8 @@ router serve both. GWDG currently needs two models (the fast Instruct model can'
 ## 4. Backend changes
 
 ### 4.1 Passing reasoning parameters per provider
+Build on the existing `thinking_extra_body` / `ProviderSpec.thinking_switch` path (see §2) and decide in phase 1 whether `Project.thinking_mode` is migrated into `reasoning_mode` or kept as the fixed override for the `enable_thinking` case.
+
 `ChatRequest` (`ai/llm/base.py`) gains `reasoning: Literal["off","low","medium","high"] | None`.
 `None` means *unset*: send nothing, exactly as today (`reasoning_mode=off`). `"off"` means
 *explicitly disable thinking* and is only used by the FAST route of an `adaptive` project, because
