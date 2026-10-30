@@ -998,6 +998,11 @@
             "title": "Message",
             "type": "string"
           },
+          "retryAfterFailure": {
+            "default": false,
+            "title": "Retryafterfailure",
+            "type": "boolean"
+          },
           "speakOnDevice": {
             "default": false,
             "title": "Speakondevice",
@@ -1990,6 +1995,11 @@
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "retryAfterFailure": {
+            "default": false,
+            "title": "Retryafterfailure",
+            "type": "boolean"
           },
           "speakOnDevice": {
             "default": false,

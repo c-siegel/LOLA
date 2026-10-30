@@ -37,13 +37,21 @@ FAST_ROUTE = RouteDecision("fast", "off")
 
 
 def decide(
-    provider: str, model_id: str, mode: str, effort: str | None, budget: Callable[[], bool] | None = None
+    provider: str,
+    model_id: str,
+    mode: str,
+    effort: str | None,
+    budget: Callable[[], bool] | None = None,
+    fast_only: bool = False,
 ) -> RouteDecision:
     """`budget` spends one reasoning reply and says whether there was room (None: no limit, as for
-    the owner's own tests). Out of budget, the turn is answered without reasoning."""
+    the owner's own tests). Out of budget, the turn is answered without reasoning. `fast_only` (a
+    repeat after a failed attempt) skips reasoning without spending the budget again."""
     if mode == "off":
         return FAST_ROUTE
     if mode == "always" and reasoning_support(provider, model_id) != "none":
+        if fast_only:
+            return FAST_ROUTE
         if budget is not None and not budget():
             logger.info("Reasoning budget used up, answering without reasoning")
             return FAST_ROUTE

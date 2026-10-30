@@ -121,6 +121,8 @@ class ChatTurn:
     # Spends one reasoning reply and says whether there was room (see core/rate_limit.py::
     # deep_turn_budget). None: unlimited, for the owner's own preview and latency tests.
     deep_budget: Callable[[], bool] | None = None
+    # Answer without reasoning and without spending the budget: a repeat of a failed attempt.
+    fast_only: bool = False
 
 
 @dataclass
@@ -205,6 +207,7 @@ def _route(context: ChatContext, turn: ChatTurn) -> RouteDecision:
         context.reasoning_mode,
         context.reasoning_effort,
         turn.deep_budget,
+        turn.fast_only,
     )
 
 

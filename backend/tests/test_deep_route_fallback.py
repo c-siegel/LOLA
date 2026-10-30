@@ -137,3 +137,17 @@ def test_the_latency_test_shows_deep_and_the_fallback_to_fast(client, slug, fake
     _fail_while_thinking(fake_ai, monkeypatch, RuntimeError("model crashed"))
     for streaming in (True, False):
         assert parse_sse(client.post(path, json={"message": "Hi", "streaming": streaming}).text)[-1][1]["route"] == "fast"
+
+
+def test_a_repeat_after_a_failed_stream_answers_fast_and_spends_nothing(client, slug, fake_ai, monkeypatch) -> None:
+    from app.core import rate_limit
+
+    spent = []
+    monkeypatch.setattr(rate_limit, "_hit_all", lambda checks: spent.append(checks) or True)
+
+    response = client.post(f"/public/{slug}/messages", json={"message": "Hi", "retryAfterFailure": True})
+
+    assert response.status_code == 200
+    assert fake_ai.completion_calls[-1]["extra_body"] == {"chat_template_kwargs": {"enable_thinking": False}}
+    assert not [key for checks in spent for key, _, _ in checks if key.startswith("deep-")]
+    assert "timeout" not in fake_ai.completion_calls[-1]

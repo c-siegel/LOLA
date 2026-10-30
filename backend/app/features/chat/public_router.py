@@ -170,7 +170,14 @@ def _start_turn(
     history = [{"role": h.role, "content": h.content} for h in data.history]
     done = frozenset(replay(h.checks for h in data.history))
     return ChatTurn(
-        data.message, history, visitor_id, visitor_name, received_at, done, deep_turn_budget(request, visitor_id, project.id)
+        data.message,
+        history,
+        visitor_id,
+        visitor_name,
+        received_at,
+        done,
+        deep_turn_budget(request, visitor_id, project.id),
+        data.retry_after_failure,
     )
 
 

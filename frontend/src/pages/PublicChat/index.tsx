@@ -370,6 +370,7 @@ export function PublicChatPage() {
       // Decided once per message: a model that finishes loading mid-reply waits for the next one.
       const onDevice = speaksOnDevice();
       deviceQueueEndRef.current = 0;
+      let streamFailed = false;
       if (tutor.streamingEnabled && tutor.ttsEnabled) {
         try {
           await publicChatApi.sendMessageStream(
@@ -397,9 +398,10 @@ export function PublicChatPage() {
           // Nothing was shown/spoken yet at this point (see sendMessageStream's contract) — safe
           // to retry via the always-available plain endpoint below instead of failing outright.
           console.error("Streaming chat failed, falling back to a plain request.", error);
+          streamFailed = true;
         }
       }
-      const res = await publicChatApi.sendMessage(slug, message, history, signal, onDevice);
+      const res = await publicChatApi.sendMessage(slug, message, history, signal, onDevice, streamFailed);
       return { kind: "plain" as const, res };
     },
     onSuccess: async (result) => {

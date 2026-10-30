@@ -177,6 +177,11 @@ class ChatMessageIn(CamelModel):
     # the stream's "spoken" per chunk). Ignored unless the project offers on-device speech output
     # (see features/api_keys/resolve.py::browser_tts_model_url_for).
     speak_on_device: bool = False
+    # Set by the frontend when it repeats a turn through the plain endpoint after the streamed one
+    # failed: that attempt already spent a reasoning reply (and may have waited out its timeout),
+    # so the repeat is answered without reasoning. A visitor can only make their own reply cheaper
+    # with it.
+    retry_after_failure: bool = False
 
     # Belt and braces alongside the frontend's own guard (sendMessage's trim-check in
     # pages/PublicChat/index.tsx) — a blank message has no legitimate use here, so nothing should
