@@ -32,6 +32,7 @@ from sqlmodel import Session, SQLModel, create_engine  # noqa: E402
 
 import app.db.base  # noqa: E402,F401  (registers every model's table on SQLModel.metadata)
 from app.core import rate_limit  # noqa: E402
+from app.features.chat.bridge import audio_cache as bridge_audio_cache  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.security import create_access_token, hash_password  # noqa: E402
 from app.core.urls import API_PREFIX  # noqa: E402
@@ -82,10 +83,12 @@ def client(engine, monkeypatch, tmp_path):
         monkeypatch.setattr(settings, name, str(tmp_path / name))
     rate_limit._hits.clear()
     rate_limit._windows.clear()
+    bridge_audio_cache.clear()
     yield new_client()
     app.dependency_overrides.clear()
     rate_limit._hits.clear()
     rate_limit._windows.clear()
+    bridge_audio_cache.clear()
 
 
 @pytest.fixture

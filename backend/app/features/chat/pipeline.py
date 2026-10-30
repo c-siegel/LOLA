@@ -36,6 +36,7 @@ from app.features.api_keys.resolve import resolve_deep_llm_key, resolve_llm_key,
 from app.features.chat.conversation_store import save_turn
 from app.features.chat.checklist import Check, Checklist, checklist_for, checklist_prompt
 from app.features.chat.motion import MotionMark, compose_system_prompt, extract_markers
+from app.features.chat import bridge
 from app.features.chat.reasoning_router import DEEP_TIMEOUT_SECONDS, FAST_ROUTE, RouteDecision, decide
 from app.features.knowledge.prompt import reference_block
 from app.features.knowledge.retrieval import KnowledgeContext, Passage, prepare_knowledge, retrieve, sources_for_transcript
@@ -370,6 +371,78 @@ def _synthesize(context: ChatContext, text: str, normalized: bool = False) -> tu
     return base64.b64encode(audio_bytes).decode(), content_type, (time.perf_counter() - synth_start) * 1000
 
 
+def _bridge_audio_key(context: ChatContext, phrase: str) -> tuple:
+    """What a rendered phrase depends on: the project's voice and the key that speaks it."""
+    key = context.tts_key
+    clip = context.voice_clip.sha256 if context.voice_clip is not None else None
+    return (
+        context.project_id,
+        phrase,
+        context.spoken_language,
+        context.tts_voice,
+        clip,
+        (key.id, key.provider, key.model_id, key.api_base) if key is not None else "local",
+    )
+
+
+def _warm_bridge_audio(context: ChatContext) -> None:
+    """Render the project's bridge phrases in the background, once, so a turn that escalates later
+    finds them ready. Skipped where the server doesn't speak (no TTS, or the visitor's device does)."""
+    if not (context.bridge_enabled and context.tts_enabled) or context.speak_on_device:
+        return
+    if context.reasoning_mode not in ("always", "adaptive"):
+        return
+    for phrase in bridge.phrases_for(context.spoken_language):
+        cache_key = _bridge_audio_key(context, phrase)
+        if bridge.audio_cache.claim(cache_key):
+            _tts_executor.submit(_render_bridge_phrase, context, phrase, cache_key)
+
+
+def _render_bridge_phrase(context: ChatContext, phrase: str, cache_key: tuple) -> None:
+    audio_base64, content_type, _ = _synthesize(context, phrase)
+    if audio_base64 is None or content_type is None:
+        bridge.audio_cache.release(cache_key)  # a failed attempt may be retried on a later turn
+        return
+    bridge.audio_cache.put(cache_key, (audio_base64, content_type))
+
+
+def _bridge_chunk(context: ChatContext, started_at: float) -> dict | None:
+    """The "chunk" event that speaks a bridge phrase, or None when there is nothing to say or its
+    audio isn't ready (the turn then goes without rather than waiting for synthesis)."""
+    if not context.bridge_enabled or not context.tts_enabled:
+        return None
+    phrases = list(bridge.phrases_for(context.spoken_language))
+    audio: tuple[str, str] | None = None
+    if not context.speak_on_device:
+        ready = {phrase: bridge.audio_cache.get(_bridge_audio_key(context, phrase)) for phrase in phrases}
+        phrases = [phrase for phrase, rendered in ready.items() if rendered is not None]
+    phrase = bridge.pick(phrases)
+    if phrase is None:
+        return None
+    if not context.speak_on_device:
+        audio = bridge.audio_cache.get(_bridge_audio_key(context, phrase))
+        if audio is None:
+            return None
+    sent_ms = (time.perf_counter() - started_at) * 1000
+    event = {
+        # Outside the reply's own numbering (which starts at 0), so the page never mistakes it for
+        # the reply's first chunk, and it isn't part of the saved or returned reply text.
+        "index": -1,
+        "bridge": True,
+        "text": phrase,
+        "audioBase64": audio[0] if audio else None,
+        "contentType": audio[1] if audio else None,
+        "motions": [],
+        "checks": [],
+        "textReadyMs": sent_ms,
+        "ttsMs": None,
+        "sentMs": sent_ms,
+    }
+    if context.speak_on_device:
+        event["spoken"] = normalize_for_speech(phrase, context.spoken_language, context.pronunciation)
+    return event
+
+
 def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> ChatReply:
     """Ask the LLM, save the exchange (if the project saves conversations and `save`), then
     synthesize the whole reply. Raises LLMFailed if the LLM call fails."""
@@ -524,11 +597,19 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
         while futures and futures[0][1].done():
             yield chunk_event(*futures.popleft())
 
+    # Decided before retrieval: a turn that reasons says its bridge phrase straight away, while the
+    # knowledge-base lookup and the slow model are still ahead.
+    run = _Run(_route(context, turn))
+    _warm_bridge_audio(context)
+    if run.route.route == "deep":
+        bridge_event = _bridge_chunk(context, start_time)
+        if bridge_event is not None:
+            yield "chunk", bridge_event
+
     # Before the LLM call and inside the measured time: retrieval delays the first audio too.
     passages, retrieval_ms = _retrieve(context, turn)
 
     llm_error: Exception | None = None
-    run = _Run(_route(context, turn))
     usage = llm.LLMUsage() if context.diagnostics else None
     try:
         for delta in _stream_with_fallback(context, turn, passages, run, usage):
