@@ -238,7 +238,9 @@ def _complete_with_fallback(
     except Exception as exc:
         if route.route != "deep":
             raise
-        logger.warning("Reasoning call failed, answering without reasoning (project_id=%s): %s", context.project_id, exc)
+        logger.warning(
+            "Reasoning call failed, answering without reasoning (project_id=%s, %s)", context.project_id, type(exc).__name__
+        )
     return llm.complete(context.llm_key, _chat_request(context, turn, passages, FAST_ROUTE), usage), FAST_ROUTE
 
 
@@ -263,7 +265,9 @@ def _stream_with_fallback(
     except Exception as exc:
         if started or run.route.route != "deep":
             raise
-        logger.warning("Reasoning call failed, answering without reasoning (project_id=%s): %s", context.project_id, exc)
+        logger.warning(
+            "Reasoning call failed, answering without reasoning (project_id=%s, %s)", context.project_id, type(exc).__name__
+        )
     run.route = FAST_ROUTE
     yield from llm.stream(context.llm_key, _chat_request(context, turn, passages, run.route), usage)
 

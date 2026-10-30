@@ -91,3 +91,38 @@ def test_the_owners_own_tests_are_not_limited(client, always_project, fake_ai, m
         for _ in range(2):
             assert client.post(path, json={"message": "Hi"}).status_code == 200
             assert fake_ai.completion_calls[-1]["extra_body"] == REASONING_ON
+
+
+def test_a_day_long_budget_does_not_keep_short_lived_keys_alive(monkeypatch) -> None:
+    """Visitor keys age out after their own window, however long another limiter's window is;
+    otherwise random visitor cookies could grow the table for a whole day."""
+    from app.core import rate_limit
+
+    clock = [1000.0]
+    monkeypatch.setattr(rate_limit.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(rate_limit, "_SWEEP_THRESHOLD", 10)
+    assert rate_limit._hit("deep-project:p", max_requests=5, window_seconds=24 * 3600)
+    for index in range(20):
+        assert rate_limit._hit(f"chat-visitor:{index}", max_requests=5, window_seconds=600)
+
+    clock[0] += 601
+    assert rate_limit._hit("chat-visitor:new", max_requests=5, window_seconds=600)  # triggers the sweep
+
+    assert set(rate_limit._hits) == {"deep-project:p", "chat-visitor:new"}
+
+
+def test_a_refused_turn_spends_none_of_the_budgets(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from app.core import rate_limit
+
+    monkeypatch.setattr(settings, "deep_max_per_project_per_day", 1)
+    request = SimpleNamespace(client=SimpleNamespace(host="10.0.0.1"))
+    first = rate_limit.deep_turn_budget(request, "visitor-a", "project-1")
+    second = rate_limit.deep_turn_budget(request, "visitor-b", "project-1")
+    assert first() is True
+    assert second() is False  # the project is full
+
+    # visitor-b and the shared IP were not charged for the refused turn
+    assert len(rate_limit._hits["deep-ip:10.0.0.1"]) == 1
+    assert "deep-visitor:visitor-b" not in rate_limit._hits or not rate_limit._hits["deep-visitor:visitor-b"]

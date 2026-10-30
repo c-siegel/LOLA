@@ -47,6 +47,8 @@ from app.core.error_codes import ErrorCode
 # touched while holding _lock (see _enforce).
 _hits: dict[str, list[float]] = defaultdict(list)
 _lock = threading.Lock()
+# The window each key was last checked with, so the sweep can judge a key by its own window.
+_windows: dict[str, int] = {}
 
 # _enforce only ever trims a KEY's own timestamp list, never removes the key itself — a visitor
 # or IP never seen again (very much the norm: visitor_id is a cookie that resets on every clear)
@@ -61,28 +63,28 @@ _DEEP_PROJECT_WINDOW_SECONDS = 24 * 3600
 
 def _max_configured_window_seconds() -> int:
     """The largest rate-limit window currently in effect, across every limiter below."""
-    return max(
-        settings.chat_window_seconds,
-        settings.transcribe_window_seconds,
-        settings.deep_window_seconds,
-        _DEEP_PROJECT_WINDOW_SECONDS,
-        _UNLOCK_WINDOW_SECONDS,
-        600,
-    )
+    return max(settings.chat_window_seconds, settings.transcribe_window_seconds, _UNLOCK_WINDOW_SECONDS, 600)
 
 
 def _sweep_stale_keys() -> None:
-    """Drop every key whose newest hit is older than the largest window in use.
+    """Drop every key whose newest hit is older than that key's own window.
 
-    Safe by construction: such a key is necessarily also stale under its OWN (smaller-or-equal)
-    window, so this can never forget a rate limit that's still actually in effect — a key that
-    matters again simply gets recreated fresh on its next hit, same as any other new key.
+    Safe by construction: such a key has nothing left inside its window, so this can never forget
+    a rate limit that's still actually in effect — a key that matters again simply gets recreated
+    fresh on its next hit. Per key, not by the largest window overall: one long window (the
+    24-hour project budget) must not make every short-lived visitor key linger for a day, which
+    anyone could use to grow this dict by sending requests with random visitor cookies.
     """
     now = time.monotonic()
-    cutoff = _max_configured_window_seconds()
-    stale_keys = [key for key, timestamps in _hits.items() if not timestamps or now - max(timestamps) > cutoff]
+    fallback = _max_configured_window_seconds()
+    stale_keys = [
+        key
+        for key, timestamps in _hits.items()
+        if not timestamps or now - max(timestamps) > _windows.get(key, fallback)
+    ]
     for key in stale_keys:
         del _hits[key]
+        _windows.pop(key, None)
 
 # Public chat and voice-transcription limits are Settings fields (app/core/config.py,
 # CHAT_*/TRANSCRIBE_* env vars) instead of constants here, so a deployment can size them to its
@@ -118,6 +120,12 @@ def _enforce(key: str, *, max_requests: int, window_seconds: int, message: str) 
 def _hit(key: str, *, max_requests: int, window_seconds: int) -> bool:
     """Record a hit for `key` and return True, or return False (recording nothing) if it already
     hit `max_requests` within the last `window_seconds`."""
+    return _hit_all([(key, max_requests, window_seconds)])
+
+
+def _hit_all(checks: list[tuple[str, int, int]]) -> bool:
+    """Record a hit on every (key, max_requests, window_seconds) and return True, or return False
+    and record nothing at all if any of them is already full."""
     # Every sync route runs in FastAPI's worker thread pool, so many threads call this at once.
     # The lock makes the sweep (which iterates _hits — another thread inserting mid-iteration
     # would raise "dictionary changed size during iteration") and the check-then-append below
@@ -127,11 +135,16 @@ def _hit(key: str, *, max_requests: int, window_seconds: int) -> bool:
         if len(_hits) > _SWEEP_THRESHOLD:
             _sweep_stale_keys()
         now = time.monotonic()
-        recent = [t for t in _hits[key] if now - t < window_seconds]
-        if len(recent) >= max_requests:
-            return False
-        recent.append(now)
-        _hits[key] = recent
+        updated = {}
+        for key, max_requests, window_seconds in checks:
+            recent = [t for t in _hits[key] if now - t < window_seconds]
+            if len(recent) >= max_requests:
+                return False
+            updated[key] = recent
+        for (key, _, window_seconds), recent in zip(checks, updated.values(), strict=True):
+            recent.append(now)
+            _hits[key] = recent
+            _windows[key] = window_seconds
         return True
 
 
@@ -163,21 +176,21 @@ def deep_turn_budget(request: Request, visitor_id: str, project_id: str) -> Call
 
     Per project too, because the visitor cookie is the caller's to reset and an IP is cheap to
     change: the daily project budget is the one limit that bounds what the teacher can be billed.
-    Checked narrowest first, so a visitor who is out of budget never drains the shared ones.
+    Nothing is spent unless all three have room.
     """
     # Read now: the turn may run after the request object is gone.
     ip = _client_ip(request)
 
     def spend() -> bool:
         window = settings.deep_window_seconds
-        return (
-            _hit(f"deep-visitor:{visitor_id}", max_requests=settings.deep_max_per_visitor, window_seconds=window)
-            and _hit(f"deep-ip:{ip}", max_requests=settings.deep_max_per_ip, window_seconds=window)
-            and _hit(
-                f"deep-project:{project_id}",
-                max_requests=settings.deep_max_per_project_per_day,
-                window_seconds=_DEEP_PROJECT_WINDOW_SECONDS,
-            )
+        # All or nothing: a turn refused by the project's budget must not also use up the shared
+        # per-IP budget a class needs for its other projects.
+        return _hit_all(
+            [
+                (f"deep-visitor:{visitor_id}", settings.deep_max_per_visitor, window),
+                (f"deep-ip:{ip}", settings.deep_max_per_ip, window),
+                (f"deep-project:{project_id}", settings.deep_max_per_project_per_day, _DEEP_PROJECT_WINDOW_SECONDS),
+            ]
         )
 
     return spend

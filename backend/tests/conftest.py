@@ -81,9 +81,11 @@ def client(engine, monkeypatch, tmp_path):
     for name in UPLOAD_DIR_SETTINGS:
         monkeypatch.setattr(settings, name, str(tmp_path / name))
     rate_limit._hits.clear()
+    rate_limit._windows.clear()
     yield new_client()
     app.dependency_overrides.clear()
     rate_limit._hits.clear()
+    rate_limit._windows.clear()
 
 
 @pytest.fixture

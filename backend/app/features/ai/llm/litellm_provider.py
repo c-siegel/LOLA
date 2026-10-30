@@ -110,7 +110,7 @@ class LiteLLMClient:
             if request.reasoning is None:
                 raise
             # A model that doesn't take the reasoning setting must still answer, just not as asked.
-            logger.warning("Provider rejected the reasoning setting, retrying without it: %s", exc)
+            logger.warning("Provider rejected the reasoning setting, retrying without it (%s)", type(exc).__name__)
             return self._complete(dataclasses.replace(request, reasoning=None), usage)
 
     def _complete(self, request: ChatRequest, usage: LLMUsage | None) -> str:
@@ -146,7 +146,7 @@ class LiteLLMClient:
         except litellm.BadRequestError as exc:
             if yielded or request.reasoning is None:
                 raise
-            logger.warning("Provider rejected the reasoning setting, retrying without it: %s", exc)
+            logger.warning("Provider rejected the reasoning setting, retrying without it (%s)", type(exc).__name__)
         yield from self._stream(dataclasses.replace(request, reasoning=None), usage)
 
     def _stream(self, request: ChatRequest, usage: LLMUsage | None) -> Iterator[str]:
