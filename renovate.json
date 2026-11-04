@@ -56,6 +56,12 @@
       "dependencyDashboardApproval": true
     },
     {
+      "description": "Held at the three.js version @met4citizen/talkinghead declares (^0.186): a newer three.js installs a second copy next to it and ships both in the bundle (~150 kB gzip more). Bump it together with a TalkingHead release that allows the newer version.",
+      "matchPackageNames": ["three"],
+      "matchUpdateTypes": ["major", "minor"],
+      "dependencyDashboardApproval": true
+    },
+    {
       "description": "Pre-1.0 packages capped at the minor version on purpose: before 1.0 a minor release may break behaviour. Update them deliberately via the dashboard.",
       "matchPackageNames": ["normt2s", "ragas", "langchain-community", "fastembed", "sqlite-vec"],
       "dependencyDashboardApproval": true
