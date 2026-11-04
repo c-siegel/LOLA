@@ -1,6 +1,6 @@
 # Build context is the repo root (same reasoning as docker/backend.Dockerfile) so COPY can reach
 # both local-tts/ and this Dockerfile's own entrypoint script.
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 WORKDIR /app/local-tts
 
