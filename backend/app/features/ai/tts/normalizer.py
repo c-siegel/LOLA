@@ -23,9 +23,10 @@ How to use:
     last = stream.flush_piece()  # None if nothing was left
 """
 
+import re
 import threading
 
-from normt2s import Normalizer, RuleSet, StreamNormalizer
+from normt2s import Normalizer, Piece, RuleSet, StreamNormalizer
 
 _DEFAULT_LANGUAGE = "de"
 # Gesture and conversation-plan markers ("::nod_yes::", "::done_2::"). motion.py::extract_markers
@@ -40,6 +41,33 @@ _MARKER_PATTERN = r"(?<![\w:])::[ \t]*[A-Za-z][\w -]{0,38}?[ \t]*::"
 _FIRST_CHUNK_MIN_CHARS = 25
 _MIN_CHUNK_CHARS = 80
 _MAX_CHUNK_CHARS = 300
+
+# Dashes the normalizer leaves in the text (it only turns the em dash "—" into a comma). The
+# speech model mishandles them: after a spaced en dash it can end the clip early, so a sentence like
+# "viele Kinder – und sogar einige Erwachsene – sehen das genauso." stops at "Erwachsene" (heard
+# with Pocket TTS; a spaced hyphen and a figure dash behave the same, a comma does not). A dash
+# that sets a phrase apart is a pause, so it becomes the comma it stands for.
+_ASIDE_DASH = re.compile(
+    r",?[ \t]*(?:(?<=[ \t])[–‒―]|[–‒―](?=[ \t]))[ \t]*,?"  # an en dash with a space on at least one side
+    r"|,?[ \t]+-{1,3}[ \t]+,?"  # a hyphen (or "--") with spaces on both sides
+)
+_LINE_START_DASH = re.compile(r"(?m)^[ \t]*[–‒―][ \t]+")
+# "Berlin–Paris": no pause, and the model reads the bare en dash as a word. A hyphen is spoken right.
+_JOINING_DASH = re.compile(r"(?<=\w)[–‒―](?=\w)")
+_COMMA_RUNS = re.compile(r",(?:[ \t]*,)+")
+
+
+def _soften_dashes(spoken: str) -> str:
+    """`spoken` with dashes the speech model would trip over replaced (see _ASIDE_DASH)."""
+    if not any(dash in spoken for dash in "–‒―-"):
+        return spoken
+    spoken = _LINE_START_DASH.sub("", spoken)
+    spoken = _ASIDE_DASH.sub(", ", spoken)
+    spoken = _JOINING_DASH.sub("-", spoken)
+    spoken = _COMMA_RUNS.sub(",", spoken)
+    # A dash that closed the text left a comma behind it.
+    return re.sub(r",[ \t]*$", "", spoken)
+
 
 _normalizers: dict[str, Normalizer] = {}
 _lock = threading.Lock()
@@ -71,16 +99,37 @@ def normalize_for_speech(
     after Markdown is stripped and before numbers become words. `applied`, if given, collects the
     rules from it that matched (for the dashboard's test box).
     """
-    return _normalizer(language).normalize(text, rules=pronunciation or None, applied=applied)
+    return _soften_dashes(_normalizer(language).normalize(text, rules=pronunciation or None, applied=applied))
 
 
-def speech_stream(language: str, pronunciation: RuleSet | None = None) -> StreamNormalizer:
+class _SpeechStream:
+    """normt2s's StreamNormalizer, with the same dash handling as normalize_for_speech on every
+    piece it releases."""
+
+    def __init__(self, stream: StreamNormalizer) -> None:
+        self._stream = stream
+
+    def feed_pieces(self, delta: str) -> list[Piece]:
+        return [self._softened(piece) for piece in self._stream.feed_pieces(delta)]
+
+    def flush_piece(self) -> Piece | None:
+        piece = self._stream.flush_piece()
+        return None if piece is None else self._softened(piece)
+
+    @staticmethod
+    def _softened(piece: Piece) -> Piece:
+        return Piece(piece.raw, _soften_dashes(piece.spoken))
+
+
+def speech_stream(language: str, pronunciation: RuleSet | None = None) -> _SpeechStream:
     """A stream that buffers LLM deltas and releases them as Pieces of (raw, spoken) text at
     sentence ends — never inside a number and its unit, an abbreviation or a marker. The raw parts
     join to exactly the input, the spoken parts to normalize_for_speech of it."""
-    return _normalizer(language).stream(
-        max_buffer=_MAX_CHUNK_CHARS,
-        first_min_chars=_FIRST_CHUNK_MIN_CHARS,
-        min_chars=_MIN_CHUNK_CHARS,
-        rules=pronunciation or None,
+    return _SpeechStream(
+        _normalizer(language).stream(
+            max_buffer=_MAX_CHUNK_CHARS,
+            first_min_chars=_FIRST_CHUNK_MIN_CHARS,
+            min_chars=_MIN_CHUNK_CHARS,
+            rules=pronunciation or None,
+        )
     )

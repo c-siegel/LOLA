@@ -94,3 +94,41 @@ def test_stream_cuts_a_long_run_without_sentence_ends() -> None:
     pieces = stream_pieces("wort " * 120)
     assert len(pieces) >= 2
     assert all(len(p.raw) <= 300 for p in pieces)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # The reported reply: Pocket TTS stopped after "Erwachsene" with the en dashes left in.
+        (
+            "Viele Kinder – und sogar einige Erwachsene – sehen das genauso.",
+            "Viele Kinder, und sogar einige Erwachsene, sehen das genauso.",
+        ),
+        ("Kinder - und Erwachsene -- sehen das.", "Kinder, und Erwachsene, sehen das."),
+        ("Kinder ‒ und Erwachsene ― sehen das.", "Kinder, und Erwachsene, sehen das."),
+        ("Hallo,– und weiter.", "Hallo, und weiter."),
+        ("Kinder, – und Erwachsene", "Kinder, und Erwachsene"),
+        ("Wort –und Wort", "Wort, und Wort"),
+        ("Ein Punkt — der wichtigste — ist das.", "Ein Punkt, der wichtigste, ist das."),
+        ("Berlin–Paris ist weit.", "Berlin-Paris ist weit."),
+        ("– Zitat am Anfang", "Zitat am Anfang"),
+        ("Das stimmt –", "Das stimmt"),
+        # Left alone: hyphenated words, ranges (spoken as "bis") and negative numbers.
+        ("Rhein-Main-Gebiet und e-mail", "Rhein-Main-Gebiet und e-mail"),
+        ("Das kostet 5–10 Euro.", "Das kostet fünf bis zehn Euro."),
+        ("Es hat -5 Grad.", "Es hat minus fünf Grad."),
+    ],
+)
+def test_dashes_become_pauses_the_speech_model_can_read(text: str, expected: str) -> None:
+    assert normalize_for_speech(text, "de") == expected
+
+
+def test_a_streamed_reply_gets_the_same_dash_handling() -> None:
+    text = "Das ist interessant, und viele Kinder – und sogar Erwachsene – sehen das so. Noch ein Satz – mit Einschub – hier."
+    stream = speech_stream("de")
+    pieces = [*stream.feed_pieces(text), stream.flush_piece()]
+    spoken = " ".join(piece.spoken.strip() for piece in pieces if piece is not None)
+
+    assert "–" not in spoken
+    assert "Kinder, und sogar Erwachsene, sehen" in spoken and "Satz, mit Einschub, hier" in spoken
+    assert "".join(piece.raw for piece in pieces if piece is not None) == text  # the shown text keeps its dashes

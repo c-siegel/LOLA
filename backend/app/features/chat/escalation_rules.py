@@ -2,9 +2,7 @@
 Escalation Rules
 
 Decides, without calling any model, whether a student's message looks like an argument that
-deserves a reasoning model ("adaptive" reasoning mode, see docs/adaptive-reasoning-plan.md). Zero
-latency and no extra dependencies; the word lists are tables per language so a language is added
-by adding a row, not by changing the logic.
+deserves a reasoning model ("adaptive" reasoning mode, see docs/adaptive-reasoning-plan.md). Zero latency and no extra dependencies; the word lists are tables per language so a language is added by adding a row, not by changing the logic.
 
 Biased towards recall: a missed argument gives shallow feedback on a thesis, while an unneeded
 escalation only costs time and money, and the reasoning budget (core/rate_limit.py) caps that.
