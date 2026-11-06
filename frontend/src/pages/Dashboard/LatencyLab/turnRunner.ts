@@ -6,6 +6,7 @@ import { errorMessage } from "@/api/client";
 import { latencyTestApi, sendLatencyMessage, type LatencyChunkEvent, type ServerTtsMode } from "@/api/latencyTest";
 import type { TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
 import type { BrowserTts } from "@/lib/browserTts";
+import { BRIDGE_DELAY_MS } from "@/lib/bridgePhrase";
 import type { ParakeetSttEngine } from "@/lib/parakeetStt";
 import type { ChatMessage } from "@/types/chat";
 import { isBrowserTtsMode, type InputKind, type LabConfig, type TurnResult } from "./metrics";
@@ -295,7 +296,11 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
       }
       const { audioBase64 } = chunk;
       if (audioBase64) {
-        speech = speech.then(async () => play(await ctx.speaker.decodeAudio(audioBase64)));
+        speech = speech.then(async () => {
+          // Said after the same beat as on the public page, so "first audio" is what a student hears.
+          if (chunk.bridge) await abortable(new Promise<void>((resolve) => setTimeout(resolve, BRIDGE_DELAY_MS)), ctx.signal);
+          play(await ctx.speaker.decodeAudio(audioBase64));
+        });
       } else if (browserTts) {
         speech = speech.then(async () => {
           const synthesis = await ctx.browserTts!.synthesize(chunk.text, ctx.language, (samples, sampleRate) => {

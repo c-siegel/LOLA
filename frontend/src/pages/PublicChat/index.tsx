@@ -20,6 +20,7 @@ import { doneStepIds } from "@/lib/checklist";
 import { getVisitorName } from "@/lib/visitorNameStorage";
 import { useAutoResizeTextarea } from "@/hooks/useAutoResizeTextarea";
 import type { ChatMessage } from "@/types/chat";
+import { BRIDGE_DELAY_MS } from "@/lib/bridgePhrase";
 import type { ChatLayout } from "@/types/project";
 import { NameGate, PasswordGate, gatePassed, isLocked } from "./Gate";
 import { ModelInfoButton } from "./ModelInfoButton";
@@ -297,6 +298,10 @@ export function PublicChatPage() {
     // chained callback, so the check has to happen here, not just at the click itself.
     const signal = abortControllerRef.current?.signal;
     if (signal?.aborted) return;
+    if (chunk.bridge) {
+      await delay(BRIDGE_DELAY_MS, signal);
+      if (signal?.aborted) return;
+    }
     // The bridge phrase is only said: it isn't part of the reply, and the thinking gestures go on
     // until the reply's own first chunk.
     const reveal = chunk.bridge ? () => undefined : () => revealStreamedChunk(chunk);
