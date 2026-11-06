@@ -38,6 +38,14 @@ Phase 2 is done except for the experimental self-escalation (the fast model star
 many arguments. Decided differently from the plan: the bridge audio is rendered lazily into an
 in-memory cache (per voice and key) instead of a stored file per project.
 
+Self-escalation probe (`scripts/escalation_probe.py`, cases in `scripts/escalation_cases.json`): on
+2026-11-07 lfm3-omni-2b in LM Studio could not do the marker inside the persona reply. Without examples
+it wrote `::deep::` at the start of nearly every reply (83 % of ordinary messages); with four examples
+it sent 79 % of the arguments and 28 % of ordinary messages, and followed a student's request to write
+the marker in 33 % of cases. A separate DEEP/FAST call sent 100 % of the arguments and 17 % of ordinary
+messages (the factual questions 14 and 20), against 36 % and 25 % for the word-list rules, and took
+56 ms (median). Next: improve the classifier prompt, try qwen/qwen3-4b-2507, and compare end to end.
+
 Open after phase 2:
 - Phase 3, the evaluation (plan §10): router precision and recall against human labels, answer
   quality, perceived latency. Needs the ethics process before real lesson turns are labelled.
