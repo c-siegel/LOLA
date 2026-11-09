@@ -978,6 +978,7 @@
     },
     "speech": {
       "title": "Speech Recognition and Output",
+      "sileroVad": { "description": "Detects when the student starts and stops speaking, so voice messages transcribed on the server are cut at real pauses" },
       "parakeet": {
         "description": "Multilingual speech recognition model that runs on the visitor's device (ternary version of NVIDIA's Parakeet TDT 0.6B v3)",
         "note": "Original model by NVIDIA, ternary version by Moondream, ONNX export by eschmidbauer and mrfakename. Used unchanged; the files are only re-compressed for delivery."

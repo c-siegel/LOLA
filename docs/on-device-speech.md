@@ -7,6 +7,7 @@ By default, voice input is transcribed in the visitor's browser, from model file
 | Model | Size | Fetch (Deploy A) | Deploy B |
 |---|---|---|---|
 | Speech recognition (Parakeet Redux) | ~380 MB | `scripts/fetch-stt-model.sh` → `./models`, served at `/models/` | `stt-model` service, automatic |
+| Speech pause detection (Silero VAD v6.2, MIT) | ~2 MB | same script → `./models/silero-vad` | same service |
 | Speech output (Pocket TTS, German, int8 ONNX, preset voice "alba") | ~132 MB | `scripts/fetch-tts-model.sh` → `./models/pocket-tts-de` | `tts-model` service, `browser-tts` profile |
 
 The Pocket TTS files are CC BY 4.0; the attribution is in the `NOTICE.md` written next to them.

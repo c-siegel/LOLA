@@ -978,6 +978,7 @@
     },
     "speech": {
       "title": "Spracherkennung und Sprachausgabe",
+      "sileroVad": { "description": "Erkennt, wann die Schülerin zu sprechen beginnt und aufhört, damit auf dem Server transkribierte Sprachnachrichten an echten Pausen geteilt werden" },
       "parakeet": {
         "description": "Mehrsprachiges Spracherkennungsmodell, das auf dem Gerät der Besucherin läuft (ternäre Version von NVIDIAs Parakeet TDT 0.6B v3)",
         "note": "Originalmodell von NVIDIA, ternäre Version von Moondream, ONNX-Export von eschmidbauer und mrfakename. Unverändert verwendet; die Dateien werden für die Auslieferung nur neu komprimiert."

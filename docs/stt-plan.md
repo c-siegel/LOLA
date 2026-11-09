@@ -128,10 +128,50 @@ they work on devices without WebGPU too.
    Compare both on short answers, background noise and children's voices (Silero v6.2 improved
    the last), the delay in detecting the end of speech, and speed in WASM without WebGPU. Pick
    Parakeet's VAD unless Silero is clearly better. The steps below say "VAD" for whichever wins.
+
+   **Result (2026-11-09): Silero.** Test: 300 German Common Voice clips (CC0; 3.7 s of speech on
+   average, 18 under 1.5 s), each as 1 s pause + clip + 2 s pause, run as a live stream. Both used
+   the same rule: speech from p ≥ 0.5, end once p < 0.35 for 300 ms. Silero ran in 32 ms chunks
+   with its state; Parakeet's VAD re-scored the last 1.5 s (or 3 s) every 160 ms.
+
+   | Condition | VAD | Missed | False start in the pause | End not found | Onset p50 | End delay p50 / p90 |
+   |---|---|---|---|---|---|---|
+   | clean | Silero | 0.3 % | 0.3 % | 0 % | 176 ms | 364 / 446 ms |
+   | clean | Parakeet 1.5 s | 0 % | 10.3 % | 0 % | 230 ms | 500 / 650 ms |
+   | white noise, 10 dB SNR | Silero | 1.3 % | 0 % | 0 % | 218 ms | 350 / 518 ms |
+   | white noise, 10 dB SNR | Parakeet 1.5 s | 0 % | 91.3 % | 11.7 % | 120 ms | 500 / 670 ms |
+   | 4-voice babble, 10 dB SNR | Silero | 0 % | 92.0 % | 64.3 % | 16 ms | 820 / 2140 ms |
+   | 4-voice babble, 10 dB SNR | Parakeet 1.5 s | 0 % | 93.0 % | 53.0 % | 80 ms | 760 / 2030 ms |
+
+   - Parakeet's VAD fires on steady noise (a fan, a hissing mic). Stricter thresholds only reduce
+     this: 0.9/0.7 still false-starts in 22 % of white-noise pauses and detects speech ~365 ms
+     late. A 3 s window doesn't change the picture.
+   - Silero notices the end of speech ~130 ms sooner.
+   - Neither tells the student from other people talking nearby (babble): both treat it as
+     speech. That's a limit of any VAD, not a difference between them. It argues for keeping
+     push-to-talk as the default and for Smart Turn's turn-completion check in hands-free mode.
+   - Compute on one thread, WASM (onnxruntime-web 1.31 in Node, Ryzen laptop): Silero 36 ms per
+     second of audio, Parakeet 227 ms (1.5 s window). Natively: 5 vs. 52 ms. Parakeet's VAD would
+     take about a quarter of a laptop core just for listening, more on an old iPad.
+   - Not tested: children's voices (no freely licensed German children's speech found).
+
+   Silero (`silero_vad.onnx`, v6.2, MIT, 2.3 MB) goes into `lib/vad.ts`. The server keeps using
+   Parakeet's VAD to skip silence before decoding; that's an offline check on a whole segment,
+   which it handles well.
 1. **VAD in the browser** (one shared module, `lib/vad.ts`, in a worker; onnxruntime-web is
    already a dependency). Replace the RMS-based `watchForSpeechPauses` in the server fallback:
    segments are cut at real speech pauses instead of quiet moments, and leading/trailing silence
    isn't uploaded. Behaviour change for push-to-talk only; ships on its own.
+
+   **Done (2026-11-09).** `scripts/fetch-stt-model.sh` also fetches Silero (pinned commit +
+   checksum, `/models/silero-vad/v6.2/`). `workers/vadWorker.ts` runs it, and `lib/vad.ts` feeds
+   it from the microphone. The server fallback loads it on the first recording, cuts a segment
+   when speech has ended for 700 ms (once it is ≥ 2 s long), and doesn't upload segments without
+   speech. A whole MediaRecorder segment can't be trimmed without re-encoding, so silence inside
+   an uploaded segment stays. Without the VAD (still loading, or failed), the recording goes up
+   uncut. Checked in Edge with a WAV as the microphone: the events match Silero in Python on the
+   same file, and the public chat cut four utterances into four correctly transcribed segments
+   and skipped the silent last one.
 2. **Smart Turn feasibility** (v3.2, which improved short answers and noise). It expects
    Whisper-style 80-bin log-mel features of the last ≤ 8 s. First check
    [`@micdrop/smart-turn`](https://micdrop.dev/docs/client/turn-detection) (MIT, runs Smart Turn

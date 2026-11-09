@@ -79,6 +79,20 @@ export function CreditsPage() {
             </div>
 
             <div className={styles.creditItem}>
+              <h3>Silero VAD</h3>
+              <p className={styles.author}>{t("credits.byAuthor", { name: "Silero Team" })}</p>
+              <p className={styles.description}>{t("credits.speech.sileroVad.description")}</p>
+              <div className={styles.links}>
+                <a href="https://github.com/snakers4/silero-vad" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "silero-vad" })}
+                </a>
+              </div>
+              <div className={styles.license}>
+                <strong>{t("credits.licenseLabel")}</strong> MIT License
+              </div>
+            </div>
+
+            <div className={styles.creditItem}>
               <h3>Pocket TTS</h3>
               <p className={styles.author}>
                 {t("credits.byAuthor", {

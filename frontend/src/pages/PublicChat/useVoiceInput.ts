@@ -1,14 +1,14 @@
 // Voice input for the public chat: records the student and turns it into text, on the device
 // (Parakeet, lib/parakeetStt.ts) when its model is ready, otherwise through the server in
-// pause-cut segments. The live transcript goes into the composer; the final text is handed back
+// segments cut at speech pauses (Silero VAD, lib/vad.ts). The live transcript goes into the composer; the final text is handed back
 // through onFinalText. Also loads the on-device model and reports its progress, since the chat
 // waits behind a loading screen until it has settled.
 
 import { useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { publicChatApi } from "@/api/publicChat";
 import type { TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
-import { FALLBACK_SILENCE_RMS_THRESHOLD, calibrateSilenceThreshold, rms } from "@/lib/audioLevel";
 import { ParakeetSttEngine, type LoadProgress, type ParakeetStatus, type StreamingSession } from "@/lib/parakeetStt";
+import { SileroVad, type VadSession } from "@/lib/vad";
 
 // Pause-triggered incremental transcription for the server fallback (see backend
 // features/ai/stt) — used when on-device recognition (lib/parakeetStt.ts) isn't available.
@@ -16,73 +16,16 @@ import { ParakeetSttEngine, type LoadProgress, type ParakeetStatus, type Streami
 // (features/chat/streaming.py).
 const RECORDING_SEGMENT_MIN_MS = 2000; // shorter than this, a pause doesn't cut a segment yet
 const SILENCE_PAUSE_MS = 700; // how long a pause must last before it counts as a cut point
-// How long watchForSpeechPauses spends measuring this recording's own ambient noise floor before
-// deriving a real silence threshold from it (see lib/audioLevel.ts) — long enough to average out
-// one stray sound (a cough, a chair scraping), short enough not to meaningfully delay pause
-// detection. Harmless that RECORDING_SEGMENT_MIN_MS-vs-real-cuts overlaps with this window: no
-// segment can be cut before RECORDING_SEGMENT_MIN_MS (2000ms) anyway, well past calibration.
-const CALIBRATION_MS = 400;
 // Mirrors the backend's own truncation (_MAX_INITIAL_PROMPT_CHARS in app/features/chat/public_router.py) —
 // trimming here too avoids uploading an ever-growing prompt on every segment of a long recording,
 // most of which the backend would immediately discard anyway.
 const MAX_INITIAL_PROMPT_CHARS = 500;
 
-// Calls `onPause` every time the stream has been quiet (RMS below the calibrated threshold) for
-// SILENCE_PAUSE_MS. Returns a cleanup function that stops watching and releases the AudioContext.
-// Reuses the MediaStream the caller already holds (from getUserMedia) instead of requesting a new
-// one — an AnalyserNode can tap the same stream any number of times.
-//
-// Spends its first CALIBRATION_MS measuring THIS recording's own ambient noise floor instead of
-// judging silence against one hardcoded RMS number — mic sensitivity and room noise vary too much
-// across real devices for a fixed constant to work everywhere (see lib/audioLevel.ts). Runs
-// concurrently with recording, not before it, so calibration adds no delay before the mic button
-// visibly starts recording and no audio is lost — pause detection just uses
-// FALLBACK_SILENCE_RMS_THRESHOLD for that first stretch, which is safe because no cut can happen
-// before RECORDING_SEGMENT_MIN_MS (2000ms) regardless, well past calibration finishing.
-function watchForSpeechPauses(stream: MediaStream, onPause: () => void): () => void {
-  const audioCtx = new AudioContext();
-  const source = audioCtx.createMediaStreamSource(stream);
-  const analyser = audioCtx.createAnalyser();
-  source.connect(analyser);
-  const samples = new Float32Array(analyser.fftSize);
-  const calibrationStartedAt = performance.now();
-  const calibrationSamples: number[] = [];
-  let threshold = FALLBACK_SILENCE_RMS_THRESHOLD;
-  let calibrated = false;
-  let silenceSince: number | null = null;
-  let frameId: number;
-
-  function tick() {
-    analyser.getFloatTimeDomainData(samples);
-    const level = rms(samples);
-    const now = performance.now();
-
-    if (!calibrated) {
-      calibrationSamples.push(level);
-      if (now - calibrationStartedAt >= CALIBRATION_MS) {
-        calibrated = true;
-        threshold = calibrateSilenceThreshold(calibrationSamples);
-      }
-    }
-
-    if (level < threshold) {
-      if (silenceSince === null) silenceSince = now;
-      else if (now - silenceSince >= SILENCE_PAUSE_MS) {
-        silenceSince = now; // avoid firing again every frame while the pause continues
-        onPause();
-      }
-    } else {
-      silenceSince = null;
-    }
-    frameId = requestAnimationFrame(tick);
-  }
-  frameId = requestAnimationFrame(tick);
-
-  return () => {
-    cancelAnimationFrame(frameId);
-    source.disconnect();
-    void audioCtx.close();
-  };
+/** One MediaRecorder segment of a server-transcribed recording. */
+interface Segment {
+  /** Whether the VAD heard speech in it; segments without any aren't uploaded. Starts true while
+   * the VAD isn't listening (yet, or at all), so nothing is dropped unchecked. */
+  hadSpeech: boolean;
 }
 
 interface VoiceInputOptions {
@@ -128,7 +71,14 @@ export function useVoiceInput(options: VoiceInputOptions) {
   const [sttLoadProgress, setSttLoadProgress] = useState<LoadProgress | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
-  const stopWatchingPausesRef = useRef<(() => void) | null>(null);
+  // Speech detection for the server fallback: loaded on the first such recording (a ~2 MB
+  // download only for visitors who actually speak through the server), then kept for the visit.
+  const vadRef = useRef<SileroVad | null>(null);
+  const vadSessionRef = useRef<VadSession | null>(null);
+  const currentSegmentRef = useRef<Segment | null>(null);
+  // Bumped when a server recording starts and when it stops, so a VAD that finishes loading after
+  // its recording already ended doesn't start listening to a closed stream.
+  const recordingIdRef = useRef(0);
   // The specific MediaRecorder instance toggleRecording's stop click targeted — read inside each
   // recorder's own onstop handler (see startSegmentRecorder) via identity comparison, not a plain
   // boolean flag. A pause-triggered cut (cutSegment) starts a new recorder immediately and lets
@@ -165,7 +115,7 @@ export function useVoiceInput(options: VoiceInputOptions) {
   // shown after it in the composer.
   const inputBeforeRecordingRef = useRef("");
 
-  // Server fallback: transcribes one segment (see watchForSpeechPauses) via the backend and
+  // Server fallback: transcribes one segment (see startPauseDetection) via the backend and
   // appends the result to the visible input box; on the final segment (mic button released),
   // sends the full accumulated text instead — no manual send click needed. Always called chained
   // onto transcriptionChainRef (see startSegmentRecorder) so segments never read/reset
@@ -213,6 +163,8 @@ export function useVoiceInput(options: VoiceInputOptions) {
   function startSegmentRecorder(stream: MediaStream) {
     const recorder = new MediaRecorder(stream);
     const chunks: Blob[] = [];
+    const segment: Segment = { hadSpeech: vadSessionRef.current === null };
+    currentSegmentRef.current = segment;
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunks.push(event.data);
     };
@@ -222,7 +174,9 @@ export function useVoiceInput(options: VoiceInputOptions) {
       // is still pending when the student clicks stop can't mistake itself for the final one.
       const isFinal = recorder === finalRecorderRef.current;
       if (isFinal) stream.getTracks().forEach((track) => track.stop());
-      const blob = new Blob(chunks, { type: "audio/webm" });
+      // A segment without speech (e.g. the silence after the last word) isn't uploaded: it would
+      // only use a server transcription slot, and models tend to invent words in silence.
+      const blob = new Blob(segment.hadSpeech ? chunks : [], { type: "audio/webm" });
       // Chained, not fire-and-forget: keeps every segment's transcribeSegment() call — including
       // this one if it's final — from running before an earlier segment's is done reading/updating
       // transcriptSoFarRef (see transcriptionChainRef's own comment).
@@ -233,7 +187,7 @@ export function useVoiceInput(options: VoiceInputOptions) {
     segmentStartedAtRef.current = performance.now();
   }
 
-  // Called on a detected speech pause once the current segment is long enough (see
+  // Called when the VAD reports the end of speech, once the current segment is long enough (see
   // RECORDING_SEGMENT_MIN_MS) — too-short segments are left alone and simply carried into the
   // next one, since speech recognition on very short clips is poor.
   function cutSegment() {
@@ -307,6 +261,42 @@ export function useVoiceInput(options: VoiceInputOptions) {
     }
   }
 
+  // Server fallback: cuts the recording into segments at speech pauses, once the VAD is loaded.
+  // Without it (still loading, or failed), the recording just isn't cut and goes up as one piece.
+  async function startPauseDetection(stream: MediaStream, audioContext: AudioContext) {
+    const recordingId = ++recordingIdRef.current;
+    const vad = (vadRef.current ??= new SileroVad());
+    await vad.ensureReady();
+    if (vad.status !== "ready" || recordingId !== recordingIdRef.current) {
+      void audioContext.close();
+      return;
+    }
+    try {
+      vadSessionRef.current = await vad.listen(
+        stream,
+        audioContext,
+        {
+          onSpeechStart: () => {
+            if (currentSegmentRef.current) currentSegmentRef.current.hadSpeech = true;
+          },
+          onSpeechEnd: () => {
+            if (performance.now() - segmentStartedAtRef.current >= RECORDING_SEGMENT_MIN_MS) cutSegment();
+          },
+        },
+        SILENCE_PAUSE_MS,
+      );
+    } catch (error) {
+      console.error("Pause detection unavailable for this recording.", error);
+      void audioContext.close();
+      return;
+    }
+    // Stopped while listen() was still setting up.
+    if (recordingId !== recordingIdRef.current) {
+      vadSessionRef.current.stop();
+      vadSessionRef.current = null;
+    }
+  }
+
   // Voice recording in the browser
   async function toggleRecording() {
     // The spoken reply arrives long after this gesture, so audio is unlocked now (see
@@ -322,8 +312,9 @@ export function useVoiceInput(options: VoiceInputOptions) {
       // for why this can't be a plain boolean shared across every segment's onstop handler.
       finalRecorderRef.current = mediaRecorderRef.current;
       setIsFinalizingRecording(true);
-      stopWatchingPausesRef.current?.();
-      stopWatchingPausesRef.current = null;
+      recordingIdRef.current++;
+      vadSessionRef.current?.stop();
+      vadSessionRef.current = null;
       mediaRecorderRef.current?.stop();
       avatarRef.current?.stopListening();
       setIsRecording(false);
@@ -338,16 +329,23 @@ export function useVoiceInput(options: VoiceInputOptions) {
     try {
       const engine = sttEngineRef.current;
       if (engine?.status === "ready" && (await startStreamingRecording(engine))) return;
+      // Created before awaiting the mic permission, while still inside the click — Safari starts an
+      // AudioContext created later in the async chain as "suspended", so the VAD would hear nothing.
+      const vadAudioContext = new AudioContext();
       // Request the microphone and wait for permission. echoCancellation/noiseSuppression requested
       // explicitly rather than left to the browser's own default — bare booleans (not wrapped in
       // `exact`) are "ideal" constraints per the Media Capture spec, so a device that can't honor
       // them still grants the stream instead of getUserMedia rejecting. Suppressing steady room
-      // noise up front also makes watchForSpeechPauses's calibrated threshold below meaningful:
-      // without it, a noisy classroom's noise floor could sit high enough that real speech and
-      // silence become hard to tell apart no matter how the threshold is calibrated.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
+      // noise up front also helps the VAD tell speech from a noisy classroom.
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+      } catch (error) {
+        void vadAudioContext.close();
+        throw error;
+      }
       recordingStreamRef.current = stream;
       avatarRef.current?.startListening(stream);
       transcriptSoFarRef.current = "";
@@ -355,12 +353,8 @@ export function useVoiceInput(options: VoiceInputOptions) {
       transcriptionChainRef.current = Promise.resolve();
       recordingHadFailureRef.current = false;
       startSegmentRecorder(stream);
-      stopWatchingPausesRef.current = watchForSpeechPauses(stream, () => {
-        if (performance.now() - segmentStartedAtRef.current >= RECORDING_SEGMENT_MIN_MS) {
-          cutSegment();
-        }
-      });
       setIsRecording(true);
+      void startPauseDetection(stream, vadAudioContext);
     } catch (error) {
       console.error("Microphone access failed.", error);
       // NotAllowedError: permission denied (or blocked by browser/site policy). Anything else
@@ -390,10 +384,14 @@ export function useVoiceInput(options: VoiceInputOptions) {
       });
   }, [modelUrl]);
 
-  // Terminates the speech recognition worker on unmount — leaving it running would keep the
-  // loaded model in memory for a tab that's no longer showing this chat at all.
+  // Terminates the speech recognition and VAD workers on unmount — leaving them running would keep
+  // the loaded models in memory for a tab that's no longer showing this chat at all.
   useEffect(() => {
-    return () => sttEngineRef.current?.dispose();
+    return () => {
+      sttEngineRef.current?.dispose();
+      vadSessionRef.current?.stop();
+      vadRef.current?.dispose();
+    };
   }, []);
 
   return { isRecording, isFinalizingRecording, micErrorKey, sttLoadProgress, toggleRecording };
