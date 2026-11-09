@@ -69,6 +69,8 @@ def get_conversation_detail(session: Session, user_id: str, conversation_id: str
                 motions=[TranscriptMotionOut(name=x["name"], offset=x["offset"]) for x in m["motions"]]
                 if m.get("motions")
                 else None,
+                route=m.get("route"),
+                model=m.get("model"),
                 checks=[
                     TranscriptCheckOut(
                         id=c["id"],
@@ -160,9 +162,13 @@ def get_stats(
 
     messages_count = 0
     total_duration_seconds = 0.0
+    routes = {"fast": 0, "deep": 0}
     for conv in conversations:
         msg_list = json.loads(conv.messages_json)
         messages_count += len(msg_list)
+        for message in msg_list:
+            if message.get("route") in routes:
+                routes[message["route"]] += 1
         total_duration_seconds += (conv.updated_at - conv.started_at).total_seconds()
     avg_duration = int(total_duration_seconds / len(conversations)) if conversations else 0
 
@@ -178,6 +184,8 @@ def get_stats(
         avg_duration_delta_pct=0,
         token_cost_eur=0,
         token_cost_delta_pct=0,
+        fast_replies=routes["fast"],
+        deep_replies=routes["deep"],
     )
 
 

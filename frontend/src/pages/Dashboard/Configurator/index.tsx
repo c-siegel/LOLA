@@ -46,7 +46,10 @@ function toDraft(project: Project): ConfiguratorDraft {
     llmApiKeyId: project.llmApiKeyId,
     temperature: project.temperature,
     topP: project.topP,
-    thinkingMode: project.thinkingMode,
+    reasoningMode: project.reasoningMode,
+    reasoningEffort: project.reasoningEffort,
+    deepLlmApiKeyId: project.deepLlmApiKeyId,
+    bridgeEnabled: project.bridgeEnabled,
     saveConversations: project.saveConversations,
     requireVisitorName: project.requireVisitorName,
     surveyBeforeUrl: project.surveyBeforeUrl ?? "",
@@ -92,7 +95,10 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.llmApiKeyId !== project.llmApiKeyId ||
     draft.temperature !== project.temperature ||
     draft.topP !== project.topP ||
-    draft.thinkingMode !== project.thinkingMode ||
+    draft.reasoningMode !== project.reasoningMode ||
+    draft.reasoningEffort !== project.reasoningEffort ||
+    draft.deepLlmApiKeyId !== project.deepLlmApiKeyId ||
+    draft.bridgeEnabled !== project.bridgeEnabled ||
     draft.saveConversations !== project.saveConversations ||
     draft.requireVisitorName !== project.requireVisitorName ||
     draft.surveyBeforeUrl !== (project.surveyBeforeUrl ?? "") ||
@@ -163,7 +169,10 @@ export function ConfiguratorPage() {
         llmApiKeyId: data.llmApiKeyId,
         temperature: data.temperature,
         topP: data.topP,
-        thinkingMode: data.thinkingMode,
+        reasoningMode: data.reasoningMode,
+        reasoningEffort: data.reasoningEffort,
+        deepLlmApiKeyId: data.deepLlmApiKeyId,
+        bridgeEnabled: data.bridgeEnabled,
         saveConversations: data.saveConversations,
         requireVisitorName: data.requireVisitorName,
         surveyBeforeUrl: data.surveyBeforeUrl,

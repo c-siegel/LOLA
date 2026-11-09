@@ -48,6 +48,13 @@ def _motions_cell(motions: list[dict]) -> str:
     return "; ".join(f"{motion['name']}@{motion['offset']}" for motion in motions)
 
 
+def _route_cell(message: dict) -> str:
+    """"deep (openai/o3)" for a reply of a project that routes between a fast and a deep model."""
+    route = message.get("route") or ""
+    model = message.get("model")
+    return f"{route} ({model})" if route and model else route
+
+
 def _checks_cell(checks: list[dict], step_titles: dict[str, str]) -> str:
     """ "✓ Begrüßung; ✗ Quiz" — the conversation-plan steps a reply ticked off (✓) or took back
     (✗), see features/chat/checklist.py."""
@@ -70,7 +77,8 @@ def build_conversation_csv(
     A conversation with a knowledge base gets a fourth "Quellen" column (the documents each reply
     was given, see features/knowledge/), and one in which the avatar used gestures a "Gesten"
     column (see features/chat/motion.py), and one in which it ticked conversation-plan steps a
-    "Plan" column (see features/chat/checklist.py); every other export keeps its three columns
+    "Plan" column (see features/chat/checklist.py), and a project that routes between a fast and a
+    deep model an "Antwortweg" column (see features/chat/reasoning_router.py); every other export keeps its three columns
     unchanged.
     """
     messages = json.loads(conversation.messages_json)
@@ -85,12 +93,14 @@ def build_conversation_csv(
     with_sources = any("sources" in message for message in messages)
     with_motions = any("motions" in message for message in messages)
     with_checks = any("checks" in message for message in messages)
+    with_routes = any("route" in message for message in messages)
     step_titles = {item["id"]: item["title"] for item in project.checklist_items}
     writer.writerow(
         ["Zeitpunkt", "Avatar", "Schüler:in"]
         + (["Quellen"] if with_sources else [])
         + (["Gesten"] if with_motions else [])
         + (["Plan"] if with_checks else [])
+        + (["Antwortweg"] if with_routes else [])
     )
     for message in messages:
         timestamp = message.get("timestamp") or ""
@@ -103,8 +113,10 @@ def build_conversation_csv(
                 row.append(_motions_cell(message.get("motions") or []))
             if with_checks:
                 row.append(csv_safe(_checks_cell(message.get("checks") or [], step_titles)))
+            if with_routes:
+                row.append(csv_safe(_route_cell(message)))
         else:
-            row = [timestamp, "", content] + [""] * (with_sources + with_motions + with_checks)
+            row = [timestamp, "", content] + [""] * (with_sources + with_motions + with_checks + with_routes)
         writer.writerow(row)
     return buffer.getvalue()
 

@@ -19,8 +19,10 @@ import httpx
 from app.core.error_codes import ErrorCode
 from app.core.providers import GWDG_ARCANA_PROVIDER, get_provider
 from app.features.ai.http import make_ipv4_client
-from app.features.ai.llm.base import ChatRequest
-from app.features.ai.llm.history import build_messages, sampling_params, thinking_extra_body
+from app.features.ai.llm.base import ChatRequest, LLMUsage
+from app.features.ai.llm.history import build_messages, sampling_params
+from app.features.ai.llm.reasoning import reasoning_kwargs
+from app.features.ai.llm.think_guard import ThinkTagGuard, strip_think_tags
 from app.features.api_keys.crypto import reveal_api_key
 from app.features.api_keys.models import UserApiKey
 
@@ -205,9 +207,10 @@ class ArcanaClient:
         }
         if stream:
             body["stream"] = True
-        return {**body, **sampling_params(request), **thinking_extra_body(request)}
+        reasoning = reasoning_kwargs(GWDG_ARCANA_PROVIDER, self._key.model_id or "", request.reasoning)
+        return {**body, **sampling_params(request), **reasoning.get("extra_body", {})}
 
-    def complete(self, request: ChatRequest) -> str:
+    def complete(self, request: ChatRequest, usage: LLMUsage | None = None) -> str:
         """Send the request and return the reply with Arcana's references block removed."""
         url, headers = self._endpoint_and_headers()
         body = self._body(request, stream=False)
@@ -238,11 +241,14 @@ class ArcanaClient:
                 if attempt == _GWDG_ARCANA_MAX_ATTEMPTS:
                     raise
             else:
-                content = response.json()["choices"][0]["message"]["content"]
-                return strip_arcana_references(content)
+                payload = response.json()
+                if usage is not None:
+                    usage.update_from(payload.get("usage"))
+                content = payload["choices"][0]["message"]["content"]
+                return strip_arcana_references(strip_think_tags(content))
             time.sleep(_GWDG_ARCANA_RETRY_DELAY)
 
-    def stream(self, request: ChatRequest) -> Iterator[str]:
+    def stream(self, request: ChatRequest, usage: LLMUsage | None = None) -> Iterator[str]:
         """Streamed variant of complete() — same endpoint, headers, and body, plus
         "stream": True, parsed as OpenAI-style SSE (server-sent events). Each delta is passed
         through an ArcanaReferenceGuard so the citation block never reaches the caller.
@@ -281,20 +287,32 @@ class ArcanaClient:
                     # heard part of the reply, and replaying it would duplicate speech.
                     past_handshake = True
                     guard = ArcanaReferenceGuard()
+                    think_guard = ThinkTagGuard()
                     for line in response.iter_lines():
                         if not line.startswith("data:"):
                             continue
                         data = line[len("data:") :].strip()
                         if data == "[DONE]":
                             break
-                        delta = json.loads(data)["choices"][0]["delta"].get("content")
+                        event = json.loads(data)
+                        # Sent only if the gateway volunteers it; stream_options isn't requested
+                        # because the gateway may reject unknown fields.
+                        if usage is not None and event.get("usage"):
+                            usage.update_from(event["usage"])
+                        if not event.get("choices"):
+                            continue
+                        delta = event["choices"][0]["delta"].get("content")
                         if delta is None:
                             continue
-                        safe_text = guard.feed(delta)
+                        safe_text = guard.feed(think_guard.feed(delta))
                         if safe_text:
                             yield safe_text
                         if guard.finished:
                             return
+                    # A partial tag held back by the think guard still has to pass the reference guard.
+                    safe_text = guard.feed(think_guard.flush())
+                    if safe_text:
+                        yield safe_text
                     tail = guard.flush()
                     if tail:
                         yield tail

@@ -97,6 +97,9 @@ export interface StreamChunkEvent {
   motions: string[];
   // Plan steps ticked in this chunk, applied when its audio starts like the gestures.
   checks: ChecklistCheck[];
+  // A short phrase the avatar says while a reasoning reply is still being thought out (index -1,
+  // outside the reply): spoken, but neither shown nor part of the history.
+  bridge?: boolean;
   // What the device should say for this chunk (normalized, pronunciation list applied) — only
   // sent with speakOnDevice, and then audioBase64 is null.
   spoken?: string;
@@ -202,7 +205,16 @@ export const publicChatApi = {
     apiClient.post<{ unlockToken: string }>(`/public/${slug}/unlock`, { password }),
   // The backend returns {reply}, not a full Conversation (see app/features/chat/public_router.py) —
   // it was previously typed as a Conversation by mistake.
-  sendMessage: (slug: string, message: string, history: ChatMessage[], signal?: AbortSignal, speakOnDevice = false) =>
+  sendMessage: (
+    slug: string,
+    message: string,
+    history: ChatMessage[],
+    signal?: AbortSignal,
+    speakOnDevice = false,
+    // The streamed attempt for this message failed: answer without reasoning and don't spend the
+    // reasoning budget a second time.
+    retryAfterFailure = false,
+  ) =>
     apiClient.post<{
       reply: string;
       audioBase64: string | null;
@@ -211,7 +223,7 @@ export const publicChatApi = {
       checks: ChecklistCheck[];
       // What the device should say, only with speakOnDevice (see StreamChunkEvent.spoken).
       spoken: string | null;
-    }>(`/public/${slug}/messages`, { message, history, speakOnDevice }, requestHeaders(slug), signal),
+    }>(`/public/${slug}/messages`, { message, history, speakOnDevice, retryAfterFailure }, requestHeaders(slug), signal),
   sendMessageStream,
   // initialPrompt: text already transcribed earlier in the same recording (see the pause-triggered
   // segmentation in pages/PublicChat/index.tsx) — improves accuracy right at the segment seam.

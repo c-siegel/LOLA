@@ -1,4 +1,4 @@
-import type { ChatLayout, ChecklistItem, KnowledgeMode, SpokenLanguage, SttServerEngine, ThinkingMode } from "@/types/project";
+import type { ChatLayout, ChecklistItem, KnowledgeMode, SpokenLanguage, ReasoningEffort, ReasoningMode, SttServerEngine } from "@/types/project";
 
 // Local wizard state for screen 1e.
 export interface ConfiguratorDraft {
@@ -18,7 +18,10 @@ export interface ConfiguratorDraft {
   llmApiKeyId: string | null;
   temperature: number;
   topP: number;
-  thinkingMode: ThinkingMode;
+  reasoningMode: ReasoningMode;
+  reasoningEffort: ReasoningEffort | null;
+  deepLlmApiKeyId: string | null;
+  bridgeEnabled: boolean;
   saveConversations: boolean;
   requireVisitorName: boolean;
   surveyBeforeUrl: string;

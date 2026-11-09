@@ -31,6 +31,9 @@ export interface ApiKey {
   modelId: string | null;
   arcanaId: string | null;
   usedByProjects: number;
+  // What the key's model can do with a project's reasoning setting: nothing, on/off only, or
+  // on/off plus a level.
+  reasoningSupport: "none" | "switch" | "effort";
 }
 
 export interface ApiKeyInput {
@@ -68,8 +71,6 @@ export interface ProviderSpec {
   sttModelFixed: boolean;
   // Extra required field "Arcana ID" in the key form (currently only GWDG Arcana).
   requiresArcanaId: boolean;
-  // The project's thinking on/off switch is offered for keys of this provider.
-  thinkingSwitch: boolean;
   // Curated models for embedding keys; empty means the model ID is typed in.
   embeddingModels: ProviderModel[];
 }

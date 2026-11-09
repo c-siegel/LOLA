@@ -25,6 +25,7 @@ from sqlmodel import Session, select
 
 from app.features.api_keys.models import UserApiKey
 from app.features.auth.models import PasswordResetToken
+from app.features.chat.bridge import audio_cache as bridge_audio_cache
 from app.features.chat.models import Conversation, ProjectAccess
 from app.features.ai.tts.local import forget_voice
 from app.features.media.models import AvatarModel, BackgroundImage, VoiceClip
@@ -91,5 +92,8 @@ def delete_user_account(session: Session, user: User) -> None:
     session.commit()
     for sha256 in forgotten_voices:
         forget_voice(sha256)
+        bridge_audio_cache.forget_voice_clip(sha256)
+    for project_id in project_ids:
+        bridge_audio_cache.forget_project(project_id)
     if settings.rag_enabled:
         knowledge.retry_pending_deletions(session)

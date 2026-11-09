@@ -112,14 +112,14 @@ _capabilities_cache: tuple[float, dict] | None = None
 _CAPABILITIES_TTL_SECONDS = 60.0
 
 
-def capabilities() -> dict:
+def capabilities(timeout: float = 5.0) -> dict:
     """Local model, file types, hard limits and Docling availability — cached for a minute,
     since the dashboard asks on every page load and the answer only changes with a redeploy."""
     global _capabilities_cache
     now = time.monotonic()
     if _capabilities_cache is not None and now - _capabilities_cache[0] < _CAPABILITIES_TTL_SECONDS:
         return _capabilities_cache[1]
-    body = _request("GET", "/capabilities", timeout=5.0).json()
+    body = _request("GET", "/capabilities", timeout=timeout).json()
     _capabilities_cache = (now, body)
     return body
 

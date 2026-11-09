@@ -83,9 +83,9 @@ def test_download_fetches_only_the_pinned_listed_files(monkeypatch):
 
     fetched = []
 
-    def fake_download(repo_id, filename, *, revision, cache_dir):
-        fetched.append((repo_id, filename, revision, cache_dir))
-        return f"{cache_dir}/{filename}"
+    def fake_download(repo_id, filename, *, revision, local_dir):
+        fetched.append((repo_id, filename, revision, local_dir))
+        return f"{local_dir}/{filename}"
 
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_download)
     source = embedding.OnnxSource(
@@ -94,12 +94,48 @@ def test_download_fetches_only_the_pinned_listed_files(monkeypatch):
 
     graph, tokenizer = embedding._download_onnx_model("org/model", source, "/cache")
 
-    assert (graph, tokenizer) == ("/cache/onnx/model_quantized.onnx", "/cache/tokenizer.json")
+    folder = f"/cache/onnx/org--model/{'a' * 40}"
+    assert (graph, tokenizer) == (f"{folder}/onnx/model_quantized.onnx", f"{folder}/tokenizer.json")
     assert fetched == [
-        ("org/model", "onnx/model_quantized.onnx", "a" * 40, "/cache"),
-        ("org/model", "onnx/model_quantized.onnx_data", "a" * 40, "/cache"),
-        ("org/model", "tokenizer.json", "a" * 40, "/cache"),
+        ("org/model", "onnx/model_quantized.onnx", "a" * 40, folder),
+        ("org/model", "onnx/model_quantized.onnx_data", "a" * 40, folder),
+        ("org/model", "tokenizer.json", "a" * 40, folder),
     ]
+
+
+def test_external_weights_are_real_files_next_to_the_graph(monkeypatch, tmp_path):
+    """onnxruntime 1.31+ refuses external weights that resolve outside the graph's folder. The
+    Hugging Face cache stores each file as a symlink into its own blob folder, so EmbeddingGemma 2
+    failed to load with "External data path escapes model directory"."""
+    import os
+
+    import huggingface_hub
+
+    def fake_download(repo_id, filename, *, revision, local_dir=None, cache_dir=None):
+        if local_dir is None:  # what the cache does: a symlink into a per-file blob folder
+            blob = tmp_path / "blobs" / filename.replace("/", "_") / "blob"
+            blob.parent.mkdir(parents=True, exist_ok=True)
+            blob.write_bytes(b"x")
+            link = tmp_path / "snapshot" / filename
+            link.parent.mkdir(parents=True, exist_ok=True)
+            link.symlink_to(blob)
+            return str(link)
+        path = os.path.join(local_dir, filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as handle:
+            handle.write(b"x")
+        return path
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_download)
+    source = embedding.OnnxSource(
+        revision="b" * 40, graph="onnx/model_quantized.onnx", sidecars=("onnx/model_quantized.onnx_data",)
+    )
+
+    graph, _ = embedding._download_onnx_model("org/model", source, str(tmp_path / "cache"))
+
+    sidecar = os.path.join(os.path.dirname(graph), "model_quantized.onnx_data")
+    assert not os.path.islink(graph) and not os.path.islink(sidecar)
+    assert os.path.dirname(os.path.realpath(sidecar)) == os.path.dirname(os.path.realpath(graph))
 
 
 GEMMA = "onnx-community/embeddinggemma-2-ONNX"

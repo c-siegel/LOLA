@@ -241,6 +241,16 @@
             "title": "Avgdurationseconds",
             "type": "integer"
           },
+          "deepReplies": {
+            "default": 0,
+            "title": "Deepreplies",
+            "type": "integer"
+          },
+          "fastReplies": {
+            "default": 0,
+            "title": "Fastreplies",
+            "type": "integer"
+          },
           "messages": {
             "title": "Messages",
             "type": "integer"
@@ -411,6 +421,16 @@
           },
           "provider": {
             "title": "Provider",
+            "type": "string"
+          },
+          "reasoningSupport": {
+            "default": "none",
+            "enum": [
+              "none",
+              "switch",
+              "effort"
+            ],
+            "title": "Reasoningsupport",
             "type": "string"
           },
           "status": {
@@ -987,6 +1007,11 @@
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "retryAfterFailure": {
+            "default": false,
+            "title": "Retryafterfailure",
+            "type": "boolean"
           },
           "speakOnDevice": {
             "default": false,
@@ -1844,6 +1869,11 @@
       },
       "KnowledgeStatusOut": {
         "properties": {
+          "adaptiveReasoning": {
+            "default": false,
+            "title": "Adaptivereasoning",
+            "type": "boolean"
+          },
           "available": {
             "title": "Available",
             "type": "boolean"
@@ -1979,6 +2009,21 @@
           },
           "message": {
             "title": "Message",
+            "type": "string"
+          },
+          "retryAfterFailure": {
+            "default": false,
+            "title": "Retryafterfailure",
+            "type": "boolean"
+          },
+          "route": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "fast",
+              "deep"
+            ],
+            "title": "Route",
             "type": "string"
           },
           "speakOnDevice": {
@@ -2537,6 +2582,10 @@
             ],
             "title": "Avatarmodelurl"
           },
+          "bridgeEnabled": {
+            "title": "Bridgeenabled",
+            "type": "boolean"
+          },
           "builtinAvatar": {
             "anyOf": [
               {
@@ -2581,6 +2630,28 @@
             "format": "date-time",
             "title": "Createdat",
             "type": "string"
+          },
+          "deepLlmApiKeyId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deepllmapikeyid"
+          },
+          "deepLlmModel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deepllmmodel"
           },
           "description": {
             "anyOf": [
@@ -2683,6 +2754,32 @@
           "published": {
             "title": "Published",
             "type": "boolean"
+          },
+          "reasoningEffort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoningeffort"
+          },
+          "reasoningMode": {
+            "enum": [
+              "default",
+              "off",
+              "always",
+              "adaptive"
+            ],
+            "title": "Reasoningmode",
+            "type": "string"
           },
           "requireVisitorName": {
             "title": "Requirevisitorname",
@@ -2805,15 +2902,6 @@
             "title": "Temperature",
             "type": "number"
           },
-          "thinkingMode": {
-            "enum": [
-              "default",
-              "on",
-              "off"
-            ],
-            "title": "Thinkingmode",
-            "type": "string"
-          },
           "thinkingMotionsEnabled": {
             "title": "Thinkingmotionsenabled",
             "type": "boolean"
@@ -2885,7 +2973,11 @@
           "gradeLevel",
           "temperature",
           "topP",
-          "thinkingMode",
+          "reasoningMode",
+          "reasoningEffort",
+          "deepLlmApiKeyId",
+          "deepLlmModel",
+          "bridgeEnabled",
           "published",
           "shareSlug",
           "saveConversations",
@@ -2975,6 +3067,17 @@
             ],
             "title": "Avatarmodelid"
           },
+          "bridgeEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bridgeenabled"
+          },
           "builtinAvatar": {
             "anyOf": [
               {
@@ -3061,6 +3164,17 @@
               }
             ],
             "title": "Checklistvisible"
+          },
+          "deepLlmApiKeyId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deepllmapikeyid"
           },
           "description": {
             "anyOf": [
@@ -3172,6 +3286,39 @@
               }
             ],
             "title": "Preprompt"
+          },
+          "reasoningEffort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoningeffort"
+          },
+          "reasoningMode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "default",
+                  "off",
+                  "always",
+                  "adaptive"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoningmode"
           },
           "requireVisitorName": {
             "anyOf": [
@@ -3330,22 +3477,6 @@
               }
             ],
             "title": "Temperature"
-          },
-          "thinkingMode": {
-            "anyOf": [
-              {
-                "enum": [
-                  "default",
-                  "on",
-                  "off"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Thinkingmode"
           },
           "thinkingMotionsEnabled": {
             "anyOf": [
@@ -3856,11 +3987,6 @@
             },
             "title": "Supportedtypes",
             "type": "array"
-          },
-          "thinkingSwitch": {
-            "default": false,
-            "title": "Thinkingswitch",
-            "type": "boolean"
           },
           "ttsModelFixed": {
             "default": false,
@@ -6051,6 +6177,17 @@
             "title": "Content",
             "type": "string"
           },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
           "motions": {
             "anyOf": [
               {
@@ -6072,6 +6209,17 @@
             ],
             "title": "Role",
             "type": "string"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route"
           },
           "sources": {
             "anyOf": [

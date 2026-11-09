@@ -210,6 +210,12 @@ export function AnalyticsPage() {
           value={stats ? formatEuro(stats.tokenCostEur) : "–"}
           delta={stats && { value: stats.tokenCostDeltaPct, goodDirection: "down" }}
         />
+        {stats && stats.fastReplies + stats.deepReplies > 0 && (
+          <Tile
+            label={t("analytics.stats.deepReplies")}
+            value={`${formatCompactNumber(stats.deepReplies)} / ${formatCompactNumber(stats.fastReplies + stats.deepReplies)}`}
+          />
+        )}
       </div>
 
       <div className={styles.card}>
