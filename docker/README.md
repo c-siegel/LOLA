@@ -63,10 +63,15 @@ root, then fill in the required secrets).
    exits. The first run fetches ~380 MB from Hugging Face (a pinned revision, every file checked
    against its SHA-256 hash) and stores a gzipped copy next to each file, which Caddy serves to
    browsers (`/models/*` in `Caddyfile`): ~175 MB per device instead of ~380 MB. Later runs only
-   re-download missing or damaged files and finish in seconds. The site doesn't wait for it —
-   until the download is complete, browsers use server transcription. Follow its progress with
+   re-download missing or damaged files and finish in seconds. The backend transcribes with the
+   same files for devices that can't do it themselves. The site doesn't wait for the download, but
+   voice input only works once it's complete (unless a project has a cloud STT key); the backend
+   picks the files up without a restart. Follow its progress with
    `docker compose -f docker/docker-compose.yml --env-file .env logs stt-model`. To skip on-device
-   recognition entirely, set `BROWSER_STT_ENABLED=false`.
+   recognition entirely, set `BROWSER_STT_ENABLED=false`; the server still needs the files.
+
+   Upgrading from a version that still used faster-whisper: `<LOLA_DATA_DIR>/whisper-cache` is no
+   longer used and can be deleted (several hundred MB).
 
    After the first run, check that compression actually reaches browsers — this also catches a
    proxy in front that strips it:
@@ -114,8 +119,8 @@ already an admin), so the values are safe to leave in `.env` indefinitely.
 defaults to UID/GID 568 (TrueNAS's built-in "apps" user) and won't have write access to a data
 directory owned by anyone else. The backend's entrypoint adjusts its in-container user to match at
 every start (see `backend-entrypoint.sh`), so the image itself doesn't need rebuilding for a
-different host. The `web` and `stt-model` containers run as the same UID/GID, so they can read and
-write the speech recognition model in `<LOLA_DATA_DIR>/models` even where only that
+different host. The `web`, `stt-model` and `backend` containers run as the same UID/GID, so they
+can read and write the speech recognition model in `<LOLA_DATA_DIR>/models` even where only that
 user/group has access (as on a TrueNAS dataset).
 
 ## Local text-to-speech (optional)

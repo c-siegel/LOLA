@@ -11,7 +11,7 @@ By default, voice input is transcribed in the visitor's browser, from model file
 
 The Pocket TTS files are CC BY 4.0; the attribution is in the `NOTICE.md` written next to them.
 
-Without the STT files, voice input still works: the browser fails to load the model and falls back to transcribing on the server (no live text while speaking, a bit more delay).
+The STT files are also what the server transcribes with, for devices that can't do it themselves (no live text while speaking, a bit more delay). So without them, voice input doesn't work at all, unless the project has a cloud STT key.
 
 ## When on-device recognition is used
 

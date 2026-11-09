@@ -21,7 +21,7 @@ until you export them (CSV or JSON, with the device in every row).
 
 | Setting | Options |
 |---|---|
-| Speech recognition | On this device (Parakeet via WebGPU — load it first under "Device"), or on the server: as the project is set up, Whisper, or Parakeet |
+| Speech recognition | On this device (Parakeet via WebGPU — load it first under "Device"), or on the server: as the project is set up, or with the server's Parakeet model (skipping the project's STT key) |
 | Language model | As the project is set up, or any of your other LLM keys |
 | Streaming | On: the avatar starts after the first sentence. Off: after the whole reply |
 | Speech output | As the project is set up, the local TTS server (Pocket TTS), Pocket TTS in this browser, or none |

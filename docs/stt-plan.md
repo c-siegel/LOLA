@@ -1,7 +1,8 @@
 # Plan: STT rework — Parakeet only, Moonshine evaluation, VAD and hands-free input
 
-Status: **phase 1 done** (results: [stt-evaluation.md](stt-evaluation.md), decision pending);
-phases 2–3 planned. Written 2026-10-22 on branch `stt-rework` (all commits go there; the PR to
+Status: **phases 1–2 done**, phase 3 planned. Phase 1 ([stt-evaluation.md](stt-evaluation.md))
+decided on 2026-11-09: Moonshine is not adopted for now; Parakeet runs on both the server and the
+device. Written 2026-10-22 on branch `stt-rework` (all commits go there; the PR to
 `working-branch` comes later).
 
 ## Goal
@@ -34,7 +35,8 @@ are `de` and `en` (`frontend/src/lib/speechOptions.ts`).
   other deployments may block upgrades.
 - **Server model files are required.** Without them, server STT is unavailable (unless a cloud STT
   key is set). There is no silent fallback engine anymore.
-- **VAD: Silero VAD** (MIT, ~2 MB ONNX). **End of turn: evaluate
+- **VAD: Parakeet's own VAD model or Silero VAD** (MIT, ~2 MB ONNX), decided by a short
+  comparison at the start of phase 3. **End of turn: evaluate
   [Smart Turn v3](https://github.com/pipecat-ai/smart-turn)** (BSD-2-Clause, ~8 MB int8 ONNX,
   German among its languages).
 - **Push-to-talk and hands-free both stay**, per project.
@@ -113,29 +115,43 @@ Check: `python -m pytest`, `npm run build`, licence gate for `backend/`, `faster
 ## Phase 3: VAD, end-of-turn detection, hands-free mode
 
 Turn detection runs **in the browser for both paths** (device STT and server fallback), so the
-server needs no changes for it. Silero and Smart Turn are small enough for WASM on the CPU, so they
-work on devices without WebGPU too.
+server needs no changes for it. The VAD and Smart Turn are small enough for WASM on the CPU, so
+they work on devices without WebGPU too.
 
-1. **Silero VAD in the browser** (one shared module, `lib/vad.ts`, in a worker; onnxruntime-web is
+0. **Which VAD.** Parakeet ships its own VAD model (`vad-model.onnx`, plus `preprocessor.onnx`
+   for its mel features). The server already uses it to skip silence, and the WebGPU worker uses
+   it to commit segments. Using it everywhere would mean no new dependency and one VAD on both
+   paths. Measured so far (native ONNX Runtime, 1 thread): it has no state between calls, so it
+   re-scores a window each time: 3.7 ms for 0.5 s of audio, 12 ms for 2 s. Its resolution is
+   80 ms; Silero's is 32 ms. Download: 10.6 MB + 0.75 MB gzip, against ~2 MB for Silero. That
+   matters only for devices without WebGPU, which today load no model at all.
+   Compare both on short answers, background noise and children's voices (Silero v6.2 improved
+   the last), the delay in detecting the end of speech, and speed in WASM without WebGPU. Pick
+   Parakeet's VAD unless Silero is clearly better. The steps below say "VAD" for whichever wins.
+1. **VAD in the browser** (one shared module, `lib/vad.ts`, in a worker; onnxruntime-web is
    already a dependency). Replace the RMS-based `watchForSpeechPauses` in the server fallback:
    segments are cut at real speech pauses instead of quiet moments, and leading/trailing silence
    isn't uploaded. Behaviour change for push-to-talk only; ships on its own.
-2. **Smart Turn feasibility.** It expects Whisper-style 80-bin log-mel features of the last ≤ 8 s.
-   Port the feature extraction to TypeScript, check outputs against the Python reference on a few
-   clips, measure inference time on WASM. Confirm the weights' licence on the model card. If it
+2. **Smart Turn feasibility** (v3.2, which improved short answers and noise). It expects
+   Whisper-style 80-bin log-mel features of the last ≤ 8 s. First check
+   [`@micdrop/smart-turn`](https://micdrop.dev/docs/client/turn-detection) (MIT, runs Smart Turn
+   in the browser on WebGPU or WASM): which v3.x it ships, whether it needs cross-origin
+   isolation (which LOLA can't use, see the Tally iframe), and its licence notice. Otherwise port
+   the feature extraction to TypeScript, check outputs against the Python reference on a few
+   clips, and measure inference time on WASM. Confirm the weights' licence on the model card. If it
    doesn't fit, end of turn falls back to a plain silence timeout.
 3. **Hands-free mode.**
    - Project field `voice_input_mode: "push_to_talk" | "hands_free"` (server default
      `push_to_talk`) + migration; configurator option; public chat reads it.
-   - Flow: the student turns the mic on once → Silero detects speech start → STT runs (device
+   - Flow: the student turns the mic on once → the VAD detects speech start → STT runs (device
      streaming or server segments) with live text → at a pause (~300 ms) Smart Turn asks "is the
      turn complete?" → if yes, or after a maximum silence (~2 s), the message is sent
      automatically.
    - Default for now, to avoid echo and barge-in problems: listening pauses while the reply is
      generated and spoken, and resumes afterwards. The mic button stays a visible on/off switch.
    - Engine boundary: the device engine is reached through one interface
-     (`startStreaming`/`stop`, as today), so a Moonshine engine from phase 1 drops in without
-     touching the turn logic.
+     (`startStreaming`/`stop`, as today), so another engine (e.g. Moonshine later) drops in
+     without touching the turn logic.
 4. **Latency Lab.** Report end-of-turn delay (speech end → message sent) so pause and threshold
    values can be tuned with data.
 
@@ -147,6 +163,7 @@ i18n parity, backend tests for the new project field.
 - Barge-in (interrupting the avatar) — needs echo cancellation, and a policy for half-spoken
   replies.
 - Pause length / Smart Turn threshold as a teacher setting, or fixed values.
-- Whether to replace Parakeet's built-in VAD head inside the worker with Silero, so one VAD runs
-  everywhere.
-- Adopting Moonshine (after phase 1).
+- Moonshine as the on-device engine for devices without WebGPU (option B in
+  [stt-evaluation.md](stt-evaluation.md)). Revisit when upstream publishes a WASM build with
+  German and without cross-origin isolation. Release 0.1.7, then in preparation, rebuilds the WASM
+  and makes streaming cheaper. A single-threaded build is still source-only.

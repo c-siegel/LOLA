@@ -1,6 +1,7 @@
 # STT evaluation: Moonshine Voice vs. Parakeet Redux
 
-Status: **done, decision pending.** Measured 2026-10-22 on branch `stt-rework` (phase 1 of
+Status: **done; decided 2026-11-09: Moonshine is not adopted for now, Parakeet stays on the server
+and the device** (revisit option B later, see [stt-plan.md](stt-plan.md)). Measured 2026-10-22 on branch `stt-rework` (phase 1 of
 [stt-plan.md](stt-plan.md)). Reproduce with [scripts/stt-benchmark](../scripts/stt-benchmark/README.md).
 
 ## Summary
