@@ -1618,6 +1618,7 @@
     "STT_REQUEST_FAILED": "Spracherkennung fehlgeschlagen.",
     "VOICE_INPUT_DISABLED": "Spracheingabe ist für dieses Projekt nicht aktiviert.",
     "VOICE_INPUT_UNAVAILABLE": "Spracheingabe ist momentan nicht verfügbar.",
+    "SERVER_STT_MODEL_MISSING": "Die Spracherkennung auf dem Server ist nicht eingerichtet: Die Dateien des Sprachmodells fehlen auf dem Server. Wende dich an deine Administration.",
     "UNSUPPORTED_AUDIO_FORMAT": "Nicht unterstütztes Audioformat.",
     "AUDIO_FILE_TOO_LARGE": "Audiodatei ist zu groß (maximal 10 MB).",
     "CHAT_UNAVAILABLE": "Der Chat ist momentan nicht verfügbar.",

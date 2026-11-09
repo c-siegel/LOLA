@@ -22,7 +22,7 @@ from app.core.config import settings
 from app.core.deps import get_owned_project, get_session
 from app.core.error_codes import ErrorCode
 from app.core.providers import KEY_TYPE_LLM
-from app.features.ai.stt import transcribe_audio
+from app.features.ai.stt import SttModelMissing, transcribe_audio
 from app.features.api_keys.crypto import scrub_key_from_text
 from app.features.api_keys.resolve import get_owned_key_of_type, resolve_stt_key
 from app.features.chat.audio_upload import read_audio_upload
@@ -108,23 +108,24 @@ def latency_test_message(
 @router.post("/{project_id}/latency-test/transcriptions", response_model=LatencyTranscriptionOut)
 def latency_test_transcription(
     audio: UploadFile,
-    engine: Literal["project", "whisper", "parakeet"] = Form(default="project"),
+    engine: Literal["project", "parakeet"] = Form(default="project"),
     project: Project = Depends(get_owned_project),
     session: Session = Depends(get_session),
 ):
     """Transcribe a test recording on the server and report how long that took.
 
-    "project" transcribes exactly like the public chat would (the project's STT key, else its
-    local engine); "whisper"/"parakeet" force that local engine. Plain `def` for the same reason
+    "project" transcribes exactly like the public chat would (the project's STT key, else the
+    local model); "parakeet" forces the local model even when the project has a key. Plain `def` for the same reason
     as public_router.py::transcribe: CPU-bound work must stay off the event loop.
     """
     content = read_audio_upload(audio)
     stt_key = resolve_stt_key(session, project) if engine == "project" else None
-    local_engine = project.stt_server_engine if engine == "project" else engine
-    used = stt_key.provider if stt_key else (local_engine or settings.stt_engine)
+    used = stt_key.provider if stt_key else "parakeet"
     start = time.perf_counter()
     try:
-        text = transcribe_audio(content, project.spoken_language, api_key_record=stt_key, engine=local_engine)
+        text = transcribe_audio(content, project.spoken_language, api_key_record=stt_key)
+    except SttModelMissing as exc:
+        raise HTTPException(status_code=503, detail=ErrorCode.SERVER_STT_MODEL_MISSING) from exc
     except Exception as exc:
         message = scrub_key_from_text(str(exc), stt_key.encrypted_api_key) if stt_key else str(exc)
         raise HTTPException(

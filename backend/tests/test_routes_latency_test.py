@@ -107,14 +107,27 @@ def test_llm_failure_is_reported_with_its_message(client, chat_project, fake_ai)
 
 def test_transcription_reports_engine_and_server_time(client, chat_project, fake_ai):
     response = client.post(
-        f"/projects/{chat_project['id']}/latency-test/transcriptions", files=_audio(), data={"engine": "whisper"}
+        f"/projects/{chat_project['id']}/latency-test/transcriptions", files=_audio(), data={"engine": "parakeet"}
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["text"] == "hallo welt"
-    assert body["engine"] == "whisper"
+    assert body["engine"] == "parakeet"
     assert body["sttMs"] >= 0
+
+
+def test_the_removed_whisper_engine_is_rejected(client, chat_project, fake_ai):
+    response = client.post(
+        f"/projects/{chat_project['id']}/latency-test/transcriptions", files=_audio(), data={"engine": "whisper"}
+    )
+    assert response.status_code == 422
+
+
+def test_transcription_without_model_files_is_503(client, chat_project, missing_stt_model):
+    response = client.post(f"/projects/{chat_project['id']}/latency-test/transcriptions", files=_audio())
+    assert response.status_code == 503
+    assert response.json() == {"detail": "SERVER_STT_MODEL_MISSING"}
 
 
 def test_only_the_owner_can_run_tests(client, anon, engine, chat_project):

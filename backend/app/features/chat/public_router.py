@@ -27,7 +27,7 @@ from app.core.rate_limit import (
     enforce_public_chat_rate_limit,
     enforce_public_transcribe_rate_limit,
 )
-from app.features.ai.stt import transcribe_audio
+from app.features.ai.stt import SttModelMissing, transcribe_audio
 from app.features.api_keys.resolve import browser_stt_model_url_for, browser_tts_model_url_for, resolve_stt_key
 from app.features.chat.audio_upload import read_audio_upload
 from app.features.chat.checklist import checklist_for, replay
@@ -53,8 +53,8 @@ router = APIRouter(prefix="/public", tags=["public-chat"])
 
 logger = logging.getLogger(__name__)
 
-# faster-whisper's initial_prompt only needs to carry recent context across a pause-segmented
-# recording (see features/ai/stt) — capped to the trailing text, both because that's what
+# initial_prompt (used by a cloud STT provider, see features/ai/stt) only needs to carry recent
+# context across a pause-segmented recording — capped to the trailing text, both because that's what
 # actually helps decoding and to bound how much a client can make one transcription request process.
 _MAX_INITIAL_PROMPT_CHARS = 500
 
@@ -286,13 +286,10 @@ def transcribe(
     stt_key = resolve_stt_key(session, project)
     stt_start = time.perf_counter()
     try:
-        text = transcribe_audio(
-            content,
-            project.spoken_language,
-            initial_prompt,
-            api_key_record=stt_key,
-            engine=project.stt_server_engine,
-        )
+        text = transcribe_audio(content, project.spoken_language, initial_prompt, api_key_record=stt_key)
+    except SttModelMissing as exc:
+        # Already logged once by the STT client; no traceback per voice message.
+        raise HTTPException(status_code=503, detail=ErrorCode.VOICE_INPUT_UNAVAILABLE) from exc
     except Exception as exc:
         # Generic message for visitors (no technical detail), consistent with send_message.
         logger.exception("Transcription failed (project_id=%s)", project.id)

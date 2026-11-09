@@ -1618,6 +1618,7 @@
     "STT_REQUEST_FAILED": "Speech recognition failed.",
     "VOICE_INPUT_DISABLED": "Voice input isn't enabled for this project.",
     "VOICE_INPUT_UNAVAILABLE": "Voice input is currently unavailable.",
+    "SERVER_STT_MODEL_MISSING": "Server speech recognition isn't set up: the speech model files are missing on the server. Ask your administrator.",
     "UNSUPPORTED_AUDIO_FORMAT": "Unsupported audio format.",
     "AUDIO_FILE_TOO_LARGE": "Audio file is too large (10 MB maximum).",
     "CHAT_UNAVAILABLE": "Chat is currently unavailable.",

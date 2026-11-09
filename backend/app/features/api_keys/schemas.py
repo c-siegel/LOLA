@@ -200,11 +200,10 @@ class BrowserSttStatusOut(CamelModel):
 
 
 class ServerSttStatusOut(CamelModel):
-    # The deployment's default local server engine (Settings.stt_engine), which a project without
-    # its own stt_server_engine uses — and whether the Parakeet model files are present, so the
-    # Configurator only offers Parakeet when it would actually run (see Step2Technical.tsx).
-    default_engine: Literal["whisper", "parakeet"]
-    parakeet_available: bool
+    # Whether the server's Parakeet model files are present. Without them, a project without a
+    # cloud STT key can only transcribe on the visitor's device, so the Configurator warns (see
+    # Step2Technical.tsx).
+    available: bool
 
 
 class ProviderModelOut(CamelModel):

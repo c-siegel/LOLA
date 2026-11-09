@@ -41,7 +41,7 @@ def decode_audio(audio_bytes: bytes, sampling_rate: int = SAMPLE_RATE) -> np.nda
             # Flush the samples the resampler still holds back for filtering.
             for resampled in resampler.resample(None):
                 chunks.append(resampled.to_ndarray().reshape(-1))
-    except av.FFmpegError as exc:
+    except av.error.FFmpegError as exc:
         raise AudioDecodeError(f"Could not decode the audio upload: {exc}") from exc
     if not chunks:
         return np.zeros(0, dtype=np.float32)

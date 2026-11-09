@@ -8,7 +8,7 @@ freezes under that load.
 What is this for?
 This is the load test named in the concurrency-hardening plan: point it at a published project
 before/after a fix and compare the /health latency trace it prints. A trace with multi-second
-gaps means the whole server froze (see: Whisper running on the event loop,
+gaps means the whole server froze (see: transcription running on the event loop,
 app/features/chat/public_router.py::transcribe) — /health does no work of its own, so it can only be slow
 if the one worker process is stuck doing something else entirely. A trace that stays flat while
 chat latency alone rises under load means requests queued instead of freezing everything — that

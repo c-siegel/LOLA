@@ -2,7 +2,7 @@
 Local-TTS Sidecar
 
 The fallback used when a project has TTS enabled but no cloud key configured — the TTS
-counterpart to local Whisper for STT (see features/ai/stt/whisper_local.py), just
+counterpart to local Parakeet for STT (see features/ai/stt/parakeet_local.py), just
 out-of-process: the model needs more CPU/RAM than fits alongside the request-serving backend, so
 it runs in its own optional container (see local-tts/ and docker/local-tts.Dockerfile). Only
 used when settings.local_tts_enabled is set.

@@ -90,7 +90,6 @@ _CLEARABLE_FIELDS = {
     "tts_voice_clip_id",
     "tts_api_key_id",
     "stt_api_key_id",
-    "stt_server_engine",
 }
 
 # Changing any of these makes a previously generated start-prompt audio file (see

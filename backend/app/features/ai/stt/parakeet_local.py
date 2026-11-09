@@ -1,17 +1,17 @@
 """
 Local Parakeet Transcription
 
-An alternative to local faster-whisper (switched on with Settings.stt_engine = "parakeet"): runs
-the Parakeet Redux model on the server CPU via ONNX Runtime — the same model files visitors'
-browsers load for on-device recognition (scripts/fetch-stt-model.sh downloads them), so the
-server needs no extra download. On a typical CPU it is about twice as fast as Whisper "small"
-and at least as accurate on German.
+The server's own STT engine, used whenever a project has no cloud STT key: runs the Parakeet
+Redux model on the server CPU via ONNX Runtime — the same model files visitors' browsers load for
+on-device recognition (scripts/fetch-stt-model.sh downloads them), so one download serves both.
+Without those files, server transcription is unavailable (SttModelMissing); there is no fallback
+engine.
 
 What is a TDT decoder?
 Parakeet is a "token-and-duration transducer": for each 80 ms step of encoded audio, a small
 network predicts the next text piece (or "nothing here") plus how many steps to skip ahead. That
-makes decoding a short loop of tiny model calls instead of Whisper's full text generation, which
-is where most of the speed comes from.
+makes decoding a short loop of tiny model calls instead of full autoregressive text
+generation, which is where most of the speed comes from.
 
 How to use:
     from app.features.ai.stt.parakeet_local import LocalParakeetClient
@@ -31,7 +31,6 @@ import onnxruntime as ort
 from app.core.config import settings
 from app.features.ai.stt.audio import SAMPLE_RATE, decode_audio
 from app.features.ai.stt.capacity import transcription_slot
-from app.features.ai.stt.whisper_local import LocalWhisperClient
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +153,7 @@ class ParakeetModel:
             return ""
         features, lengths = self._features(audio)
         probabilities = self._speech_probabilities(features, lengths)
-        # Same job as faster-whisper's vad_filter: never run the encoder on pure silence.
+        # Never run the encoder on pure silence (e.g. a segment cut during a pause).
         if not (probabilities > SPEECH_PROBABILITY).any():
             return ""
         max_samples = MAX_CHUNK_SECONDS * SAMPLE_RATE
@@ -165,49 +164,55 @@ class ParakeetModel:
         return " ".join(t for t in texts if t)
 
 
+class SttModelMissing(RuntimeError):
+    """The Parakeet model files aren't there (scripts/fetch-stt-model.sh hasn't run, or the
+    stt-model service in docker/docker-compose.yml is still downloading them)."""
+
+
 _model_lock = threading.Lock()
 _loaded_model: ParakeetModel | None = None
 _missing_model_logged = False
 
 
 def model_available() -> bool:
-    """Whether the model files are there (cheap check, loads nothing) — the Configurator only
-    offers Parakeet once they are, see features/api_keys/providers_router.py::server_stt_status."""
+    """Whether the model files are there (cheap check, loads nothing) — the Configurator warns
+    when they aren't, see features/api_keys/providers_router.py::server_stt_status."""
     return (Path(settings.stt_parakeet_model_dir) / "manifest.json").is_file()
 
 
 def _model() -> ParakeetModel:
-    """Load (once per process) and cache the model. Raises FileNotFoundError while its files
+    """Load (once per process) and cache the model. Raises SttModelMissing while its files
     aren't there yet — retried on the next call, so it starts working as soon as they appear."""
     global _loaded_model
     with _model_lock:
         if _loaded_model is None:
             model_dir = Path(settings.stt_parakeet_model_dir)
             if not (model_dir / "manifest.json").is_file():
-                raise FileNotFoundError(f"No Parakeet model at {model_dir} (manifest.json missing)")
+                raise SttModelMissing(f"No Parakeet model at {model_dir} (manifest.json missing)")
             _loaded_model = ParakeetModel(model_dir, settings.stt_cpu_threads or (os.cpu_count() or 4))
         return _loaded_model
 
 
 class LocalParakeetClient:
-    """Transcribes with the process-wide Parakeet model, or with local Whisper while the model
-    files aren't downloaded yet (e.g. right after a fresh deployment — see the stt-model service
-    in docker/docker-compose.yml)."""
+    """Transcribes with the process-wide Parakeet model."""
 
     def transcribe(self, audio_bytes: bytes, language: str, initial_prompt: str | None = None) -> str:
-        """Unlike Whisper, Parakeet detects the language itself and takes no text context, so
-        `language` and `initial_prompt` are accepted only to fit the STTClient interface.
+        """Parakeet detects the language itself and takes no text context, so `language` and
+        `initial_prompt` are accepted only to fit the STTClient interface (a cloud provider uses
+        them).
 
-        Raises TimeoutError if the server is at capacity (see capacity.py::transcription_slot).
+        Raises SttModelMissing without the model files, TimeoutError if the server is at
+        capacity (see capacity.py::transcription_slot).
         """
         global _missing_model_logged
         try:
             model = _model()
-        except FileNotFoundError as exc:
+        except SttModelMissing as exc:
+            # Logged once, not per request: every voice message would otherwise repeat it.
             if not _missing_model_logged:
                 _missing_model_logged = True
-                logger.warning("%s — using local Whisper until it's downloaded.", exc)
-            return LocalWhisperClient().transcribe(audio_bytes, language, initial_prompt)
+                logger.error("%s — server transcription is unavailable until it's downloaded.", exc)
+            raise
         with transcription_slot():
             audio = decode_audio(audio_bytes)
             return model.transcribe(audio)

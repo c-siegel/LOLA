@@ -8,7 +8,6 @@ import pytest
 
 from app.core.config import settings
 from app.features.ai.tts import local
-from app.features.chat import public_router
 from conftest import browser_url, create_key, create_project, parse_sse, publish
 
 WAV = b"RIFF-fake-wav"
@@ -109,35 +108,18 @@ def test_project_voice_is_sent_to_the_sidecar(client, anon, keyless_tts_project,
 
 
 def test_server_stt_status(client, teacher, monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "stt_engine", "whisper")
     monkeypatch.setattr(settings, "stt_parakeet_model_dir", str(tmp_path))
-    assert client.get("/providers/server-stt-status").json() == {"defaultEngine": "whisper", "parakeetAvailable": False}
-    monkeypatch.setattr(settings, "stt_engine", "parakeet")
+    assert client.get("/providers/server-stt-status").json() == {"available": False}
     (tmp_path / "manifest.json").write_text("{}")
-    assert client.get("/providers/server-stt-status").json() == {"defaultEngine": "parakeet", "parakeetAvailable": True}
+    assert client.get("/providers/server-stt-status").json() == {"available": True}
 
 
-def test_project_picks_its_own_server_stt_engine(client, anon, keyless_tts_project, monkeypatch):
+def test_the_removed_server_engine_field_is_ignored(client, keyless_tts_project):
+    # Frontends from before faster-whisper was removed still send sttServerEngine.
     project_id = keyless_tts_project["id"]
-    assert client.get(f"/projects/{project_id}").json()["sttServerEngine"] is None
-    assert client.put(f"/projects/{project_id}", json={"sttServerEngine": "nonsense"}).status_code == 422
-    client.put(f"/projects/{project_id}", json={"sttServerEngine": "parakeet"})
-    assert client.get(f"/projects/{project_id}").json()["sttServerEngine"] == "parakeet"
-
-    engines = []
-    monkeypatch.setattr(
-        public_router,
-        "transcribe_audio",
-        lambda content, language, prompt=None, api_key_record=None, engine=None: engines.append(engine) or "Hallo",
-    )
-    slug = keyless_tts_project["shareSlug"]
-    response = anon.post(f"/public/{slug}/transcriptions", files={"audio": ("a.webm", b"audio", "audio/webm")})
+    response = client.put(f"/projects/{project_id}", json={"sttServerEngine": "whisper", "title": "Neu"})
     assert response.status_code == 200, response.text
-    assert engines == ["parakeet"]
-
-    # null resets it to the deployment default.
-    client.put(f"/projects/{project_id}", json={"sttServerEngine": None})
-    assert client.get(f"/projects/{project_id}").json()["sttServerEngine"] is None
+    assert "sttServerEngine" not in client.get(f"/projects/{project_id}").json()
 
 
 def test_chat_layout_is_saved_validated_and_public(client, anon, keyless_tts_project):

@@ -89,7 +89,7 @@ def resolve_stt_key(session: Session, project: Project) -> UserApiKey | None:
     """Find the STT key configured for this project (the STT counterpart to resolve_tts_key).
 
     None (no key configured, or a stale/foreign one) means the caller should fall back to the
-    instance-wide local Whisper engine (see features/ai/stt) — unlike LLM/TTS, having no
+    server's local Parakeet model (see features/ai/stt) — unlike LLM/TTS, having no
     STT key is a normal, fully working state, not a missing configuration.
     """
     if project.stt_api_key_id:
@@ -103,7 +103,7 @@ def browser_stt_model_url_for(project: Project) -> str | None:
 
     None if the deployment turned it off (Settings.browser_stt_enabled), the project opted out
     (project.stt_browser_enabled, on by default), or voice input is off for the project. The
-    model is multilingual, so unlike server Whisper it doesn't depend on spoken_language.
+    model is multilingual, so it doesn't depend on spoken_language.
     """
     if not (settings.browser_stt_enabled and project.stt_enabled and project.stt_browser_enabled):
         return None

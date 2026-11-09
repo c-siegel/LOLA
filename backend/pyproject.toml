@@ -16,12 +16,9 @@ dependencies = [
     "cryptography>=43.0",
     "litellm>=1.48",
     "httpx>=0.27",
-    "faster-whisper>=1.0",
-    # PyAV decodes uploaded audio for server STT (features/ai/stt/audio.py). The <19 cap is only
-    # for faster-whisper, which still passes an argument PyAV 19 removed; it goes with it.
-    "av>=11,<19",
-    # Imported directly by the optional Parakeet engine (features/ai/stt/parakeet_local.py) —
-    # both already come in through faster-whisper, listed here so that doesn't stay implicit.
+    # Decodes uploaded audio (WebM/Opus etc.) for server STT, see features/ai/stt/audio.py.
+    "av>=11",
+    # Run the server's Parakeet STT model (features/ai/stt/parakeet_local.py).
     "onnxruntime>=1.17,<2",
     "numpy>=1.24",
     "anyio>=4.0",

@@ -745,7 +745,6 @@
             "default": "project",
             "enum": [
               "project",
-              "whisper",
               "parakeet"
             ],
             "title": "Engine",
@@ -2756,21 +2755,6 @@
             "title": "Sttenabled",
             "type": "boolean"
           },
-          "sttServerEngine": {
-            "anyOf": [
-              {
-                "enum": [
-                  "whisper",
-                  "parakeet"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sttserverengine"
-          },
           "surveyAfterEnabled": {
             "title": "Surveyafterenabled",
             "type": "boolean"
@@ -2899,7 +2883,6 @@
           "ttsVoiceClipId",
           "spokenLanguage",
           "sttApiKeyId",
-          "sttServerEngine",
           "sttEnabled",
           "sttBrowserEnabled",
           "ttsBrowserEnabled",
@@ -3260,21 +3243,6 @@
               }
             ],
             "title": "Sttenabled"
-          },
-          "sttServerEngine": {
-            "anyOf": [
-              {
-                "enum": [
-                  "whisper",
-                  "parakeet"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sttserverengine"
           },
           "surveyAfterEnabled": {
             "anyOf": [
@@ -4950,22 +4918,13 @@
       },
       "ServerSttStatusOut": {
         "properties": {
-          "defaultEngine": {
-            "enum": [
-              "whisper",
-              "parakeet"
-            ],
-            "title": "Defaultengine",
-            "type": "string"
-          },
-          "parakeetAvailable": {
-            "title": "Parakeetavailable",
+          "available": {
+            "title": "Available",
             "type": "boolean"
           }
         },
         "required": [
-          "defaultEngine",
-          "parakeetAvailable"
+          "available"
         ],
         "title": "ServerSttStatusOut",
         "type": "object"

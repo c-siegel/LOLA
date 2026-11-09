@@ -1,8 +1,8 @@
 """
 Local Transcription Capacity
 
-Limits how many local transcriptions (faster-whisper or Parakeet) run at the same time in this
-process. Both are CPU-bound and each one already uses most of the machine's cores, so running
+Limits how many local (Parakeet) transcriptions run at the same time in this
+process. Each one is CPU-bound and already uses most of the machine's cores, so running
 several at once wouldn't finish any sooner — it would just make every one slower.
 
 How to use:

@@ -103,18 +103,14 @@ class Project(SQLModel, table=True):
     spoken_language: str = "de"
     # Reference to a key of type "stt" (mirrors tts_api_key_id/llm_api_key_id) — selects a
     # "bring your own key" (BYOK) STT provider (currently GWDG SAIA). None (the default) keeps
-    # transcribing locally through the instance-wide Whisper server instead, see
+    # transcribing locally with the server's Parakeet model instead, see
     # features/ai/stt/__init__.py::transcribe_audio.
     stt_api_key_id: str | None = Field(default=None, foreign_key="userapikey.id", index=True)
-    # Which local engine transcribes on the server when no stt_api_key_id is set: "whisper" or
-    # "parakeet" (see features/ai/stt/__init__.py::get_stt_client). None (the default) follows
-    # the deployment's Settings.stt_engine.
-    stt_server_engine: str | None = None
     # Only unlocks the microphone button in the public chat — stt_api_key_id (above) decides which
     # engine actually transcribes.
     stt_enabled: bool = True
     # Whether this project transcribes on the visitor's device (WebGPU) before falling back to
-    # stt_api_key_id/local server Whisper — only takes effect when the deployment also has it
+    # stt_api_key_id/local server Parakeet — only takes effect when the deployment also has it
     # enabled (see Settings.browser_stt_enabled), see
     # features/api_keys/resolve.py::browser_stt_model_url_for. On by default; False opts out.
     stt_browser_enabled: bool = True

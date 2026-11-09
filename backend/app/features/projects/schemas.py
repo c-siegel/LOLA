@@ -31,10 +31,6 @@ MIN_CHAT_PASSWORD_LENGTH = 4
 MAX_TEMPERATURE = 2.0
 MAX_TOP_P = 1.0
 
-# The local server STT engines a project may pick (see features/ai/stt/__init__.py::get_stt_client) —
-# None instead follows the deployment's Settings.stt_engine.
-SttServerEngine = Literal["whisper", "parakeet"]
-
 # What the public chat page shows, see features/projects/models.py::Project.chat_layout.
 # "avatar_only" needs voice in and out — the public page falls back to "avatar_chat" while TTS or
 # STT is off (see frontend pages/PublicChat/index.tsx).
@@ -138,7 +134,6 @@ class ProjectOut(CamelModel):
     tts_voice_clip_id: str | None
     spoken_language: str
     stt_api_key_id: str | None
-    stt_server_engine: SttServerEngine | None
     stt_enabled: bool
     stt_browser_enabled: bool
     tts_browser_enabled: bool
@@ -190,7 +185,6 @@ class ProjectUpdate(CamelModel):
     tts_voice_clip_id: str | None = None
     spoken_language: str | None = None
     stt_api_key_id: str | None = None
-    stt_server_engine: SttServerEngine | None = None
     stt_enabled: bool | None = None
     stt_browser_enabled: bool | None = None
     tts_browser_enabled: bool | None = None
@@ -319,7 +313,6 @@ class ProjectExportData(BaseModel):
     # Like avatar_model_id: only kept on import into the account that owns the clip.
     tts_voice_clip_id: str | None = None
     spoken_language: str = "de"
-    stt_server_engine: SttServerEngine | None = None
     stt_enabled: bool = True
     stt_browser_enabled: bool = True
     tts_browser_enabled: bool = False
