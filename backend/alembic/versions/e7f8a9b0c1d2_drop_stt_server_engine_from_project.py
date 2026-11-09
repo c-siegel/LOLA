@@ -4,7 +4,7 @@ faster-whisper was removed; Parakeet is the only local server engine, so there i
 for a project to choose.
 
 Revision ID: e7f8a9b0c1d2
-Revises: a1b2c3d4e5f6
+Revises: c3d4e5f6a7b8
 Create Date: 2026-11-09 00:00:00.000000
 
 """
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 
 revision: str = 'e7f8a9b0c1d2'
-down_revision: Union[str, None] = 'a1b2c3d4e5f6'
+down_revision: Union[str, None] = 'c3d4e5f6a7b8'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

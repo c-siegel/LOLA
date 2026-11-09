@@ -23,6 +23,7 @@ from app.core.cookies import get_or_set_visitor_id
 from app.core.deps import get_published_project, get_session
 from app.core.error_codes import ErrorCode
 from app.core.rate_limit import (
+    deep_turn_budget,
     enforce_chat_unlock_rate_limit,
     enforce_public_chat_rate_limit,
     enforce_public_transcribe_rate_limit,
@@ -42,7 +43,7 @@ from app.features.chat.schemas import (
     PublicProjectOut,
     TranscriptionOut,
 )
-from app.features.chat.streaming import sse_event
+from app.features.chat.streaming import sse_stream
 from app.features.chat.unlock import assert_unlocked, is_unlocked, issue_unlock_token, verify_chat_password
 from app.features.chat.visitor_log import log_access
 from app.features.chat.visitor_name import assert_visitor_name_provided, clean_visitor_name
@@ -169,7 +170,16 @@ def _start_turn(
     enforce_public_chat_rate_limit(request, visitor_id)
     history = [{"role": h.role, "content": h.content} for h in data.history]
     done = frozenset(replay(h.checks for h in data.history))
-    return ChatTurn(data.message, history, visitor_id, visitor_name, received_at, done)
+    return ChatTurn(
+        data.message,
+        history,
+        visitor_id,
+        visitor_name,
+        received_at,
+        done,
+        deep_turn_budget(request, visitor_id, project.id),
+        data.retry_after_failure,
+    )
 
 
 def _chat_context(session: Session, project: Project, data: ChatMessageIn) -> ChatContext:
@@ -243,7 +253,7 @@ def send_message_stream(
     session.close()
 
     streaming = StreamingResponse(
-        (sse_event(event, payload) for event, payload in stream_turn(context, turn)),
+        sse_stream(stream_turn(context, turn)),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

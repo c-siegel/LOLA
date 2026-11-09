@@ -140,3 +140,53 @@ def test_only_the_owner_can_run_tests(client, anon, engine, chat_project):
     ):
         assert response.status_code == 404
         assert response.json() == {"detail": "PROJECT_NOT_FOUND"}
+
+
+USAGE = {"promptTokens": 1200, "completionTokens": 40, "cachedTokens": 1024, "reasoningTokens": 0}
+
+
+def test_streamed_done_reports_token_usage(client, chat_project, fake_ai):
+    events = parse_sse(_send(client, chat_project["id"]).text)
+
+    assert events[-1][1]["usage"] == USAGE
+    assert fake_ai.completion_calls[-1]["stream_options"] == {"include_usage": True}
+    # The usage chunk has no choices; it must not end up in (or break) the reply text.
+    assert " ".join(data["text"] for name, data in events if name == "chunk") == LLM_REPLY
+
+
+def test_plain_done_reports_token_usage(client, chat_project, fake_ai):
+    events = parse_sse(_send(client, chat_project["id"], streaming=False).text)
+
+    assert events[-1][1]["usage"] == USAGE
+
+
+def test_usage_fields_stay_null_when_the_provider_reports_none(client, chat_project, fake_ai):
+    fake_ai.llm_usage = None
+
+    done = parse_sse(_send(client, chat_project["id"]).text)[-1][1]
+
+    assert done["usage"] == {"promptTokens": None, "completionTokens": None, "cachedTokens": None, "reasoningTokens": None}
+
+
+def test_public_chat_never_asks_for_or_sends_token_usage(anon, chat_project, fake_ai):
+    slug = chat_project["shareSlug"]
+    anon.get(f"/public/{slug}")
+
+    done = parse_sse(anon.post(f"/public/{slug}/messages/stream", json={"message": "Hi"}).text)[-1][1]
+
+    assert "usage" not in done
+    assert "stream_options" not in fake_ai.completion_calls[-1]
+    assert "usage" not in anon.post(f"/public/{slug}/messages", json={"message": "Hi"}).json()
+
+
+def test_done_reports_the_reasoning_route_only_to_the_owner(client, chat_project, fake_ai, anon) -> None:
+    for streaming in (True, False):
+        assert parse_sse(_send(client, chat_project["id"], streaming=streaming).text)[-1][1]["route"] == "default"
+
+    client.put(f"/projects/{chat_project['id']}", json={"reasoningMode": "off"})
+    assert parse_sse(_send(client, chat_project["id"]).text)[-1][1]["route"] == "fast"
+
+    slug = chat_project["shareSlug"]
+    anon.get(f"/public/{slug}")
+    assert "route" not in parse_sse(anon.post(f"/public/{slug}/messages/stream", json={"message": "Hi"}).text)[-1][1]
+    assert "route" not in anon.post(f"/public/{slug}/messages", json={"message": "Hi"}).json()

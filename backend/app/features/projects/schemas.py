@@ -35,7 +35,9 @@ MAX_TOP_P = 1.0
 # "avatar_only" needs voice in and out — the public page falls back to "avatar_chat" while TTS or
 # STT is off (see frontend pages/PublicChat/index.tsx).
 ChatLayout = Literal["avatar_chat", "avatar_chat_collapsed", "avatar_only", "chat_only"]
-ThinkingMode = Literal["default", "on", "off"]
+# See features/projects/models.py::Project.reasoning_mode.
+ReasoningMode = Literal["default", "off", "always", "adaptive"]
+ReasoningEffort = Literal["low", "medium", "high"]
 # How voice input starts and ends, see features/projects/models.py::Project.voice_input_mode.
 VoiceInputMode = Literal["push_to_talk", "hands_free"]
 
@@ -122,7 +124,11 @@ class ProjectOut(CamelModel):
     grade_level: str | None
     temperature: float
     top_p: float
-    thinking_mode: ThinkingMode
+    reasoning_mode: ReasoningMode
+    reasoning_effort: ReasoningEffort | None
+    deep_llm_api_key_id: str | None
+    deep_llm_model: str | None
+    bridge_enabled: bool
     published: bool
     share_slug: str | None
     save_conversations: bool
@@ -176,7 +182,10 @@ class ProjectUpdate(CamelModel):
     grade_level: str | None = None
     temperature: float | None = None
     top_p: float | None = None
-    thinking_mode: ThinkingMode | None = None
+    reasoning_mode: ReasoningMode | None = None
+    reasoning_effort: ReasoningEffort | None = None
+    deep_llm_api_key_id: str | None = None
+    bridge_enabled: bool | None = None
     save_conversations: bool | None = None
     survey_before_url: str | None = None
     survey_before_enabled: bool | None = None
@@ -306,7 +315,9 @@ class ProjectExportData(BaseModel):
     grade_level: str | None = None
     temperature: float = 0.5
     top_p: float = 1.0
-    thinking_mode: ThinkingMode = "default"
+    reasoning_mode: ReasoningMode = "default"
+    reasoning_effort: ReasoningEffort | None = None
+    bridge_enabled: bool = True
     save_conversations: bool = False
     survey_before_url: str | None = None
     survey_before_enabled: bool = False

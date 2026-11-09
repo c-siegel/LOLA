@@ -75,6 +75,13 @@ def resolve_llm_key(session: Session, project: Project) -> UserApiKey | None:
     return None
 
 
+def resolve_deep_llm_key(session: Session, project: Project) -> UserApiKey | None:
+    """The second LLM key for reasoning turns, or None (then the main key answers those too)."""
+    if project.deep_llm_api_key_id:
+        return get_owned_key_of_type(session, project.user_id, project.deep_llm_api_key_id, KEY_TYPE_LLM)
+    return None
+
+
 def resolve_tts_key(session: Session, project: Project) -> UserApiKey | None:
     """Find the TTS key configured for this project (the TTS counterpart to resolve_llm_key).
 

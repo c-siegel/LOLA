@@ -19,6 +19,7 @@ from app.core.deps import get_current_user, get_session
 from app.core.error_codes import ErrorCode
 from app.core.ownership import get_owned
 from app.core.rate_limit import enforce_knowledge_upload_rate_limit
+from app.features.chat.reasoning_router import ADAPTIVE_EMBEDDING_MODELS
 from app.features.knowledge import bibtex, metadata, rag_client, service, sources
 from app.features.knowledge.limits import current_limits
 from app.features.knowledge.models import KnowledgeBase, KnowledgeDocument
@@ -109,6 +110,7 @@ def rag_status(current_user: User = Depends(get_current_user), session: Session 
     out.local_model = capabilities.get("local_model")
     out.docling_available = bool(capabilities.get("docling_available"))
     out.file_types = list(capabilities.get("file_types") or [])
+    out.adaptive_reasoning = out.local_model in ADAPTIVE_EMBEDDING_MODELS
     return out
 
 

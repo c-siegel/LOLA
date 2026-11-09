@@ -30,8 +30,15 @@ export interface Project {
   // ::_sampling_params). temperature 0.0-2.0, topP 0.0-1.0 — the backend checks the same limits.
   temperature: number;
   topP: number;
-  // Reasoning switch for models that support it; "default" leaves the model's own behaviour.
-  thinkingMode: ThinkingMode;
+  // Reasoning for models that support it; "default" leaves the model's own behaviour alone.
+  reasoningMode: ReasoningMode;
+  // Level for models that take one; null = the provider's own default.
+  reasoningEffort: ReasoningEffort | null;
+  // A second model for the turns that reason; null: the main model answers those too.
+  deepLlmApiKeyId: string | null;
+  deepLlmModel: string | null;
+  // Speak a short phrase while a reasoning turn is still thinking.
+  bridgeEnabled: boolean;
   published: boolean;
   shareSlug: string | null;
   saveConversations: boolean;
@@ -132,8 +139,11 @@ export type SpokenLanguage = "de" | "en";
 export type KnowledgeMode = "off" | "supplement" | "strict";
 export const KNOWLEDGE_MODES: KnowledgeMode[] = ["off", "supplement", "strict"];
 
-export type ThinkingMode = "default" | "on" | "off";
-export const THINKING_MODES: ThinkingMode[] = ["default", "on", "off"];
+export type ReasoningMode = "default" | "off" | "always" | "adaptive";
+export const REASONING_MODES: ReasoningMode[] = ["default", "off", "always", "adaptive"];
+
+export type ReasoningEffort = "low" | "medium" | "high";
+export const REASONING_EFFORTS: ReasoningEffort[] = ["low", "medium", "high"];
 
 export type ChatLayout = "avatar_chat" | "avatar_chat_collapsed" | "avatar_only" | "chat_only";
 export const CHAT_LAYOUTS: ChatLayout[] = ["avatar_chat", "avatar_chat_collapsed", "avatar_only", "chat_only"];

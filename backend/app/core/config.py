@@ -425,6 +425,23 @@ class Settings(BaseSettings):
     this has to comfortably cover the whole room's normal traffic, not just one person's.
     """
 
+    # Reasoning replies cost several times a normal one and the public chat spends the teacher's
+    # own key, so they get budgets of their own. Over a budget a turn is answered without
+    # reasoning, never refused (see app/core/rate_limit.py::deep_turn_budget).
+
+    deep_window_seconds: int = 3600
+    """Sliding-window size, in seconds, for the per-visitor and per-IP reasoning budgets."""
+
+    deep_max_per_visitor: int = 10
+    """Reasoning replies one visitor (browser tab) may get per deep_window_seconds."""
+
+    deep_max_per_ip: int = 150
+    """Reasoning replies one IP address may get per deep_window_seconds (a class shares one)."""
+
+    deep_max_per_project_per_day: int = 400
+    """Reasoning replies one project may give per 24 hours, whoever asks. The cap that protects the
+    teacher's bill: the visitor id is a cookie the caller controls, and IPs can be many."""
+
     transcribe_window_seconds: int = 600
     """Sliding-window size, in seconds, for the voice-transcription rate limits below."""
 

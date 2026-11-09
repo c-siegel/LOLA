@@ -23,6 +23,8 @@ from app.core.providers import KEY_TYPE_LLM, KEY_TYPE_STT, KEY_TYPE_TTS, build_m
 from app.core.security import hash_password
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.resolve import get_owned_key_of_type
+from app.features.chat.bridge import audio_cache as bridge_audio_cache
+from app.features.chat.reasoning_router import adaptive_reasoning_available
 from app.features.chat.models import Conversation, ProjectAccess
 from app.features.evaluation import cleanup as evaluation_cleanup
 from app.features.knowledge.models import KnowledgeBase
@@ -39,6 +41,19 @@ _NO_CHAT_PASSWORD_SENT = object()
 class UnknownApiKey(DomainError):
     status_code = 400
     detail = ErrorCode.UNKNOWN_API_KEY
+
+
+class AdaptiveReasoningUnavailable(DomainError):
+    status_code = 400
+    detail = ErrorCode.ADAPTIVE_REASONING_UNAVAILABLE
+
+
+def _check_reasoning_mode(data: ProjectUpdate, current: str | None) -> None:
+    """Refuse switching a project to "adaptive" where the deployment can't offer it (see
+    chat/reasoning_router.py). A project that already is adaptive may be saved unchanged: it then
+    reasons on every turn, and the configurator says so."""
+    if data.reasoning_mode == "adaptive" and current != "adaptive" and not adaptive_reasoning_available(timeout=5.0):
+        raise AdaptiveReasoningUnavailable()
 
 
 class UnknownAvatar(DomainError):
@@ -68,11 +83,15 @@ def sync_llm_model(session: Session, project: Project) -> None:
     additionally kept denormalized because analytics (features/analytics/service.py) and the project
     cards can then avoid a join. Done centrally here so the two never drift apart.
     """
-    key = find_owned(session, UserApiKey, project.llm_api_key_id, project.user_id) if project.llm_api_key_id else None
+    project.llm_model = _model_string_of(session, project, project.llm_api_key_id)
+    project.deep_llm_model = _model_string_of(session, project, project.deep_llm_api_key_id)
+
+
+def _model_string_of(session: Session, project: Project, key_id: str | None) -> str | None:
+    key = find_owned(session, UserApiKey, key_id, project.user_id) if key_id else None
     if key is None or not key.model_id:
-        project.llm_model = None
-        return
-    project.llm_model = build_model_string(key.provider, key.model_id)
+        return None
+    return build_model_string(key.provider, key.model_id)
 
 
 # Fields where an explicitly sent null is a deliberate clear (e.g. deselecting a model or
@@ -82,6 +101,7 @@ def sync_llm_model(session: Session, project: Project) -> None:
 _CLEARABLE_FIELDS = {
     "motion_prompt",
     "llm_api_key_id",
+    "deep_llm_api_key_id",
     "avatar_model_id",
     "builtin_avatar",
     "avatar_background_id",
@@ -114,6 +134,7 @@ def delete_project(session: Session, project: Project) -> None:
     evaluation_cleanup.delete_for_project(session, project.id)
     session.delete(project)
     session.commit()
+    bridge_audio_cache.forget_project(project.id)
 
 
 def set_or_clear_chat_password(project: Project, password: str | None) -> None:
@@ -144,7 +165,7 @@ def update_project(session: Session, project: Project, data: dict) -> Project:
     for field, value in data.items():
         if value is not None or field in _CLEARABLE_FIELDS:
             setattr(project, field, value)
-    if "llm_api_key_id" in data:
+    if "llm_api_key_id" in data or "deep_llm_api_key_id" in data:
         sync_llm_model(session, project)
     session.add(project)
     session.commit()
@@ -167,6 +188,8 @@ def _check_references(session: Session, user_id: str, data: ProjectUpdate) -> No
     # reference wouldn't belong in the DB either way).
     if data.llm_api_key_id:
         _require_owned_key_of_type(session, user_id, data.llm_api_key_id, KEY_TYPE_LLM)
+    if data.deep_llm_api_key_id:
+        _require_owned_key_of_type(session, user_id, data.deep_llm_api_key_id, KEY_TYPE_LLM)
     if data.tts_api_key_id:
         _require_owned_key_of_type(session, user_id, data.tts_api_key_id, KEY_TYPE_TTS)
     if data.stt_api_key_id:
@@ -188,6 +211,7 @@ def create_project(session: Session, user_id: str, data: ProjectUpdate) -> Proje
     # anyway and the DB model has a default for everything except title/user_id (see
     # features/projects/models.py) — the frontend always sends a title on creation ("+ New project") anyway.
     _check_references(session, user_id, data)
+    _check_reasoning_mode(data, None)
     create_data = data.model_dump(exclude_unset=True)
     chat_password = create_data.pop("chat_password", _NO_CHAT_PASSWORD_SENT)
     knowledge_base_ids = create_data.pop("knowledge_base_ids", None)
@@ -209,6 +233,7 @@ def create_project(session: Session, user_id: str, data: ProjectUpdate) -> Proje
 def apply_update(session: Session, project: Project, data: ProjectUpdate) -> Project:
     """Validate and apply a ProjectUpdate (only the fields actually sent), including the chat password."""
     _check_references(session, project.user_id, data)
+    _check_reasoning_mode(data, project.reasoning_mode)
     update_data = data.model_dump(exclude_unset=True)
     if "motion_prompt" in update_data and not (update_data["motion_prompt"] or "").strip():
         update_data["motion_prompt"] = None

@@ -68,10 +68,19 @@ class Project(SQLModel, table=True):
     # 1.0 = no nucleus filtering, which is what every provider defaults to.
     top_p: float = 1.0
     # Whether the model reasons ("thinks") before it answers: "default" leaves the model's own
-    # behaviour alone, "on"/"off" are sent to providers that can switch it (see
-    # features/ai/llm/history.py::thinking_extra_body). Mainly for comparing latency with and
-    # without reasoning on the same model.
-    thinking_mode: str = "default"
+    # behaviour alone, "off" switches it off and "always" on, for models that can be switched (see
+    # features/ai/llm/reasoning.py). "adaptive" reasons only for turns that look like an argument
+    # (chat/escalation_rules.py), see docs/adaptive-reasoning-plan.md.
+    reasoning_mode: str = "default"
+    # "low"/"medium"/"high" for models that take a level; None = the provider's own default.
+    reasoning_effort: str | None = None
+    # A second LLM key for the turns that reason (mode "always"/"adaptive"); None = the same key as
+    # llm_api_key_id. Lets a small fast model answer the easy turns and a bigger one the hard ones.
+    deep_llm_api_key_id: str | None = Field(default=None, foreign_key="userapikey.id", index=True)
+    # Denormalized like llm_model, written by projects/service.py::sync_llm_model.
+    deep_llm_model: str | None = None
+    # Speak a short neutral phrase while a reasoning turn is still thinking (chat/bridge.py).
+    bridge_enabled: bool = True
     published: bool = False
     share_slug: str | None = Field(default=None, unique=True, index=True)
     save_conversations: bool = False

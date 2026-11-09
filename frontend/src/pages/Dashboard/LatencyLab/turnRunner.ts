@@ -6,6 +6,7 @@ import { errorMessage } from "@/api/client";
 import { latencyTestApi, sendLatencyMessage, type LatencyChunkEvent, type ServerTtsMode } from "@/api/latencyTest";
 import type { TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
 import type { BrowserTts } from "@/lib/browserTts";
+import { BRIDGE_DELAY_MS } from "@/lib/bridgePhrase";
 import type { ParakeetSttEngine } from "@/lib/parakeetStt";
 import type { ChatMessage } from "@/types/chat";
 import { isBrowserTtsMode, type InputKind, type LabConfig, type TurnResult } from "./metrics";
@@ -210,6 +211,11 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
     retrievalMs: null,
     llmFirstTokenMs: null,
     llmTotalMs: null,
+    route: null,
+    promptTokens: null,
+    cachedTokens: null,
+    completionTokens: null,
+    reasoningTokens: null,
     firstChunkTextReadyMs: null,
     firstChunkTtsMs: null,
     ttsTotalMs: null,
@@ -281,13 +287,20 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
 
     const onChunk = (chunk: LatencyChunkEvent) => {
       firstChunkAt ??= performance.now();
-      result.chunks++;
-      if (chunk.index === 0 && !browserTts) result.firstChunkTtsMs = chunk.ttsMs;
-      replyText = replyText ? `${replyText} ${chunk.text}` : chunk.text;
-      ctx.onReplyText(replyText);
+      // The bridge phrase is heard (so it counts as the first audio a student gets) but isn't the reply.
+      if (!chunk.bridge) {
+        result.chunks++;
+        if (chunk.index === 0 && !browserTts) result.firstChunkTtsMs = chunk.ttsMs;
+        replyText = replyText ? `${replyText} ${chunk.text}` : chunk.text;
+        ctx.onReplyText(replyText);
+      }
       const { audioBase64 } = chunk;
       if (audioBase64) {
-        speech = speech.then(async () => play(await ctx.speaker.decodeAudio(audioBase64)));
+        speech = speech.then(async () => {
+          // Said after the same beat as on the public page, so "first audio" is what a student hears.
+          if (chunk.bridge) await abortable(new Promise<void>((resolve) => setTimeout(resolve, BRIDGE_DELAY_MS)), ctx.signal);
+          play(await ctx.speaker.decodeAudio(audioBase64));
+        });
       } else if (browserTts) {
         speech = speech.then(async () => {
           const synthesis = await ctx.browserTts!.synthesize(chunk.text, ctx.language, (samples, sampleRate) => {
@@ -310,6 +323,7 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
         // Browser TTS: the server sends text only, this device speaks it.
         ttsMode: browserTts ? "none" : (ctx.config.ttsMode as ServerTtsMode),
         streaming: ctx.config.streaming,
+        route: ctx.config.route,
       },
       onChunk,
       ctx.signal,
@@ -318,6 +332,11 @@ export async function runTurn(ctx: TurnContext, input: TurnInput, runId: string,
     result.retrievalMs = done.retrievalMs ?? null;
     result.llmFirstTokenMs = done.llmFirstTokenMs;
     result.llmTotalMs = done.llmMs;
+    result.route = done.route ?? null;
+    result.promptTokens = done.usage?.promptTokens ?? null;
+    result.cachedTokens = done.usage?.cachedTokens ?? null;
+    result.completionTokens = done.usage?.completionTokens ?? null;
+    result.reasoningTokens = done.usage?.reasoningTokens ?? null;
     result.firstChunkTextReadyMs = done.firstChunkTextReadyMs;
     result.ttsTotalMs = done.ttsMs;
     result.replyChars = done.reply.length;

@@ -35,7 +35,7 @@ def list_keys_with_usage(session: Session, user_id: str) -> list[tuple[UserApiKe
     # How often each key is used in projects (as the LLM, TTS or STT source), one query per usage
     # type instead of one per row, then merged into a single total per key.
     usage: dict[str, int] = {}
-    for column in (Project.llm_api_key_id, Project.tts_api_key_id, Project.stt_api_key_id):
+    for column in (Project.llm_api_key_id, Project.deep_llm_api_key_id, Project.tts_api_key_id, Project.stt_api_key_id):
         counts = session.exec(
             select(column, func.count(Project.id))
             .where(Project.user_id == user_id, column.is_not(None))
@@ -95,7 +95,9 @@ def update_key(session: Session, key: UserApiKey, data: ApiKeyUpdate) -> UserApi
     # Projects keep a denormalized copy of the litellm model string — a model change on the key
     # must be propagated there too, or the analytics would filter on a model that no longer runs.
     session.flush()
-    for project in session.exec(select(Project).where(Project.llm_api_key_id == key.id)).all():
+    for project in session.exec(
+        select(Project).where((Project.llm_api_key_id == key.id) | (Project.deep_llm_api_key_id == key.id))
+    ).all():
         sync_llm_model(session, project)
         session.add(project)
 
@@ -111,6 +113,12 @@ def delete_key(session: Session, key: UserApiKey) -> None:
     for project in session.exec(select(Project).where(Project.llm_api_key_id == key.id)).all():
         project.llm_api_key_id = None
         project.llm_model = None
+        session.add(project)
+
+    # The second key for reasoning turns: they fall back to the main key.
+    for project in session.exec(select(Project).where(Project.deep_llm_api_key_id == key.id)).all():
+        project.deep_llm_api_key_id = None
+        project.deep_llm_model = None
         session.add(project)
 
     # Same for TTS — no denormalized model string to clear there, just the reference.

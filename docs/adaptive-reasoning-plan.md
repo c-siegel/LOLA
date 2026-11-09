@@ -1,7 +1,9 @@
 # Plan: adaptive reasoning for LOLA avatars
 
-Status: **draft, nothing implemented.** Written 2026-10-20, reviewed against the code the same day
-(see "Changes from the first draft"). Open work: [open-work.md](open-work.md).
+Status: **phases 0-2 implemented**; self-escalation and the classifier are not (see
+[open-work.md](open-work.md), which also lists where the implementation deviates from this plan).
+Written 2026-10-20, reviewed against the code on 2026-10-20 and 2026-10-30 (see "Changes from the
+first draft").
 
 The goal is to answer simple turns fast and give hard turns (theses, arguments, counterarguments) a
 reasoning model, without the student waiting in silence.
@@ -35,6 +37,21 @@ The first draft was checked against the code and the licence/cost rules. What ch
 - **Added:** labelled lesson data is student data (AGENTS.md); it needs the ethics process and
   pseudonymisation before anyone collects it (§10).
 
+Second review (2026-10-30) changes:
+
+- **"Off" is now three states** (unset / explicitly off / low-medium-high). Hybrid models think by
+  default when the parameter is omitted, so the FAST route of an adaptive project must switch
+  thinking off explicitly, while `reasoning_mode=off` keeps omitting everything (§4.1).
+- **Sampling params are dropped for every reasoning model**, not only Anthropic (OpenAI o-series and
+  GPT-5 reject them), and the capability check is per model, not per provider (§4.1).
+- **The deep-turn cap no longer relies on `visitor_id`** alone, which the client controls (§4.7).
+- **Self-escalation costs more than first stated**: the holdback delays every adaptive turn (§4.4, §6).
+- **Added: timeout, error fallback and SSE keep-alive** for the deep route (§4.5).
+- **`routeReason`/`routerMs` stay out of the public `done` event** (§4.5).
+- Prompt reordering, measurement and `ThinkTagGuard` are separate PRs (§8); migration details
+  tightened (§3); the vague "previous message posed a task" rule is defined or dropped (§4.4);
+  unsupported languages fall back to FAST (§4.4).
+
 ## 1. Goals and non-goals
 
 **Goals**
@@ -58,7 +75,7 @@ The first draft was checked against the code and the licence/cost rules. What ch
 | Finding | Where | Consequence |
 |---|---|---|
 | One LLM per project: `Project.llm_api_key_id` → `UserApiKey` (provider + `model_id` + `api_base`) | `projects/models.py`, `api_keys/models.py` | No second model and no per-turn choice |
-| The call sends only `messages` + temperature/top_p | `ai/llm/history.py::sampling_params`, `litellm_provider.py`, `arcana.py::_body` | Reasoning can't be switched on or off; the provider's default applies |
+| The call sends `messages` + temperature/top_p, plus a per-project **thinking switch** for vLLM-style endpoints (`Project.thinking_mode` → `history.py::thinking_extra_body`, only where `ProviderSpec.thinking_switch` is set) | `ai/llm/history.py`, `litellm_provider.py::_thinking_kwargs`, `arcana.py::_body`, `core/providers.py` | The `enable_thinking` mapping for Qwen3-style servers **already exists**, but is a fixed per-project setting, not per turn, and has no effort level or other provider mappings. Phase 1 extends it (replace or generalise `thinking_mode`) instead of adding a second switch |
 | The stream yields only `delta.content` | `litellm_provider.py::stream` | Reasoning tokens are dropped, but the first content token arrives only after the thinking phase |
 | No `<think>` filter | (missing) | Qwen3 or DeepSeek-R1 behind Ollama, or vLLM without a reasoning parser, emit `<think>…</think>` as content and the avatar would **speak** it. This is a bug today, independent of this plan |
 | Knowledge passages **and** the checklist status line go into the system prompt | `history.py::build_messages`, `chat/checklist.py` | The system prompt changes per turn, so prefix caching only covers the persona part |
@@ -91,7 +108,7 @@ router serve both. GWDG currently needs two models (the fast Instruct model can'
 
 | Column | Type | Default | Meaning |
 |---|---|---|---|
-| `reasoning_mode` | str | `'off'` | `off` (as today) · `always` · `adaptive` |
+| `reasoning_mode` | str | `'default'` | `default` (send nothing, as before) · `off` (explicitly no reasoning) · `always` · `adaptive` (phase 2). Phase 1 migrates `Project.thinking_mode` into it (`on` → `always`) |
 | `reasoning_effort` | str \| null | null | `low`/`medium`/`high` for the deep route; null = provider default |
 | `deep_llm_api_key_id` | FK userapikey \| null | null | Second key for the deep route; null = same key as `llm_api_key_id` |
 | `deep_llm_model` | str \| null | null | Denormalised like `llm_model`, for analytics and project cards |
@@ -99,28 +116,48 @@ router serve both. GWDG currently needs two models (the fast Instruct model can'
 
 `deep_llm_api_key_id` goes through the same owned-key check as `llm_api_key_id`
 (`get_owned_key_of_type(..., KEY_TYPE_LLM)`) and through project export/import
-(`projects/export.py`, `transfer_router.py`) without key material.
+(`projects/export.py`, `transfer_router.py`) without key material. Details for the migration:
+
+- The FK needs a **named constraint** in `op.batch_alter_table`, otherwise SQLite cannot drop it in
+  `downgrade()`.
+- Deleting the referenced key must behave like it does for `llm_api_key_id` (check
+  `api_keys/service.py`); the deep route then falls back to the main key and the configurator shows
+  a notice.
+- Import ignores `deep_llm_api_key_id` (keys don't travel with exports); the teacher picks a key
+  again.
+- `reasoning_effort` only applies to the deep route. A validator rejects values outside
+  `low`/`medium`/`high`.
 
 ## 4. Backend changes
 
 ### 4.1 Passing reasoning parameters per provider
-`ChatRequest` (`ai/llm/base.py`) gains `reasoning: Literal["off","low","medium","high"] | None`. A
+Phase 1 builds on the existing `enable_thinking` path (see §2): `Project.thinking_mode` was migrated into `reasoning_mode`, the mapping lives in `ai/llm/reasoning.py`, and support is decided per model (`reasoning_support`, exposed as `reasoningSupport` on API keys).
+
+`ChatRequest` (`ai/llm/base.py`) gains `reasoning: Literal["off","low","medium","high"] | None`.
+`None` means *unset*: send nothing, exactly as today (`reasoning_mode=off`). `"off"` means
+*explicitly disable thinking* and is only used by the FAST route of an `adaptive` project, because
+hybrid models (GPT-5, Gemini 2.5 Flash, Qwen3) think by default when the parameter is missing. A
 helper `reasoning_params(provider, request)` next to `sampling_params` maps it. "Omit when unset"
 stays the rule.
 
 | Provider path | Mapping (**verify against the litellm version in use; raise the lower bound in `pyproject.toml` with a comment**) |
 |---|---|
-| OpenAI o-series / GPT-5, gpt-oss via OpenAI-compatible | `reasoning_effort` (`off` → omit, or `minimal` where supported) |
-| Anthropic | litellm maps `reasoning_effort` → `thinking`; `off` → omit. Extended thinking forbids a custom `temperature`, so drop sampling params on the deep route |
-| Gemini 2.5 | `reasoning_effort`; `off` → disable for Flash/Flash-Lite (Pro can't be fully disabled) |
+| OpenAI o-series / GPT-5, gpt-oss via OpenAI-compatible | `reasoning_effort` (`"off"` → `minimal` where supported, else the lowest accepted value; `None` → omit). These models reject `temperature`/`top_p`, so drop sampling params whenever `reasoning` is set |
+| Anthropic | litellm maps `reasoning_effort` → `thinking`; `"off"`/`None` → omit. Extended thinking forbids a custom `temperature` (and restricts `top_p`) and needs `max_tokens` above the thinking budget, so drop sampling params and check `max_tokens` on the deep route |
+| Gemini 2.5 | `reasoning_effort`; `"off"` → disable for Flash/Flash-Lite (Pro can't be fully disabled) |
 | vLLM / OpenAI-compatible (Qwen3 hybrid) | `extra_body={"chat_template_kwargs": {"enable_thinking": bool}}`. The server needs `--reasoning-parser qwen3`, otherwise the thinking lands in `content` |
 | Ollama | `think: true/false` on newer Ollama versions |
 | GWDG SAIA / Arcana | depends on the model: gpt-oss → `reasoning_effort`; Instruct-2507 → nothing. Arcana adds it in `arcana.py::_body` |
 
-A capability flag per provider (`supports_reasoning_switch`) tells the configurator which options to
-show. The GWDG model list changes, so the model choice stays in the teacher's key, not in code.
+The capability check is **per model, not per provider** (`gpt-4o` and `o3` share a provider but not
+the parameter): use litellm's model info (`supports_reasoning` or the current equivalent) where it
+exists, and a small override table for self-hosted and GWDG models. For a model without support the
+parameter is omitted rather than sent (litellm would raise an unsupported-params error), and the
+configurator hides or disables the options. The GWDG model list changes, so the model choice stays
+in the teacher's key, not in code.
 
-### 4.2 Never speak reasoning (do first, independent)
+### 4.2 Never speak reasoning (do first, independent, its own PR)
+This fixes a bug that exists today, so it ships before and apart from everything else.
 - New `ThinkTagGuard` in `ai/llm/`, same shape as `ArcanaReferenceGuard`. It cuts
   `<think>…</think>` and `<reasoning>…</reasoning>`, including tags split across deltas and an
   unterminated block (drop until close; if the stream ends inside the block, drop the rest).
@@ -141,19 +178,28 @@ history.
   record time to first token and cached-token counts in the Latency Lab before claiming a gain.
 - Check that answer quality is unchanged with `rag-eval`: models weigh instructions at the end of
   the context differently.
+- Several chat templates (Mistral/Llama via vLLM, some Ollama models) reject or reorder a system
+  message in the middle of the conversation. The user-role preface is the safe fallback, but it
+  changes how the model weighs the material, so decide per provider and test both.
+- The Arcana path builds its own request body (`arcana.py::_body`) and needs the same change.
+- This is its own PR, separate from the measurement work and from `ThinkTagGuard`.
 
 ### 4.4 Router (`chat/reasoning_router.py`, new)
 `decide(context, turn) -> Route` (FAST | DEEP, plus reason, confidence, `router_ms`).
 - `off` → FAST; `always` → DEEP; `adaptive` → rules, then optionally self-escalation.
 - **Rules** (0 ms): message length, argument cues per language ("weil", "deshalb", "ich behaupte",
   "meine These", "dagegen spricht", "because", "I argue" …), and whether the previous assistant
-  message posed a task. Word lists live in a per-language table, not in the router logic. Rules are
-  biased towards recall on argument cues; the cost cap (§4.7) bounds over-escalation.
-- **Self-escalation** (optional): the fast model may start its reply with `::deep::`. The pipeline
-  holds back the first ~12 characters, sees the marker, cancels the fast stream and switches to
-  DEEP. It costs the fast model's TTFT on escalated turns and needs no new infrastructure. Caveats:
-  the marker must be removed before the chunker, the persona prompt gets longer, behaviour differs
-  between models, and a student can try to provoke it (§4.7). Keep it behind the Latency Lab
+  message ended in a question (its last sentence contains a `?`; no deeper task detection). Word
+  lists live in a per-language table, not in the router logic. Rules are biased towards recall on
+  argument cues; the cost cap (§4.7) bounds over-escalation. **Languages without a table fall back
+  to FAST**, and the configurator says so next to the `adaptive` option.
+- **Self-escalation** (optional, experimental, not an exit criterion of phase 2): the fast model may
+  start its reply with `::deep::`. The pipeline holds back the first ~12 characters, sees the
+  marker, cancels the fast stream and switches to DEEP. It needs no new infrastructure, but: the
+  holdback delays the first chunk of **every** adaptive turn by a few tokens, not only escalated
+  ones; the fast tokens of an escalated turn are billed even though the stream is cancelled; the
+  marker must be removed before the chunker; the persona prompt gets longer; behaviour differs
+  between models; and a student can try to provoke it (§4.7). Keep it behind the Latency Lab
   evaluation before enabling it by default.
 - A **classifier** is out of scope for now (§7). If added later, it runs in parallel with
   `_retrieve` with a hard timeout and falls back to rules, and never blocks the chat.
@@ -164,8 +210,15 @@ history.
 - `stream_turn`: decide the route (in parallel with `_retrieve` if the router does I/O); for DEEP
   with `bridge_enabled`, emit a `chunk` with a bridge phrase and `"bridge": true` first, so the
   frontend plays it without storing it as reply text; then stream the chosen model's reply as
-  today; `done` gains `route`, `routeReason`, `routerMs`, `bridgeMs`, `model`.
-- `reply_turn` (non-streamed) gets the same routing without the bridge.
+  today; `done` gains `route`. `routeReason`, `routerMs`, `bridgeMs` and `model` go to the
+  teacher-only surfaces (Latency Lab, analytics), **not** into the public `done` event, because they
+  reveal the router's rules to anonymous visitors.
+- **Deep-route failure handling** (done in phase 1: `DEEP_TIMEOUT_SECONDS`, `_stream_with_fallback`, `sse_stream`): the deep call has its own timeout (a module constant at first).
+  On a timeout or provider error before the first content token the turn falls back to FAST instead
+  of failing. While the deep model is silent, the stream sends keep-alive events so proxies don't
+  close it (this matters for text-only projects, which get no bridge). Check litellm's request
+  timeout and the Caddy and Vite proxy idle timeouts.
+- `reply_turn` (non-streamed) gets the same routing without the bridge, including the fallback.
 - `_save`: the message entry gets `route` and the model. It is metadata, not student content, so
   exports and retention cover it unchanged. The deep model must honour the same markers
   (motions, checklist ticks); test that the checklist replay works across routes.
@@ -182,8 +235,11 @@ history.
 
 ### 4.7 Cost and abuse limits
 The public chat is unauthenticated and spends the teacher's key; reasoning turns cost 2–6× more.
-- The existing chat rate limits apply to deep turns as well; add a lower per-visitor, per-hour cap
-  on DEEP turns (falls back to FAST, never an error), and a clear cap for `always`.
+- The existing chat rate limits apply to deep turns as well. `visitor_id` is supplied by the client,
+  so a cap keyed on it alone is bypassed with a fresh ID per request. Check what
+  `enforce_public_chat_rate_limit` keys on, and cap DEEP turns on **IP and `visitor_id`** (per hour)
+  plus a **per-project daily budget** of deep turns, which is what actually protects the teacher's
+  bill. Over the cap a turn falls back to FAST, never an error. `always` gets the same caps.
 - `::deep::` is only honoured when the project mode is `adaptive`, and counts against the same cap,
   so a student can't turn it into a cost lever.
 - Show the route rate and estimated deep-turn share in analytics so teachers see the bill coming.
@@ -212,7 +268,7 @@ reasoning ≈ 500–3,000 tokens per deep turn, billed as output.
 | Fast model, cache warm | 0.6–1.5 s |
 | Deep model, no bridge | 4–25 s (scales with effort and difficulty) |
 | Deep model + bridge | ~1 s for the bridge, then the answer |
-| Router overhead | 0 ms (rules) · +0.3–0.8 s on escalated turns (self-escalation) |
+| Router overhead | 0 ms (rules) · self-escalation: a few tokens of holdback on every adaptive turn, plus the fast model's TTFT (+0.3–0.8 s) on escalated turns |
 
 | Mode | Output tokens per 1,000 turns | Relative total cost |
 |---|---|---|
@@ -247,8 +303,10 @@ If it is built:
 
 | Phase | Content | Size |
 |---|---|---|
-| **0** | Baseline: add TTFT, cached tokens and route-ready timings to the Latency Lab; measure `off` on the target providers. `ThinkTagGuard` (4.2) with a regression test. Prompt order (4.3), kept only if it measures better | S |
-| **1** | `reasoning_mode` off/always + effort + provider mapping (4.1) + deep-turn cap (4.7); migration; configurator UI; Latency Lab shows the route | M |
+| **0a** | `ThinkTagGuard` (4.2) with a regression test. Fixes a live bug, so it ships first and alone | S |
+| **0b** | Baseline: add TTFT, cached tokens and route-ready timings to the Latency Lab; measure `off` on the target providers | S |
+| **0c** | Prompt order (4.3), as a separate PR, kept only if 0b's numbers and `rag-eval` show it is better | S |
+| **1** | `reasoning_mode` off/always + effort + provider mapping (4.1) + deep-turn caps (4.7) + deep-route timeout/fallback (4.5); migration; configurator UI; Latency Lab shows the route | M |
 | **2** | `adaptive`: second key, rules router, bridge phrases, route stored per message; self-escalation as an experiment | M–L |
 | **3** | Evaluation (§10) | Research |
 | **4** (only if §7 triggers) | Classifier | M |
@@ -259,14 +317,21 @@ Each phase is its own PR to `working-branch`, one topic per commit.
 ## 9. Tests and checks
 
 - **Backend (pytest, providers faked at the litellm seam):**
-  - `reasoning_params` per provider: present only when set; Anthropic drops temperature on deep.
+  - `reasoning_params` per provider: present only when set; `None` sends nothing, `"off"` disables
+    explicitly; sampling params dropped for Anthropic and OpenAI reasoning models; a model without
+    reasoning support gets no parameter (no unsupported-params error).
   - `ThinkTagGuard`: tags split across deltas, unterminated block, tag-like text in a closed block.
   - Router: off/always/adaptive; rules table per language; cap falls back to FAST.
   - Pipeline: the bridge chunk comes before deep content and isn't saved as reply text; `route` is
     in `messages_json`; the deep key falls back to the main key; checklist ticks and motions work
     on both routes; `::deep::` is cut out before chunking and ignored outside `adaptive`.
-  - Ownership: a foreign `deep_llm_api_key_id` → 404; export contains no key material.
-  - Migration: upgrade/downgrade on SQLite, single head.
+  - Deep route: a timeout or provider error before the first token falls back to FAST; the
+    non-streamed `reply_turn` routes the same way as `stream_turn`; the public `done` event carries
+    no `routeReason`/`routerMs`.
+  - Cap: a fresh `visitor_id` per request does not reset the per-IP and per-project deep budgets.
+  - Ownership: a foreign `deep_llm_api_key_id` → 404; export contains no key material; import
+    ignores the key id; deleting the referenced key falls back to the main key.
+  - Migration: upgrade/downgrade on SQLite (named FK constraint), single head.
 - **Frontend:** `npm run build`, i18n parity, Playwright screenshots of configurator and Latency Lab.
 - **Agents:** `migration-reviewer`, `backend-test-writer`, `i18n-checker`, `frontend-verifier`,
   `security-privacy-auditor` (public chat, keys, cost cap), `docs-sync`.
@@ -299,7 +364,7 @@ Each phase is its own PR to `working-branch`, one topic per commit.
 
 ## Sources
 
-Not re-checked in the review; confirm before relying on them:
+Not re-checked in either review; confirm both before phase 1:
 - GWDG Chat AI model list: https://docs.hpc.gwdg.de/services/ai-services/chat-ai/models/
 - vLLM reasoning outputs (Qwen3 `enable_thinking`, `--reasoning-parser`):
   https://docs.vllm.ai/en/latest/features/reasoning_outputs.html

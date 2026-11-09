@@ -17,7 +17,7 @@ import base64
 import logging
 import time
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -25,16 +25,25 @@ from datetime import datetime, timezone
 from normt2s import Piece, RuleSet
 from sqlmodel import Session
 
+from app.core.providers import build_model_string
 from app.core.config import settings
 from app.core.error_codes import ErrorCode
 from app.features.ai import llm
 from app.features.ai.tts import VoiceReference, synthesize_speech
 from app.features.ai.tts.normalizer import normalize_for_speech, speech_stream
 from app.features.api_keys.models import UserApiKey
-from app.features.api_keys.resolve import resolve_llm_key, resolve_tts_key
+from app.features.api_keys.resolve import resolve_deep_llm_key, resolve_llm_key, resolve_tts_key
 from app.features.chat.conversation_store import save_turn
 from app.features.chat.checklist import Check, Checklist, checklist_for, checklist_prompt
 from app.features.chat.motion import MotionMark, compose_system_prompt, extract_markers
+from app.features.chat import bridge
+from app.features.chat.reasoning_router import (
+    DEEP_TIMEOUT_SECONDS,
+    FAST_ROUTE,
+    RouteDecision,
+    adaptive_reasoning_available,
+    decide,
+)
 from app.features.knowledge.prompt import reference_block
 from app.features.knowledge.retrieval import KnowledgeContext, Passage, prepare_knowledge, retrieve, sources_for_transcript
 from app.features.media.service import voice_reference_for_project
@@ -71,7 +80,9 @@ class ChatContext:
     preprompt: str
     temperature: float | None
     top_p: float | None
-    thinking: bool | None
+    # The project's reasoning setting, see chat/reasoning_router.py.
+    reasoning_mode: str
+    reasoning_effort: str | None
     start_prompt: str | None
     tts_voice: str | None
     spoken_language: str
@@ -96,6 +107,17 @@ class ChatContext:
     # the reply's spoken form goes out instead — normalized and with the teacher's pronunciation
     # list applied, exactly what the server's TTS would have read.
     speak_on_device: bool = False
+    # Adds teacher-only diagnostics to the reply: the provider's token counts and the reasoning
+    # route taken. Only the owner-only latency test sets it. The public chat's events carry neither,
+    # though a visitor can tell a reasoning turn by its bridge phrase.
+    diagnostics: bool = False
+    # The project's second key for turns that reason (None: the main key answers those too).
+    deep_llm_key: UserApiKey | None = None
+    # Whether a reasoning turn is introduced by a short spoken phrase (chat/bridge.py).
+    bridge_enabled: bool = False
+    # Whether this deployment offers adaptive reasoning (reasoning_router.adaptive_reasoning_available);
+    # checked only for adaptive projects, which otherwise reason on every turn.
+    adaptive_available: bool = False
 
 
 @dataclass
@@ -111,6 +133,13 @@ class ChatTurn:
     received_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     # The plan steps done so far, replayed from the visitor's history (see checklist.py::replay).
     checklist_done: frozenset[str] = frozenset()
+    # Spends one reasoning reply and says whether there was room (see core/rate_limit.py::
+    # deep_turn_budget). None: unlimited, for the owner's own preview and latency tests.
+    deep_budget: Callable[[], bool] | None = None
+    # Answer without reasoning and without spending the budget: a repeat of a failed attempt.
+    fast_only: bool = False
+    # The Latency Lab's override of the route: "fast" or "deep" (None: as the project decides).
+    force_route: str | None = None
 
 
 @dataclass
@@ -130,6 +159,10 @@ class ChatReply:
     checks: list[Check] = field(default_factory=list)
     # What the visitor's device should say — only with ChatContext.speak_on_device.
     spoken: str | None = None
+    # The LLM call's token counts, only with ChatContext.diagnostics.
+    usage: dict[str, int | None] | None = None
+    # The reasoning route taken (see chat/reasoning_router.py), only with ChatContext.diagnostics.
+    route: str | None = None
 
 
 class LLMFailed(Exception):
@@ -148,7 +181,10 @@ def prepare_chat(session: Session, project: Project, llm_key: UserApiKey | None 
     if api_key is None:
         return None
     tts_api_key = resolve_tts_key(session, project) if project.tts_enabled else None
+    deep_key = resolve_deep_llm_key(session, project)
     session.expunge(api_key)
+    if deep_key is not None and deep_key is not api_key:
+        session.expunge(deep_key)
     if tts_api_key is not None:
         session.expunge(tts_api_key)
     return ChatContext(
@@ -159,7 +195,11 @@ def prepare_chat(session: Session, project: Project, llm_key: UserApiKey | None 
         preprompt=project.preprompt or "",
         temperature=project.temperature,
         top_p=project.top_p,
-        thinking={"on": True, "off": False}.get(project.thinking_mode),
+        reasoning_mode=project.reasoning_mode,
+        reasoning_effort=project.reasoning_effort,
+        deep_llm_key=deep_key if deep_key is not api_key else None,
+        bridge_enabled=project.bridge_enabled,
+        adaptive_available=project.reasoning_mode == "adaptive" and adaptive_reasoning_available(),
         start_prompt=project.start_prompt,
         tts_voice=project.tts_voice,
         spoken_language=project.spoken_language,
@@ -183,7 +223,31 @@ def _retrieve(context: ChatContext, turn: ChatTurn) -> tuple[list[Passage], floa
     return passages, (time.perf_counter() - start) * 1000
 
 
-def _chat_request(context: ChatContext, turn: ChatTurn, passages: list[Passage], *, plain: bool = False) -> llm.ChatRequest:
+def _route(context: ChatContext, turn: ChatTurn) -> RouteDecision:
+    deep_key = context.deep_llm_key
+    return decide(
+        mode=context.reasoning_mode,
+        effort=context.reasoning_effort,
+        main=(context.llm_key.provider, context.llm_key.model_id or ""),
+        deep=(deep_key.provider, deep_key.model_id or "") if deep_key is not None else None,
+        message=turn.message,
+        history=turn.history,
+        language=context.spoken_language,
+        budget=turn.deep_budget,
+        fast_only=turn.fast_only,
+        forced=turn.force_route,
+        adaptive_available=context.adaptive_available,
+    )
+
+
+def _key_for(context: ChatContext, route: RouteDecision) -> UserApiKey:
+    """The key that answers on `route`."""
+    return context.deep_llm_key if route.use_deep_key and context.deep_llm_key is not None else context.llm_key
+
+
+def _chat_request(
+    context: ChatContext, turn: ChatTurn, passages: list[Passage], route: RouteDecision, *, plain: bool = False
+) -> llm.ChatRequest:
     """The LLM request for `turn`; `plain` leaves out the gesture instructions and the plan."""
     reference = reference_block(context.knowledge.mode, passages) if context.knowledge else None
     plan = None if plain or context.checklist is None else checklist_prompt(context.checklist, set(turn.checklist_done))
@@ -196,8 +260,53 @@ def _chat_request(context: ChatContext, turn: ChatTurn, passages: list[Passage],
         context.start_prompt,
         turn.history,
         reference_material=reference,
-        thinking=context.thinking,
+        reasoning=route.reasoning,
+        timeout=DEEP_TIMEOUT_SECONDS if route.route == "deep" else None,
     )
+
+
+def _complete_with_fallback(
+    context: ChatContext, turn: ChatTurn, passages: list[Passage], route: RouteDecision, usage: llm.LLMUsage | None
+) -> tuple[str, RouteDecision]:
+    """The plain reply and the route it came from. A failed reasoning call is repeated once
+    without reasoning, so a slow or unsupported reasoning model doesn't cost the visitor the answer."""
+    try:
+        return llm.complete(_key_for(context, route), _chat_request(context, turn, passages, route), usage), route
+    except Exception as exc:
+        if route.route != "deep":
+            raise
+        logger.warning(
+            "Reasoning call failed, answering without reasoning (project_id=%s, %s)", context.project_id, type(exc).__name__
+        )
+    return llm.complete(context.llm_key, _chat_request(context, turn, passages, FAST_ROUTE), usage), FAST_ROUTE
+
+
+class _Run:
+    """The route a streamed reply actually took, which a fallback can change midway."""
+
+    def __init__(self, route: RouteDecision) -> None:
+        self.route = route
+
+
+def _stream_with_fallback(
+    context: ChatContext, turn: ChatTurn, passages: list[Passage], run: _Run, usage: llm.LLMUsage | None
+) -> Iterator[str]:
+    """The reply's text deltas. Like _complete_with_fallback, but only while nothing was yielded:
+    once part of the reply may have been spoken, starting over would say it twice."""
+    started = False
+    try:
+        for delta in llm.stream(_key_for(context, run.route), _chat_request(context, turn, passages, run.route), usage):
+            started = True
+            yield delta
+        return
+    except Exception as exc:
+        if started or run.route.route != "deep":
+            raise
+        logger.warning(
+            "Reasoning call failed, answering without reasoning (project_id=%s, %s)", context.project_id, type(exc).__name__
+        )
+    run.route = FAST_ROUTE
+    yield from llm.stream(_key_for(context, run.route), _chat_request(context, turn, passages, run.route), usage)
 
 
 def _save(
@@ -208,7 +317,10 @@ def _save(
     passages: list[Passage],
     motions: list[MotionMark] | None = None,
     checks: list[Check] | None = None,
+    route: RouteDecision | None = None,
 ) -> None:
+    routed = route is not None and context.reasoning_mode in ("always", "adaptive")
+    answering = _key_for(context, route) if routed else context.llm_key
     save_turn(
         context.project_id,
         turn.visitor_id,
@@ -222,6 +334,9 @@ def _save(
         motions=[m.to_json() for m in motions] if motions else None,
         # Kept so a teacher can see how far each student got through the plan (see analytics).
         checks=[c.to_json() for c in checks] if checks else None,
+        # Only projects that route between a fast and a deep reply record which one this was.
+        route=route.route if routed else None,
+        model=build_model_string(answering.provider, answering.model_id or "") if routed else None,
     )
 
 
@@ -267,15 +382,89 @@ def _synthesize(context: ChatContext, text: str, normalized: bool = False) -> tu
     return base64.b64encode(audio_bytes).decode(), content_type, (time.perf_counter() - synth_start) * 1000
 
 
+def _bridge_audio_key(context: ChatContext, phrase: str) -> tuple:
+    """What a rendered phrase depends on: the project's voice and the key that speaks it."""
+    key = context.tts_key
+    clip = context.voice_clip.sha256 if context.voice_clip is not None else None
+    return (
+        context.project_id,
+        phrase,
+        context.spoken_language,
+        context.tts_voice,
+        clip,
+        (key.id, key.provider, key.model_id, key.api_base) if key is not None else "local",
+    )
+
+
+def _warm_bridge_audio(context: ChatContext) -> None:
+    """Render the project's bridge phrases in the background, once, so a turn that escalates later
+    finds them ready. Skipped where the server doesn't speak (no TTS, or the visitor's device does)."""
+    if not (context.bridge_enabled and context.tts_enabled) or context.speak_on_device:
+        return
+    if context.reasoning_mode not in ("always", "adaptive"):
+        return
+    for phrase in bridge.phrases_for(context.spoken_language):
+        cache_key = _bridge_audio_key(context, phrase)
+        if bridge.audio_cache.claim(cache_key):
+            _tts_executor.submit(_render_bridge_phrase, context, phrase, cache_key)
+
+
+def _render_bridge_phrase(context: ChatContext, phrase: str, cache_key: tuple) -> None:
+    audio_base64, content_type, _ = _synthesize(context, phrase)
+    if audio_base64 is None or content_type is None:
+        bridge.audio_cache.release(cache_key, failed=True)  # retried only after a while
+        return
+    bridge.audio_cache.put(cache_key, (audio_base64, content_type))
+
+
+def _bridge_chunk(context: ChatContext, started_at: float) -> dict | None:
+    """The "chunk" event that speaks a bridge phrase, or None when there is nothing to say or its
+    audio isn't ready (the turn then goes without rather than waiting for synthesis)."""
+    if not context.bridge_enabled or not context.tts_enabled:
+        return None
+    phrases = list(bridge.phrases_for(context.spoken_language))
+    audio: tuple[str, str] | None = None
+    if not context.speak_on_device:
+        ready = {phrase: bridge.audio_cache.get(_bridge_audio_key(context, phrase)) for phrase in phrases}
+        phrases = [phrase for phrase, rendered in ready.items() if rendered is not None]
+    phrase = bridge.pick(phrases)
+    if phrase is None:
+        return None
+    if not context.speak_on_device:
+        audio = bridge.audio_cache.get(_bridge_audio_key(context, phrase))
+        if audio is None:
+            return None
+    sent_ms = (time.perf_counter() - started_at) * 1000
+    event = {
+        # Outside the reply's own numbering (which starts at 0), so the page never mistakes it for
+        # the reply's first chunk, and it isn't part of the saved or returned reply text.
+        "index": -1,
+        "bridge": True,
+        "text": phrase,
+        "audioBase64": audio[0] if audio else None,
+        "contentType": audio[1] if audio else None,
+        "motions": [],
+        "checks": [],
+        "textReadyMs": sent_ms,
+        "ttsMs": None,
+        "sentMs": sent_ms,
+    }
+    if context.speak_on_device:
+        event["spoken"] = normalize_for_speech(phrase, context.spoken_language, context.pronunciation)
+    return event
+
+
 def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> ChatReply:
     """Ask the LLM, save the exchange (if the project saves conversations and `save`), then
     synthesize the whole reply. Raises LLMFailed if the LLM call fails."""
     # Timed for the client-side latency-test log (see pages/PublicChat/index.tsx) — not used by
     # the default UI, just extra fields riding along in the response.
     passages, retrieval_ms = _retrieve(context, turn)
+    route = _route(context, turn)
+    usage = llm.LLMUsage() if context.diagnostics else None
     llm_start = time.perf_counter()
     try:
-        reply = llm.complete(context.llm_key, _chat_request(context, turn, passages))
+        reply, route = _complete_with_fallback(context, turn, passages, route, usage)
     except Exception as exc:
         raise LLMFailed() from exc
     llm_ms = (time.perf_counter() - llm_start) * 1000
@@ -284,7 +473,7 @@ def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> Ch
 
     if save and context.save_conversations:
         try:
-            _save(context, turn, reply, reply_ready_at, passages, motions, checks)
+            _save(context, turn, reply, reply_ready_at, passages, motions, checks, route)
         except Exception:
             # Same as in stream_turn: the reply exists (and was paid for), so a failed save, e.g.
             # "database is locked" under a class-sized burst, mustn't cost the visitor their answer.
@@ -295,7 +484,17 @@ def reply_turn(context: ChatContext, turn: ChatTurn, *, save: bool = True) -> Ch
     tts_ms = (time.perf_counter() - tts_start) * 1000 if audio_base64 is not None else None
     spoken = normalize_for_speech(reply, context.spoken_language, context.pronunciation) if context.speak_on_device else None
     return ChatReply(
-        reply, audio_base64, content_type, llm_ms, tts_ms, retrieval_ms, [m.name for m in motions], checks, spoken
+        reply,
+        audio_base64,
+        content_type,
+        llm_ms,
+        tts_ms,
+        retrieval_ms,
+        [m.name for m in motions],
+        checks,
+        spoken,
+        usage.to_client() if usage is not None else None,
+        route.route if context.diagnostics else None,
     )
 
 
@@ -316,7 +515,8 @@ def answer_for_evaluation(context: ChatContext, question: str) -> EvaluationAnsw
     try:
         # Without the gesture instructions: the evaluation judges the answer's content, and stray
         # markers would only add noise to it.
-        text = llm.complete(context.llm_key, _chat_request(context, turn, passages, plain=True))
+        route = _route(context, turn)
+        text = llm.complete(_key_for(context, route), _chat_request(context, turn, passages, route, plain=True))
     except Exception as exc:
         raise LLMFailed() from exc
     return EvaluationAnswer(text, passages, retrieval_ms, (time.perf_counter() - llm_start) * 1000)
@@ -408,12 +608,22 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
         while futures and futures[0][1].done():
             yield chunk_event(*futures.popleft())
 
+    # Decided before retrieval: a turn that reasons says its bridge phrase straight away, while the
+    # knowledge-base lookup and the slow model are still ahead.
+    run = _Run(_route(context, turn))
+    _warm_bridge_audio(context)
+    if run.route.route == "deep":
+        bridge_event = _bridge_chunk(context, start_time)
+        if bridge_event is not None:
+            yield "chunk", bridge_event
+
     # Before the LLM call and inside the measured time: retrieval delays the first audio too.
     passages, retrieval_ms = _retrieve(context, turn)
 
     llm_error: Exception | None = None
+    usage = llm.LLMUsage() if context.diagnostics else None
     try:
-        for delta in llm.stream(context.llm_key, _chat_request(context, turn, passages)):
+        for delta in _stream_with_fallback(context, turn, passages, run, usage):
             if first_token_ms is None:
                 first_token_ms = (time.perf_counter() - start_time) * 1000
             full_text_parts.append(delta)
@@ -449,7 +659,7 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
 
     if context.save_conversations:
         try:
-            _save(context, turn, full_reply, reply_ready_at, passages, motion_marks, checks)
+            _save(context, turn, full_reply, reply_ready_at, passages, motion_marks, checks, run.route)
         except Exception:
             # The reply itself already reached the visitor via the chunk events above —
             # only the save failed, so log it instead of turning it into an error event
@@ -466,4 +676,5 @@ def stream_turn(context: ChatContext, turn: ChatTurn) -> Iterator[tuple[str, dic
         "firstChunkTextReadyMs": first_chunk_ready_ms,
         "ttsMs": total_tts_ms,
         "retrievalMs": retrieval_ms,
+        **({"usage": usage.to_client(), "route": run.route.route} if usage is not None else {}),
     }

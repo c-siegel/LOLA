@@ -21,6 +21,9 @@ export interface KnowledgeStatus {
   fileTypes: string[];
   limits: KnowledgeLimits | null;
   usageBytes: number;
+  // Whether projects may use adaptive reasoning here: the knowledge service runs an embedding
+  // model it is offered for (backend chat/reasoning_router.py::ADAPTIVE_EMBEDDING_MODELS).
+  adaptiveReasoning: boolean;
 }
 
 export interface KnowledgeBase {
