@@ -22,7 +22,8 @@ Overview: [root README](../README.md). Code conventions: [AGENTS.md](../AGENTS.m
   session — not just the initial auth check — so an auth cookie expiring mid-edit (e.g. in the
   Configurator) sends the user back to login instead of showing a generic error forever.
 - **three.js** + **[@met4citizen/talkinghead](https://github.com/met4citizen/TalkingHead)** — 3D
-  avatar rendering and lip-sync.
+  avatar rendering and lip-sync. `three` stays within the version range TalkingHead declares;
+  otherwise npm installs a second copy and the bundle ships both (see `renovate.json`).
 - **react-markdown** — renders chat messages that may contain Markdown.
 
 ## Folder map

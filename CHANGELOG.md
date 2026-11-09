@@ -65,6 +65,8 @@ are only recorded in the [git tags](https://github.com/c-siegel/LOLA/tags).
 - Four database migrations (`alembic upgrade head`; Docker runs them on start): *Thinking* becomes
   *Reasoning*, the second-model key and the bridge switch are added, the projects' STT engine
   choice is dropped, and the voice input mode is added.
+- **Smaller frontend bundle**: three.js is held at the version TalkingHead declares (^0.186), so
+  the build ships one copy of it instead of two (about 157 kB less gzipped JavaScript).
 
 ### Removed
 
