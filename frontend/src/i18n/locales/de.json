@@ -146,7 +146,8 @@
     "privacySaved": "Dieses Gespräch wird anonym gespeichert und kann von deiner Lehrkraft gelesen werden.",
     "privacySavedWithName": "Dieses Gespräch wird zusammen mit dem von dir eingegebenen Namen/ID gespeichert und kann von deiner Lehrkraft gelesen werden.",
     "privacyNotSaved": "Dieses Gespräch wird nicht gespeichert.",
-    "whichModel": "Mit welcher KI spreche ich?",
+    "aiNotice": "Du sprichst mit einer KI. Sie kann Fehler machen – prüfe wichtige Angaben.",
+    "chatInfo": "Infos zu diesem Chat",
     "modelTooltip": "Du sprichst mit dem KI-Modell {{model}}. Deine Nachrichten werden dorthin geschickt, um eine Antwort zu erzeugen.",
     "modelTooltipUnknown": "Du sprichst mit einem KI-Modell. Deine Nachrichten werden dorthin geschickt, um eine Antwort zu erzeugen.",
     "messagePlaceholder": "Schreib deine Frage …",
@@ -208,7 +209,7 @@
       "title": "Schüler:innen, die einen Chat-Link nutzen",
       "noAccount": "Schüler:innen brauchen kein Konto. Es gibt keine Registrierung, kein Login und kein seitenübergreifendes Tracking.",
       "cookie": "Ein einzelnes technisches Cookie enthält eine zufällig erzeugte Besuchsnummer. Sie dient dazu, Gespräche auseinanderzuhalten und Nutzungsgrenzen durchzusetzen — sie identifiziert keine Person und wird nicht weitergegeben.",
-      "recording": "Lehrkräfte können die Aufzeichnung pro Chat aktivieren. Ist sie aktiv, steht das direkt über dem Eingabefeld, und das Gespräch wird unter der anonymen Besuchsnummer gespeichert, sodass die Lehrkraft es später lesen kann. Ist sie aus, werden Nachrichten nach dem Senden der Antwort nicht gespeichert.",
+      "recording": "Lehrkräfte können die Aufzeichnung pro Chat aktivieren. Ob das der Fall ist, steht im Chat hinter der Schaltfläche „?“. Ist sie aktiv, wird das Gespräch unter der anonymen Besuchsnummer gespeichert, sodass die Lehrkraft es später lesen kann. Ist sie aus, werden Nachrichten nach dem Senden der Antwort nicht gespeichert.",
       "visitorName": "Lehrkräfte können zusätzlich festlegen, dass Schüler:innen vor dem Chat einen Namen oder eine ID eingeben müssen. Ist das aktiviert UND die Aufzeichnung eingeschaltet, wird dieser Name zusammen mit dem gespeicherten Gespräch angezeigt — der Chat ist dann nicht mehr anonym. Ist die Aufzeichnung ausgeschaltet, wird der eingegebene Name nirgends gespeichert."
     },
     "ai": {

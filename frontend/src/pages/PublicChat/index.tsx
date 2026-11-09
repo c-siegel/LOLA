@@ -752,7 +752,8 @@ export function PublicChatPage() {
   // Says what actually happens to the conversation, straight from the project's setting — the
   // page used to claim "chat isn't saved" unconditionally, which was untrue whenever the teacher
   // had recording switched on. A separate wording when a name/ID was also collected: "saved
-  // anonymously" would be inaccurate once a name is attached to it.
+  // anonymously" would be inaccurate once a name is attached to it. Shown in the "?" bubble in
+  // the header, which every layout has; the visible spot under the chat title goes to aiNotice.
   const privacyNotice = tutor.saveConversations
     ? tutor.requireVisitorName
       ? t("publicChat.privacySavedWithName")
@@ -827,7 +828,7 @@ export function PublicChatPage() {
               <LogOut size={24} />
             </button>
           )}
-          <ModelInfoButton llmModel={tutor.llmModel} />
+          <ModelInfoButton llmModel={tutor.llmModel} privacyNotice={privacyNotice} />
         </div>
       </header>
 
@@ -889,10 +890,10 @@ export function PublicChatPage() {
                     <Play size={24} fill="currentColor" />
                   </button>
                 )}
-                {/* Avatar only: the privacy notice and any notices normally sit in the chat column. */}
+                {/* Avatar only: the AI notice and any notices normally sit in the chat column. */}
                 {!hasChat && (
                   <div className={styles.stageTop}>
-                    <p className={styles.stageNote}>{privacyNotice}</p>
+                    <p className={styles.stageNote}>{t("publicChat.aiNotice")}</p>
                     {stageNotice && (
                       <p className={`${styles.stageNote} ${styles.stageNotice}`} role="status">
                         {stageNotice}
@@ -969,12 +970,12 @@ export function PublicChatPage() {
               <div className={`${styles.chatColumn} ${!showAvatar ? styles.chatColumnSolo : ""}`} ref={chatColumnRef}>
                 <div className={styles.chatColumnHeader}>
                   <h2>{t("publicChat.chatTitle")}</h2>
-                  <p className={styles.privacyNote}>{privacyNotice}</p>
+                  <p className={styles.privacyNote}>{t("publicChat.aiNotice")}</p>
                 </div>
 
                 {/* Same sentence as the desktop subtitle above — only one of the two is ever visible
                     (see the media query in PublicChat.module.css), so students get it either way. */}
-                <p className={`${styles.privacyNote} ${styles.privacyNoteMobile}`}>{privacyNotice}</p>
+                <p className={`${styles.privacyNote} ${styles.privacyNoteMobile}`}>{t("publicChat.aiNotice")}</p>
 
                 {/* Chat only: no stage to float over, so the plan sits above the thread. */}
                 {!showAvatar && tutor.checklist && (

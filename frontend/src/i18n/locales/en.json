@@ -146,7 +146,8 @@
     "privacySaved": "This conversation is saved anonymously and can be read by your teacher.",
     "privacySavedWithName": "This conversation is saved together with the name/ID you entered and can be read by your teacher.",
     "privacyNotSaved": "This conversation is not saved.",
-    "whichModel": "Which AI am I talking to?",
+    "aiNotice": "You're talking to an AI. It can make mistakes, so check important information.",
+    "chatInfo": "About this chat",
     "modelTooltip": "You're talking to the AI model {{model}}. Your messages are sent to it to generate a reply.",
     "modelTooltipUnknown": "You're talking to an AI model. Your messages are sent to it to generate a reply.",
     "messagePlaceholder": "Type your question …",
@@ -208,7 +209,7 @@
       "title": "Students using a chat link",
       "noAccount": "Students do not need an account. There is no registration, no login, and no tracking across websites.",
       "cookie": "A single technical cookie holds a randomly generated visitor number. It is used to tell conversations apart and to enforce usage limits — it does not identify a person and is not shared with anyone.",
-      "recording": "Teachers can switch on recording per chat. When it is on, the chat page says so directly above the message box, and the conversation is stored under the anonymous visitor number so the teacher can read it later. When it is off, messages are not stored after the reply is sent.",
+      "recording": "Teachers can switch on recording per chat. The \"?\" button in the chat says whether it is on. When it is on, the conversation is stored under the anonymous visitor number so the teacher can read it later. When it is off, messages are not stored after the reply is sent.",
       "visitorName": "Teachers can additionally require students to enter a name or ID before the chat starts. If that's enabled AND recording is switched on, that name is shown alongside the saved conversation — the chat is then no longer anonymous. If recording is off, the entered name is not stored anywhere."
     },
     "ai": {

@@ -44,6 +44,10 @@ are only recorded in the [git tags](https://github.com/c-siegel/LOLA/tags).
 - **404 page**: an address that doesn't exist now shows "Page not found" with a link back to the
   home page instead of an empty page; inside the dashboard it keeps the sidebar and links to the
   overview. It tells search engines not to index it.
+- **AI notice in the public chat**: where the chat used to say whether the conversation is saved,
+  it now says that students are talking to an AI that can make mistakes. Whether the conversation
+  is saved moved into the "?" info bubble next to the model name. The built-in privacy policy says
+  so; admins who replaced it with their own text should check the passage on recording.
 
 ### Changed
 
