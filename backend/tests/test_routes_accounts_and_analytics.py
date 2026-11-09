@@ -186,3 +186,15 @@ def test_analytics_and_conversations(client, anon, engine, chat_project):
     assert client.get("/conversations").json()["total"] == 2
     assert client.post("/conversations/batch-delete", json={"conversationIds": ids}).status_code == 204
     assert client.get("/conversations").json()["total"] == 0
+
+
+def test_robots_txt_keeps_crawlers_out_of_chat_dashboard_and_auth(anon):
+    response = anon.get(browser_url("/robots.txt"))
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    lines = response.text.splitlines()
+    assert lines[0] == "User-agent: *"
+    for path in ("/c/", "/dashboard", "/login", "/register", "/forgot-password", "/reset-password", "/api/v1/"):
+        assert f"Disallow: {path}" in lines
+    # The landing page and the legal pages stay crawlable.
+    assert "Disallow: /" not in lines

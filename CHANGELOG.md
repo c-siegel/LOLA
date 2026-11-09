@@ -36,6 +36,11 @@ are only recorded in the [git tags](https://github.com/c-siegel/LOLA/tags).
   and in a "Replies with reasoning" tile.
 - **Latency test**: prompt, cached, reply and reasoning tokens per turn, the route each turn took,
   and a selector to force the fast or the reasoning route.
+- **robots.txt**: search engines are kept out of the public chat (`/c/…`), the dashboard, the
+  login and password pages and the API; the landing, legal and custom pages stay crawlable. Chat
+  pages also send `X-Robots-Tag: noindex`, so a chat link posted elsewhere doesn't show up in
+  search results. Under a `BASE_PATH`, copy the rules from `/<BASE_PATH>/robots.txt` into the
+  shared host's own `robots.txt`, since crawlers only read the one at the root.
 
 ### Changed
 

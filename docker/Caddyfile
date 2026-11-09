@@ -81,6 +81,11 @@ http://{$SITE_ADDRESS} {
 		reverse_proxy backend:8000
 	}
 
+	# Built by the backend because its paths carry BASE_PATH (see backend/app/core/robots.py).
+	handle /robots.txt {
+		reverse_proxy backend:8000
+	}
+
 	# SPA fallback: a direct request for e.g. /c/some-slug still needs to serve index.html, otherwise
 	# reloading on a sub-route would be a 404.
 	handle {
@@ -91,6 +96,10 @@ http://{$SITE_ADDRESS} {
 		templates {
 			mime text/html
 		}
+		# robots.txt keeps polite crawlers out of the public chat; this keeps a chat link that was
+		# posted elsewhere out of search results for bots that fetch it anyway. Matched here, after
+		# BASE_PATH has been stripped, and before try_files turns the path into /index.html.
+		header /c/* X-Robots-Tag "noindex, nofollow"
 		try_files {path} /index.html
 		file_server
 	}

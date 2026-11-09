@@ -281,3 +281,6 @@ The same images work at the root and under any prefix, nothing is rebuilt:
 - **The backend** keeps its routes at `/api/v1` but puts the prefix into every URL it hands out
   (`backend/app/core/urls.py`) and limits its cookies to that path, so other apps on the same
   host don't receive the login token.
+- **robots.txt** is served at `/lola/robots.txt` with the prefix in its rules
+  (`backend/app/core/robots.py`), but crawlers only read the one at the host's root. Copy its
+  `Disallow` lines into the shared host's `robots.txt`.

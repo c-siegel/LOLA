@@ -8,7 +8,7 @@ from fastapi import Response
 
 from app.core.config import Settings, settings
 from app.core.cookies import clear_auth_cookie, get_or_set_visitor_id, set_auth_cookie
-from conftest import create_key, create_project, publish
+from conftest import browser_url, create_key, create_project, publish
 
 
 @pytest.mark.parametrize("raw", ["lola", "/lola", "/lola/", " lola/ "])
@@ -59,3 +59,11 @@ def test_cookies_are_scoped_to_the_base_path(monkeypatch, base_path, cookie_path
 
     for response in (login, logout, visitor):
         assert f"Path={cookie_path};" in response.headers["set-cookie"]
+
+
+def test_robots_txt_carries_the_base_path(anon, monkeypatch):
+    monkeypatch.setattr(settings, "base_path", "/lola")
+    lines = anon.get(browser_url("/robots.txt")).text.splitlines()
+    assert "Disallow: /lola/c/" in lines
+    assert "Disallow: /lola/dashboard" in lines
+    assert "Disallow: /c/" not in lines
