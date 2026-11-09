@@ -110,6 +110,8 @@ class PublicProjectOut(CamelModel):
     streaming_enabled: bool = False
     # Avatar and/or chat, see features/projects/models.py::Project.chat_layout.
     chat_layout: str = "avatar_chat"
+    # Push-to-talk or hands-free, see features/projects/models.py::Project.voice_input_mode.
+    voice_input_mode: str = "push_to_talk"
     # Whether the page loads the MotionEngine for the gestures in replies (see
     # features/projects/models.py::Project.motion_enabled).
     motion_enabled: bool = False

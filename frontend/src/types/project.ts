@@ -66,6 +66,9 @@ export interface Project {
   // What the public chat page shows: avatar + chat (open or starting collapsed), the avatar alone
   // (voice only) or the chat alone (no 3D model loaded) — see pages/PublicChat/index.tsx.
   chatLayout: ChatLayout;
+  // How the public chat's mic button works: one recording per click, or hands-free turns that end
+  // by themselves (see pages/PublicChat/useVoiceInput.ts). Only matters with sttEnabled.
+  voiceInputMode: VoiceInputMode;
   // Whether the avatar uses body language: the LLM marks gestures in its replies, which the
   // vendored MotionEngine plays (see backend features/chat/motion.py). No effect with "chat_only".
   motionEnabled: boolean;
@@ -134,6 +137,9 @@ export const THINKING_MODES: ThinkingMode[] = ["default", "on", "off"];
 
 export type ChatLayout = "avatar_chat" | "avatar_chat_collapsed" | "avatar_only" | "chat_only";
 export const CHAT_LAYOUTS: ChatLayout[] = ["avatar_chat", "avatar_chat_collapsed", "avatar_only", "chat_only"];
+
+export type VoiceInputMode = "push_to_talk" | "hands_free";
+export const VOICE_INPUT_MODES: VoiceInputMode[] = ["push_to_talk", "hands_free"];
 
 export interface ProjectStats {
   totalProjects: number;

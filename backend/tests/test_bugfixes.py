@@ -342,8 +342,37 @@ def test_dropping_stt_server_engine_migrates_down_and_up(tmp_path, monkeypatch):
     assert "stt_server_engine" not in project_columns()
     command.downgrade(config, "-1")
     assert "stt_server_engine" in project_columns()
-    command.upgrade(config, "head")
+    command.upgrade(config, "e7f8a9b0c1d2")
     assert "stt_server_engine" not in project_columns()
+
+
+def test_voice_input_mode_migrates_down_and_up(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    import sqlalchemy as sa
+    from alembic import command
+    from alembic.config import Config
+
+    from app.core.config import settings
+
+    url = f"sqlite:///{tmp_path / 'migrated.db'}"
+    monkeypatch.setattr(settings, "database_url", url)
+    config = Config()
+    config.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "alembic"))
+
+    def project_columns() -> set[str]:
+        engine = sa.create_engine(url)
+        try:
+            return {c["name"] for c in sa.inspect(engine).get_columns("project")}
+        finally:
+            engine.dispose()
+
+    command.upgrade(config, "f8a9b0c1d2e3")
+    assert "voice_input_mode" in project_columns()
+    command.downgrade(config, "-1")
+    assert "voice_input_mode" not in project_columns()
+    command.upgrade(config, "head")
+    assert "voice_input_mode" in project_columns()
 
 
 # ==================== A streamed reply doesn't hold a DB connection ====================

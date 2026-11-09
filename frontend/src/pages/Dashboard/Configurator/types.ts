@@ -1,4 +1,4 @@
-import type { ChatLayout, ChecklistItem, KnowledgeMode, SpokenLanguage, ThinkingMode } from "@/types/project";
+import type { ChatLayout, ChecklistItem, KnowledgeMode, SpokenLanguage, ThinkingMode, VoiceInputMode } from "@/types/project";
 
 // Local wizard state for screen 1e.
 export interface ConfiguratorDraft {
@@ -9,6 +9,7 @@ export interface ConfiguratorDraft {
   builtinAvatar: string | null;
   avatarBackgroundId: string | null;
   chatLayout: ChatLayout;
+  voiceInputMode: VoiceInputMode;
   motionEnabled: boolean;
   thinkingMotionsEnabled: boolean;
   gradeLevel: string;

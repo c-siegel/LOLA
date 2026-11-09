@@ -133,6 +133,27 @@ def test_chat_layout_is_saved_validated_and_public(client, anon, keyless_tts_pro
     assert anon.get(f"/public/{slug}").json()["chatLayout"] == "chat_only"
 
 
+def test_voice_input_mode_is_saved_validated_and_public(client, anon, keyless_tts_project):
+    project_id = keyless_tts_project["id"]
+    slug = keyless_tts_project["shareSlug"]
+    assert client.get(f"/projects/{project_id}").json()["voiceInputMode"] == "push_to_talk"
+    assert anon.get(f"/public/{slug}").json()["voiceInputMode"] == "push_to_talk"
+    assert client.put(f"/projects/{project_id}", json={"voiceInputMode": "always_on"}).status_code == 422
+    client.put(f"/projects/{project_id}", json={"voiceInputMode": "hands_free"})
+    assert client.get(f"/projects/{project_id}").json()["voiceInputMode"] == "hands_free"
+    assert anon.get(f"/public/{slug}").json()["voiceInputMode"] == "hands_free"
+
+
+def test_voice_input_mode_survives_export_and_import(client, keyless_tts_project):
+    project_id = keyless_tts_project["id"]
+    client.put(f"/projects/{project_id}", json={"voiceInputMode": "hands_free"})
+    exported = client.get(f"/projects/{project_id}/export")
+    assert exported.status_code == 200
+    imported = client.post("/projects/import", files={"file": ("p.yaml", exported.content, "application/x-yaml")})
+    assert imported.status_code in (200, 201), imported.text
+    assert imported.json()["voiceInputMode"] == "hands_free"
+
+
 def test_without_sidecar_a_keyless_tts_project_replies_text_only(anon, keyless_tts_project):
     body = anon.post(f"/public/{keyless_tts_project['shareSlug']}/messages", json={"message": "Hi"}).json()
     assert body["audioBase64"] is None

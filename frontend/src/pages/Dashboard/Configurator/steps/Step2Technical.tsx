@@ -18,7 +18,7 @@ import {
   useServerSttStatus,
 } from "@/lib/providers";
 import { SPOKEN_LANGUAGE_VALUES } from "@/lib/speechOptions";
-import { THINKING_MODES, type ThinkingMode } from "@/types/project";
+import { THINKING_MODES, VOICE_INPUT_MODES, type ThinkingMode } from "@/types/project";
 import type { StepProps } from "../types";
 import styles from "./shared.module.css";
 
@@ -330,6 +330,25 @@ export function Step2Technical({ draft, onChange }: StepProps) {
         onChange={(e) => onChange({ sttEnabled: e.target.checked })}
         info={t("configurator.step2.sttText")}
       />
+      {draft.sttEnabled && (
+        <fieldset className={styles.radioGroup}>
+          <legend className={styles.label}>{t("configurator.step2.voiceInputModeTitle")}</legend>
+          {VOICE_INPUT_MODES.map((mode) => (
+            <label key={mode} className={styles.toggleRow}>
+              <input
+                type="radio"
+                name="voice-input-mode"
+                checked={draft.voiceInputMode === mode}
+                onChange={() => onChange({ voiceInputMode: mode })}
+              />
+              <span className={styles.toggleCopy}>
+                <strong>{t(`configurator.step2.voiceInputModes.${mode}.title`)}</strong>
+                <span>{t(`configurator.step2.voiceInputModes.${mode}.text`)}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
 
       <AdvancedSection changed={advancedChanged}>
         <div className={styles.field}>

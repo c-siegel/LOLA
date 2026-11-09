@@ -117,6 +117,9 @@
     "transcribing": "Transkription läuft",
     "stopRecording": "Aufnahme beenden",
     "voiceInput": "Spracheingabe",
+    "handsFreeStart": "Freihändige Spracheingabe starten",
+    "handsFreeStop": "Freihändige Spracheingabe ausschalten",
+    "handsFreeUnavailable": "Freihändige Spracheingabe ist gerade nicht verfügbar. Nutze stattdessen das Textfeld.",
     "stopResponse": "Antwort stoppen",
     "responseInterrupted": "Antwort unterbrochen.",
     "recordingFailed": "Ein Teil deiner Sprachnachricht konnte nicht übertragen werden — sie könnte unvollständig sein.",
@@ -428,6 +431,17 @@
       "voiceClipHint": "Wähle eine voreingestellte Stimme oder — wenn auf diesem Server das Stimmklonen eingerichtet ist — eine gespendete Stimme oder einen deiner eigenen Stimmclips. Clips anlegen und anhören unter",
       "sttTitle": "Spracheingabe (STT)",
       "sttText": "Aktiviert den Mikrofon-Button im öffentlichen Chat. Standardmäßig aus.",
+      "voiceInputModeTitle": "Wie Schüler:innen sprechen",
+      "voiceInputModes": {
+        "push_to_talk": {
+          "title": "Zum Sprechen klicken",
+          "text": "Schüler:innen klicken auf das Mikrofon, um zu beginnen, und noch einmal, um abzuschicken. Funktioniert auch in lauten Räumen gut."
+        },
+        "hands_free": {
+          "title": "Freihändig",
+          "text": "Schüler:innen schalten das Mikrofon einmal ein. Jede Antwort wird bei einer Sprechpause von selbst abgeschickt, und nach der Antwort des Avatars hört das Mikrofon wieder zu. Am besten in einem ruhigen Raum: Andere, die in der Nähe sprechen, können mit aufgenommen werden."
+        }
+      },
       "sttKey": "Spracherkennung auf dem Server",
       "sttKeyDefault": "Eingebaut — Parakeet auf diesem Server",
       "sttParakeetMissing": "(Modelldateien fehlen auf dem Server)",
@@ -979,6 +993,7 @@
     "speech": {
       "title": "Spracherkennung und Sprachausgabe",
       "sileroVad": { "description": "Erkennt, wann die Schülerin zu sprechen beginnt und aufhört, damit auf dem Server transkribierte Sprachnachrichten an echten Pausen geteilt werden" },
+      "smartTurn": { "description": "Entscheidet bei einer Sprechpause, ob die Schülerin fertig ist, für die freihändige Spracheingabe. Läuft im Browser über @micdrop/smart-turn von Godefroy de Compreignac" },
       "parakeet": {
         "description": "Mehrsprachiges Spracherkennungsmodell, das auf dem Gerät der Besucherin läuft (ternäre Version von NVIDIAs Parakeet TDT 0.6B v3)",
         "note": "Originalmodell von NVIDIA, ternäre Version von Moondream, ONNX-Export von eschmidbauer und mrfakename. Unverändert verwendet; die Dateien werden für die Auslieferung nur neu komprimiert."

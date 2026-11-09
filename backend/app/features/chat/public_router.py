@@ -102,6 +102,7 @@ def load_tutor(
         browser_tts_voice=project.tts_voice if browser_tts_model_url_for(project) else None,
         streaming_enabled=project.streaming_enabled,
         chat_layout=project.chat_layout,
+        voice_input_mode=project.voice_input_mode,
         motion_enabled=project.motion_enabled,
         # Combined here like the other flags: without gestures there is nothing to play.
         thinking_motions_enabled=project.thinking_motions_enabled and project.motion_enabled,

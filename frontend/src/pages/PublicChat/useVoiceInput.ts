@@ -1,14 +1,19 @@
 // Voice input for the public chat: records the student and turns it into text, on the device
 // (Parakeet, lib/parakeetStt.ts) when its model is ready, otherwise through the server in
-// segments cut at speech pauses (Silero VAD, lib/vad.ts). The live transcript goes into the composer; the final text is handed back
-// through onFinalText. Also loads the on-device model and reports its progress, since the chat
-// waits behind a loading screen until it has settled.
+// segments cut at speech pauses (Silero VAD, lib/vad.ts). The live transcript goes into the
+// composer; the final text is handed back through onFinalText. Also loads the on-device model and
+// reports its progress, since the chat waits behind a loading screen until it has settled.
+//
+// Two modes, per project (Project.voice_input_mode): push-to-talk, where the mic button starts and
+// stops one recording, and hands-free, where it switches listening on and off and each turn ends by
+// itself (Smart Turn in workers/vadWorker.ts). In hands-free mode listening pauses while the reply
+// is generated and spoken, so the avatar's voice and the student can't talk over each other.
 
 import { useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { publicChatApi } from "@/api/publicChat";
 import type { TalkingHeadAvatarHandle } from "@/components/TalkingHeadAvatar";
 import { ParakeetSttEngine, type LoadProgress, type ParakeetStatus, type StreamingSession } from "@/lib/parakeetStt";
-import { SileroVad, type VadSession } from "@/lib/vad";
+import { HANDS_FREE_PAUSE_MS, HANDS_FREE_TURN, SileroVad, type VadSession } from "@/lib/vad";
 
 // Pause-triggered incremental transcription for the server fallback (see backend
 // features/ai/stt) — used when on-device recognition (lib/parakeetStt.ts) isn't available.
@@ -20,6 +25,19 @@ const SILENCE_PAUSE_MS = 700; // how long a pause must last before it counts as 
 // trimming here too avoids uploading an ever-growing prompt on every segment of a long recording,
 // most of which the backend would immediately discard anyway.
 const MAX_INITIAL_PROMPT_CHARS = 500;
+
+// Hands-free: if the page doesn't start a reply within this long after a turn was handed over
+// (e.g. the message was refused), listening resumes anyway instead of waiting forever.
+const REPLY_START_TIMEOUT_MS = 1500;
+
+/** The open microphone of a hands-free session, kept across turns. */
+interface HandsFreeSession {
+  stream: MediaStream;
+  // Created in the click that switched hands-free on and kept open: iPadOS only starts audio from a
+  // click, and later turns start without one.
+  audioContext: AudioContext;
+  vad: VadSession | null;
+}
 
 /** One MediaRecorder segment of a server-transcribed recording. */
 interface Segment {
@@ -39,6 +57,8 @@ interface VoiceInputOptions {
   setInput: Dispatch<SetStateAction<string>>;
   /** A reply is still in flight or being spoken, so a new recording couldn't be sent. */
   replyPending: boolean;
+  /** Hands-free voice input (see the file comment) instead of push-to-talk. */
+  handsFree: boolean;
   onFinalText: (text: string) => void;
   /** A notice for the thread, as a translation key. */
   onNotice: (key: string) => void;
@@ -114,6 +134,22 @@ export function useVoiceInput(options: VoiceInputOptions) {
   // Whatever the student had already typed when the recording started — the live transcript is
   // shown after it in the composer.
   const inputBeforeRecordingRef = useRef("");
+  // Hands-free: switched on by the mic button (handsFreeOn), one turn recorded at a time
+  // (turnActiveRef), then waiting for the reply to the last turn before listening again.
+  const [handsFreeOn, setHandsFreeOn] = useState(false);
+  const [waitingForReply, setWaitingForReply] = useState(false);
+  const handsFreeRef = useRef<HandsFreeSession | null>(null);
+  const turnActiveRef = useRef(false);
+  const replySeenRef = useRef(false);
+
+  function getVad(): SileroVad {
+    // Smart Turn (~8 MB) is only loaded for hands-free projects.
+    return (vadRef.current ??= new SileroVad(latest.current.handsFree));
+  }
+
+  function pauseDetectionActive(): boolean {
+    return vadSessionRef.current !== null || Boolean(handsFreeRef.current?.vad);
+  }
 
   // Server fallback: transcribes one segment (see startPauseDetection) via the backend and
   // appends the result to the visible input box; on the final segment (mic button released),
@@ -153,6 +189,7 @@ export function useVoiceInput(options: VoiceInputOptions) {
       if (fullText.trim()) {
         latest.current.onFinalText(fullText);
       }
+      turnFinalized(Boolean(fullText.trim()));
     }
   }
 
@@ -163,7 +200,7 @@ export function useVoiceInput(options: VoiceInputOptions) {
   function startSegmentRecorder(stream: MediaStream) {
     const recorder = new MediaRecorder(stream);
     const chunks: Blob[] = [];
-    const segment: Segment = { hadSpeech: vadSessionRef.current === null };
+    const segment: Segment = { hadSpeech: !pauseDetectionActive() };
     currentSegmentRef.current = segment;
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunks.push(event.data);
@@ -173,7 +210,8 @@ export function useVoiceInput(options: VoiceInputOptions) {
       // finalRecorderRef's own comment) — not a shared flag, so a pause-cut segment whose onstop
       // is still pending when the student clicks stop can't mistake itself for the final one.
       const isFinal = recorder === finalRecorderRef.current;
-      if (isFinal) stream.getTracks().forEach((track) => track.stop());
+      // Hands-free keeps the microphone open for the next turn.
+      if (isFinal && !handsFreeRef.current) stream.getTracks().forEach((track) => track.stop());
       // A segment without speech (e.g. the silence after the last word) isn't uploaded: it would
       // only use a server transcription slot, and models tend to invent words in silence.
       const blob = new Blob(segment.hadSpeech ? chunks : [], { type: "audio/webm" });
@@ -241,10 +279,12 @@ export function useVoiceInput(options: VoiceInputOptions) {
     setIsFinalizingRecording(true);
     avatarRef.current?.stopListening();
     setIsRecording(false);
+    let sent = false;
     try {
       const { text } = await session.stop();
       if (text.trim()) {
         latest.current.onFinalText(text);
+        sent = true;
       } else {
         setInput(inputBeforeRecordingRef.current);
       }
@@ -255,17 +295,21 @@ export function useVoiceInput(options: VoiceInputOptions) {
       setInput(inputBeforeRecordingRef.current);
       latest.current.onNotice("publicChat.onDeviceSttFailed");
     } finally {
-      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
-      recordingStreamRef.current = null;
+      // Hands-free keeps the microphone open for the next turn.
+      if (!handsFreeRef.current) {
+        recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+        recordingStreamRef.current = null;
+      }
       setIsFinalizingRecording(false);
     }
+    turnFinalized(sent);
   }
 
   // Server fallback: cuts the recording into segments at speech pauses, once the VAD is loaded.
   // Without it (still loading, or failed), the recording just isn't cut and goes up as one piece.
   async function startPauseDetection(stream: MediaStream, audioContext: AudioContext) {
     const recordingId = ++recordingIdRef.current;
-    const vad = (vadRef.current ??= new SileroVad());
+    const vad = getVad();
     await vad.ensureReady();
     if (vad.status !== "ready" || recordingId !== recordingIdRef.current) {
       void audioContext.close();
@@ -297,27 +341,210 @@ export function useVoiceInput(options: VoiceInputOptions) {
     }
   }
 
+  // Server path: starts a fresh recording (segments, transcript) on an open stream.
+  function beginServerRecording(stream: MediaStream) {
+    recordingStreamRef.current = stream;
+    transcriptSoFarRef.current = "";
+    finalRecorderRef.current = null;
+    transcriptionChainRef.current = Promise.resolve();
+    recordingHadFailureRef.current = false;
+    startSegmentRecorder(stream);
+  }
+
+  // Server path: stops the recording; its last segment's transcription then sends the text.
+  function stopServerRecording() {
+    // Captures the exact recorder instance being stopped — see finalRecorderRef's own comment
+    // for why this can't be a plain boolean shared across every segment's onstop handler.
+    finalRecorderRef.current = mediaRecorderRef.current;
+    setIsFinalizingRecording(true);
+    mediaRecorderRef.current?.stop();
+    avatarRef.current?.stopListening();
+    setIsRecording(false);
+  }
+
+  // ==================== Hands-free ====================
+
+  // Switches hands-free listening on: opens the microphone once, starts the VAD with turn
+  // detection and records the first turn.
+  async function startHandsFree() {
+    // Created inside the click, before any await — see HandsFreeSession.audioContext.
+    const audioContext = new AudioContext();
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+    } catch (error) {
+      void audioContext.close();
+      throw error;
+    }
+    const vad = getVad();
+    await vad.ensureReady();
+    if (vad.status !== "ready") {
+      // Without speech detection nothing could end a turn; push-to-talk still works.
+      stream.getTracks().forEach((track) => track.stop());
+      void audioContext.close();
+      latest.current.onNotice("publicChat.handsFreeUnavailable");
+      return;
+    }
+    const session: HandsFreeSession = { stream, audioContext, vad: null };
+    handsFreeRef.current = session;
+    recordingStreamRef.current = stream;
+    setHandsFreeOn(true);
+    try {
+      session.vad = await vad.listen(
+        stream,
+        audioContext,
+        {
+          onSpeechStart: () => {
+            if (currentSegmentRef.current) currentSegmentRef.current.hadSpeech = true;
+          },
+          onSpeechEnd: () => {
+            if (mediaRecorderRef.current?.state !== "recording") return;
+            if (performance.now() - segmentStartedAtRef.current >= RECORDING_SEGMENT_MIN_MS) cutSegment();
+          },
+          onTurnEnd: () => endTurn(),
+        },
+        HANDS_FREE_PAUSE_MS,
+        HANDS_FREE_TURN,
+        false,
+      );
+    } catch (error) {
+      console.error("Hands-free listening couldn't start.", error);
+      stopHandsFree();
+      latest.current.onNotice("publicChat.handsFreeUnavailable");
+      return;
+    }
+    await startTurn();
+  }
+
+  // Records one turn on the open hands-free microphone, on the device or through the server.
+  async function startTurn() {
+    const session = handsFreeRef.current;
+    if (!session || turnActiveRef.current) return;
+    turnActiveRef.current = true;
+    session.vad?.resume(); // fresh VAD and Smart Turn state for the new turn
+    inputBeforeRecordingRef.current = latest.current.input.trim();
+    const engine = sttEngineRef.current;
+    if (engine?.status === "ready") {
+      try {
+        streamingSessionRef.current = await engine.startStreaming(
+          session.stream,
+          session.audioContext,
+          showLiveTranscript,
+          false,
+        );
+      } catch (error) {
+        console.error("On-device audio capture failed, using server transcription instead.", error);
+        engine.status = "error";
+      }
+    }
+    // Switched off while the device model was starting up.
+    if (handsFreeRef.current !== session) {
+      void streamingSessionRef.current?.stop();
+      streamingSessionRef.current = null;
+      return;
+    }
+    if (!streamingSessionRef.current) beginServerRecording(session.stream);
+    avatarRef.current?.startListening(session.stream);
+    setIsRecording(true);
+  }
+
+  // The turn is over (Smart Turn or the maximum silence, or the student sent it): stop recording;
+  // the final text is sent once it's transcribed (see turnFinalized).
+  function endTurn() {
+    if (!turnActiveRef.current) return;
+    turnActiveRef.current = false;
+    handsFreeRef.current?.vad?.pause();
+    if (streamingSessionRef.current) {
+      void stopStreamingRecording(streamingSessionRef.current);
+    } else if (mediaRecorderRef.current?.state === "recording") {
+      stopServerRecording();
+    } else {
+      // Nothing was recording yet (the turn ended while it was starting up): just listen on.
+      void startTurn();
+    }
+  }
+
+  // Called once a recording's final text has been handed over (or there was none). In hands-free
+  // mode, listening resumes after the reply — or right away if nothing was sent.
+  function turnFinalized(sent: boolean) {
+    if (!handsFreeRef.current) return;
+    if (sent) {
+      replySeenRef.current = false;
+      setWaitingForReply(true);
+    } else {
+      void startTurn();
+    }
+  }
+
+  // Switches hands-free off. A turn in progress is finished and sent, like stopping push-to-talk.
+  function stopHandsFree() {
+    const session = handsFreeRef.current;
+    if (!session) return;
+    // Cleared first, so the finishing turn closes the microphone instead of keeping it open.
+    handsFreeRef.current = null;
+    setHandsFreeOn(false);
+    setWaitingForReply(false);
+    session.vad?.stop();
+    const close = () => void session.audioContext.close();
+    if (turnActiveRef.current) {
+      turnActiveRef.current = false;
+      if (streamingSessionRef.current) {
+        void stopStreamingRecording(streamingSessionRef.current).finally(close);
+        return;
+      }
+      if (mediaRecorderRef.current?.state === "recording") {
+        stopServerRecording(); // its final segment's onstop stops the tracks
+        close();
+        return;
+      }
+    }
+    avatarRef.current?.stopListening();
+    setIsRecording(false);
+    session.stream.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+    close();
+  }
+
+  // The composer's send while voice input is running: sends what was said so far. Push-to-talk:
+  // like pressing stop. Hands-free: ends this turn, but keeps listening afterwards.
+  function finishRecording() {
+    if (handsFreeRef.current) endTurn();
+    else void toggleRecording();
+  }
+
   // Voice recording in the browser
   async function toggleRecording() {
     // The spoken reply arrives long after this gesture, so audio is unlocked now (see
     // sendFromComposer in the page).
     avatarRef.current?.unlockAudio();
+    if (latest.current.handsFree) {
+      if (handsFreeRef.current) {
+        stopHandsFree();
+        return;
+      }
+      if (replyPending) return;
+      setMicErrorKey(null);
+      try {
+        await startHandsFree();
+      } catch (error) {
+        console.error("Microphone access failed.", error);
+        const denied = error instanceof DOMException && error.name === "NotAllowedError";
+        setMicErrorKey(denied ? "publicChat.micPermissionDenied" : "publicChat.micUnavailable");
+      }
+      return;
+    }
     // Already recording -> stop the recording
     if (isRecording) {
       if (streamingSessionRef.current) {
         void stopStreamingRecording(streamingSessionRef.current);
         return;
       }
-      // Captures the exact recorder instance being stopped — see finalRecorderRef's own comment
-      // for why this can't be a plain boolean shared across every segment's onstop handler.
-      finalRecorderRef.current = mediaRecorderRef.current;
-      setIsFinalizingRecording(true);
       recordingIdRef.current++;
       vadSessionRef.current?.stop();
       vadSessionRef.current = null;
-      mediaRecorderRef.current?.stop();
-      avatarRef.current?.stopListening();
-      setIsRecording(false);
+      stopServerRecording();
       return;
     }
     // A reply from a previous message may still be in flight (or, for a streamed reply, still
@@ -346,13 +573,8 @@ export function useVoiceInput(options: VoiceInputOptions) {
         void vadAudioContext.close();
         throw error;
       }
-      recordingStreamRef.current = stream;
       avatarRef.current?.startListening(stream);
-      transcriptSoFarRef.current = "";
-      finalRecorderRef.current = null;
-      transcriptionChainRef.current = Promise.resolve();
-      recordingHadFailureRef.current = false;
-      startSegmentRecorder(stream);
+      beginServerRecording(stream);
       setIsRecording(true);
       void startPauseDetection(stream, vadAudioContext);
     } catch (error) {
@@ -384,15 +606,50 @@ export function useVoiceInput(options: VoiceInputOptions) {
       });
   }, [modelUrl]);
 
+  // Hands-free: listening resumes once the reply to the last turn has been generated and spoken
+  // (replyPending went true and back to false) — or after REPLY_START_TIMEOUT_MS if no reply
+  // started at all.
+  useEffect(() => {
+    if (!handsFreeOn || !waitingForReply) return;
+    if (replyPending) {
+      replySeenRef.current = true;
+      return;
+    }
+    if (replySeenRef.current) {
+      replySeenRef.current = false;
+      setWaitingForReply(false);
+      void startTurn();
+      return;
+    }
+    const timer = setTimeout(() => {
+      setWaitingForReply(false);
+      void startTurn();
+    }, REPLY_START_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+    // startTurn only reads refs and `latest`, so a stale closure is harmless here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handsFreeOn, waitingForReply, replyPending]);
+
   // Terminates the speech recognition and VAD workers on unmount — leaving them running would keep
   // the loaded models in memory for a tab that's no longer showing this chat at all.
   useEffect(() => {
     return () => {
+      stopHandsFree();
       sttEngineRef.current?.dispose();
       vadSessionRef.current?.stop();
       vadRef.current?.dispose();
     };
+    // Unmount only; stopHandsFree reads refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { isRecording, isFinalizingRecording, micErrorKey, sttLoadProgress, toggleRecording };
+  return {
+    isRecording,
+    isFinalizingRecording,
+    handsFreeOn,
+    micErrorKey,
+    sttLoadProgress,
+    toggleRecording,
+    finishRecording,
+  };
 }

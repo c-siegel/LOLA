@@ -36,6 +36,7 @@ function toDraft(project: Project): ConfiguratorDraft {
     builtinAvatar: project.builtinAvatar,
     avatarBackgroundId: project.avatarBackgroundId,
     chatLayout: project.chatLayout,
+    voiceInputMode: project.voiceInputMode,
     motionEnabled: project.motionEnabled,
     thinkingMotionsEnabled: project.thinkingMotionsEnabled,
     gradeLevel: project.gradeLevel ?? "",
@@ -83,6 +84,7 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.builtinAvatar !== project.builtinAvatar ||
     draft.avatarBackgroundId !== project.avatarBackgroundId ||
     draft.chatLayout !== project.chatLayout ||
+    draft.voiceInputMode !== project.voiceInputMode ||
     draft.motionEnabled !== project.motionEnabled ||
     draft.thinkingMotionsEnabled !== project.thinkingMotionsEnabled ||
     (draft.gradeLevel || null) !== project.gradeLevel ||
@@ -153,6 +155,7 @@ export function ConfiguratorPage() {
         builtinAvatar: data.builtinAvatar,
         avatarBackgroundId: data.avatarBackgroundId,
         chatLayout: data.chatLayout,
+        voiceInputMode: data.voiceInputMode,
         motionEnabled: data.motionEnabled,
         thinkingMotionsEnabled: data.thinkingMotionsEnabled,
         gradeLevel: data.gradeLevel || null,

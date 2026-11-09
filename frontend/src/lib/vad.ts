@@ -1,25 +1,45 @@
-// Voice activity detection (VAD) in the browser: tells when the student starts and stops speaking.
-// Silero VAD runs in workers/vadWorker.ts; this file is the main-thread side, fed from the
-// microphone through the same AudioWorklet as on-device speech recognition (lib/parakeetStt.ts).
-// Used by the public chat's server fallback (pages/PublicChat/useVoiceInput.ts) to cut a
-// recording at real speech pauses.
+// Voice activity detection (VAD) in the browser: tells when the student starts and stops speaking
+// and, for hands-free voice input, when their turn is over. Silero VAD and Smart Turn run in
+// workers/vadWorker.ts; this file is the main-thread side, fed from the microphone through the same
+// AudioWorklet as on-device speech recognition (lib/parakeetStt.ts). Used by the public chat's voice
+// input (pages/PublicChat/useVoiceInput.ts).
 //
-// The model comes from scripts/fetch-stt-model.sh (self-hosted under /models/, ~2 MB). It's tiny
-// and runs on the CPU, so unlike Parakeet it works on every device.
+// The models come from scripts/fetch-stt-model.sh (self-hosted under /models/: Silero ~2 MB, Smart
+// Turn ~8 MB). Both are small and run on the CPU, so unlike Parakeet they work on every device.
 
 import { sitePath } from "@/lib/basePath";
-import type { VadWorkerInbound, VadWorkerOutbound } from "@/workers/vadWorker";
+import type { TurnConfig, TurnEndReason, VadWorkerInbound, VadWorkerOutbound } from "@/workers/vadWorker";
 import pcmCaptureWorkletUrl from "@/workers/pcmCapture.worklet.ts?worker&url";
 
+export type { TurnEndReason } from "@/workers/vadWorker";
+
 export const VAD_MODEL_URL = sitePath("/models/silero-vad/v6.2/");
+export const TURN_MODEL_URL = sitePath("/models/smart-turn/v3.2/");
+
+/** Hands-free defaults (docs/stt-plan.md, phase 3): a 300 ms pause asks Smart Turn; an unfinished
+ * turn ends after 2 s of silence at most. Fixed values for now, to be tuned with the Latency Lab. */
+export const HANDS_FREE_PAUSE_MS = 300;
+export const HANDS_FREE_TURN: TurnConfig = { maxSilenceMs: 2000, fallbackSilenceMs: 1000, slowPredictMs: 600 };
 
 export type VadStatus = "idle" | "loading" | "ready" | "error";
+
+export interface TurnEnd {
+  /** When the last speech ended and when the turn was declared over, in ms since listening
+   * (re)started. */
+  speechEndMs: number;
+  atMs: number;
+  reason: TurnEndReason;
+  /** Smart Turn's probability that the turn is finished, if it decided. */
+  probability: number | null;
+}
 
 export interface VadHandlers {
   onSpeechStart?: (atMs: number) => void;
   /** `atMs`: when the speech ended (ms of audio since listening started), not when the pause was
    * confirmed `minSilenceMs` later. */
   onSpeechEnd?: (atMs: number) => void;
+  /** Hands-free only: the student's turn is over. Nothing more is reported until resume(). */
+  onTurnEnd?: (turn: TurnEnd) => void;
 }
 
 /** Listening on one microphone stream. Created by SileroVad.listen. */
@@ -30,27 +50,49 @@ export class VadSession {
     private readonly audioContext: AudioContext,
     private readonly captureNode: AudioWorkletNode,
     private readonly source: MediaStreamAudioSourceNode,
-    private readonly sendStop: () => void,
+    private readonly sendStart: () => void,
+    private readonly sendPause: () => void,
+    private readonly release: () => void,
+    private readonly closeContext: boolean,
   ) {}
+
+  /** Stops analysing (the microphone stays open), e.g. while the avatar answers. */
+  pause(): void {
+    if (!this.stopped) this.sendPause();
+  }
+
+  /** Starts over with fresh model state, as for a new recording or turn. */
+  resume(): void {
+    if (!this.stopped) this.sendStart();
+  }
 
   stop(): void {
     if (this.stopped) return;
     this.stopped = true;
     this.source.disconnect();
     this.captureNode.disconnect();
-    void this.audioContext.close();
-    this.sendStop();
+    if (this.closeContext) void this.audioContext.close();
+    this.sendPause();
+    this.release();
   }
 }
 
-/** Loads Silero VAD in a Web Worker. One instance per page visit; one recording at a time. */
+/** Loads Silero VAD (and, if asked, Smart Turn) in a Web Worker. One instance per page visit; one
+ * listening session at a time. */
 export class SileroVad {
   status: VadStatus = "idle";
+  /** Whether Smart Turn loaded; without it, hands-free ends a turn after a fixed silence. */
+  turnDetection = false;
   private worker: Worker | null = null;
   private readyPromise: Promise<void> | null = null;
   private handlers: VadHandlers = {};
 
-  constructor(readonly modelUrl: string = VAD_MODEL_URL) {}
+  /** `withTurnDetection`: also load Smart Turn (only hands-free projects need it). */
+  constructor(
+    readonly withTurnDetection = false,
+    readonly modelUrl: string = VAD_MODEL_URL,
+    readonly turnModelUrl: string = TURN_MODEL_URL,
+  ) {}
 
   /** Starts loading if it hasn't yet (safe to call repeatedly); resolves once `status` is
    * "ready" or "error" — never rejects. */
@@ -69,6 +111,7 @@ export class SileroVad {
         switch (message.type) {
           case "ready":
             this.status = "ready";
+            this.turnDetection = message.turnDetection;
             resolve();
             break;
           case "initError":
@@ -81,8 +124,11 @@ export class SileroVad {
           case "speechEnd":
             this.handlers.onSpeechEnd?.(message.atMs);
             break;
+          case "turnEnd":
+            this.handlers.onTurnEnd?.(message);
+            break;
           case "error":
-            // This recording just stops getting pause events; the next one tries again.
+            // This recording just stops getting events; the next one tries again.
             console.error("Voice activity detection failed:", message.message);
             break;
         }
@@ -91,7 +137,12 @@ export class SileroVad {
         this.fail(event.message || "Worker failed to start");
         resolve();
       };
-      this.send({ type: "init", modelUrl: new URL(this.modelUrl, window.location.href).href });
+      const absolute = (url: string) => new URL(url, window.location.href).href;
+      this.send({
+        type: "init",
+        modelUrl: absolute(this.modelUrl),
+        turnModelUrl: this.withTurnDetection ? absolute(this.turnModelUrl) : null,
+      });
     });
   }
 
@@ -106,12 +157,15 @@ export class SileroVad {
 
   /** Starts detecting speech on an already-open microphone stream. `audioContext` should be
    * created inside the click handler (before awaiting getUserMedia), or Safari starts it
-   * suspended; the session closes it when it stops. */
+   * suspended; the session closes it when it stops, unless `closeContext` is false. `turn`
+   * switches on hands-free turn detection (onTurnEnd). */
   async listen(
     stream: MediaStream,
     audioContext: AudioContext,
     handlers: VadHandlers,
     minSilenceMs: number,
+    turn: TurnConfig | null = null,
+    closeContext = true,
   ): Promise<VadSession> {
     if (this.status !== "ready") throw new Error(`Voice activity detection is not ready (${this.status}).`);
     await audioContext.resume();
@@ -128,13 +182,21 @@ export class SileroVad {
     // output, so this plays silence.
     captureNode.connect(audioContext.destination);
     this.handlers = handlers;
-    this.send({ type: "start", minSilenceMs });
-    return new VadSession(audioContext, captureNode, source, () => {
-      // A late stop of an earlier recording must not cut off a newer one.
-      if (this.handlers !== handlers) return;
-      this.handlers = {};
-      this.send({ type: "stop" });
-    });
+    const start = () => this.send({ type: "start", minSilenceMs, turn });
+    start();
+    // A late call on an earlier session must not affect a newer one.
+    const isCurrent = () => this.handlers === handlers;
+    return new VadSession(
+      audioContext,
+      captureNode,
+      source,
+      () => isCurrent() && start(),
+      () => isCurrent() && this.send({ type: "stop" }),
+      () => {
+        if (isCurrent()) this.handlers = {};
+      },
+      closeContext,
+    );
   }
 
   /** Releases the worker — call on page unmount, not between recordings. */

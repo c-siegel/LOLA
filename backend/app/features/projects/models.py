@@ -125,6 +125,11 @@ class Project(SQLModel, table=True):
     # chat), "avatar_chat_collapsed" (chat starts collapsed but can be expanded), "avatar_only"
     # (voice only, no chat column) or "chat_only" (no 3D avatar is loaded at all).
     chat_layout: str = "avatar_chat"
+    # How voice input is started and ended in the public chat (see schemas.py::VoiceInputMode):
+    # "push_to_talk" (the student clicks the mic button to start and again to stop) or
+    # "hands_free" (one click turns listening on; each turn ends by itself at a pause, see
+    # frontend workers/vadWorker.ts). Only matters with stt_enabled.
+    voice_input_mode: str = "push_to_talk"
     # Body language from the vendored MotionEngine (frontend/src/vendor/motion-engine): the LLM is
     # told it may mark gestures as "::name::" in its reply (see features/chat/motion.py), which
     # are stripped before TTS and played by the avatar. Has no effect with chat_layout

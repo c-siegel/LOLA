@@ -117,6 +117,9 @@
     "transcribing": "Transcribing …",
     "stopRecording": "Stop recording",
     "voiceInput": "Voice input",
+    "handsFreeStart": "Start hands-free voice input",
+    "handsFreeStop": "Turn off hands-free voice input",
+    "handsFreeUnavailable": "Hands-free voice input isn't available right now. Use the text field instead.",
     "stopResponse": "Stop response",
     "responseInterrupted": "Response interrupted.",
     "recordingFailed": "Part of your voice message could not be transmitted — it may be incomplete.",
@@ -428,6 +431,17 @@
       "voiceClipHint": "Pick a preset voice or — if voice cloning is set up on this server — a donated voice or one of your own voice clips. Add and test clips under",
       "sttTitle": "Voice input (STT)",
       "sttText": "Enables the microphone button in the public chat. Off by default.",
+      "voiceInputModeTitle": "How students speak",
+      "voiceInputModes": {
+        "push_to_talk": {
+          "title": "Push to talk",
+          "text": "Students click the microphone to start and again to send. Works well in noisy rooms."
+        },
+        "hands_free": {
+          "title": "Hands-free",
+          "text": "Students switch the microphone on once. Each answer is sent by itself when they pause, and the microphone listens again after the avatar has replied. Best in a quiet room: other people talking nearby can be picked up too."
+        }
+      },
       "sttKey": "Server speech recognition",
       "sttKeyDefault": "Built-in — Parakeet on this server",
       "sttParakeetMissing": "(model files missing on the server)",
@@ -979,6 +993,7 @@
     "speech": {
       "title": "Speech Recognition and Output",
       "sileroVad": { "description": "Detects when the student starts and stops speaking, so voice messages transcribed on the server are cut at real pauses" },
+      "smartTurn": { "description": "Decides at a pause whether the student has finished speaking, for hands-free voice input. Runs in the browser through @micdrop/smart-turn by Godefroy de Compreignac" },
       "parakeet": {
         "description": "Multilingual speech recognition model that runs on the visitor's device (ternary version of NVIDIA's Parakeet TDT 0.6B v3)",
         "note": "Original model by NVIDIA, ternary version by Moondream, ONNX export by eschmidbauer and mrfakename. Used unchanged; the files are only re-compressed for delivery."

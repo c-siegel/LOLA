@@ -180,6 +180,48 @@ they work on devices without WebGPU too.
    the feature extraction to TypeScript, check outputs against the Python reference on a few
    clips, and measure inference time on WASM. Confirm the weights' licence on the model card. If it
    doesn't fit, end of turn falls back to a plain silence timeout.
+
+   **Result (2026-11-09): feasible, with `@micdrop/smart-turn`; no port of our own.**
+   - Package: `@micdrop/smart-turn` 0.3.0 (MIT, no dependencies, onnxruntime-web as a peer,
+     which LOLA already has). It runs Smart Turn **v3.2**, weights BSD-2-Clause (model card of
+     `pipecat-ai/smart-turn-v3`). It builds the features in TypeScript as the audio arrives
+     (Whisper log-mel, last 8 s), so at the pause only the model call is left. One WASM thread
+     needs no cross-origin isolation. By default it fetches the model from Hugging Face and the
+     runtime from unpkg; both are configurable (`setSmartTurnOptions({ model, wasmPath })`), so
+     we self-host the int8 model (`smart-turn-v3.2-cpu.onnx`, 8.3 MB) like Silero. Pre-1.0 and
+     two days old: pin the exact version.
+   - Accuracy in German: the full German part of Smart Turn's own test set
+     (`pipecat-ai/smart-turn-data-v3.1-test`, CC BY 4.0, 1,322 clips, 659 complete), run through
+     the package on onnxruntime-web WASM with one thread. Upstream's Python pipeline reports
+     96.4 % for German with the same model.
+
+     | Path | Accuracy | Unfinished judged complete | Complete judged unfinished |
+     |---|---|---|---|
+     | Whole turn at once (`predictOnce`) | 96.1 % | 5.0 % | 2.9 % |
+     | Streamed in 100 ms batches, as the app would (`push` + `predict`) | 96.6 % | 3.9 % | 2.9 % |
+
+     So the TypeScript front end is faithful.
+   - Limit: it judges from prosody, not words. 150 Common Voice read sentences cut at a random
+     point (40–70 % in, often mid-word) were judged "complete" 84–87 % of the time, with digital
+     silence or room noise after the cut alike. The same sentences whole were judged complete in
+     93–96 %. A student who hesitates sounds unfinished and is caught; a sentence that just stops
+     mid-flow sounds finished. So Smart Turn may only *extend* the wait. It must never be the
+     only thing that ends a turn early, and the maximum silence stays as the backstop.
+   - Speed, at the pause (WASM, one thread, Node on the Ryzen 5 5625U): p50 152 ms, p90 167 ms.
+     The package's README reports 194 ms on an M2 and ~0.8–1.2 s on emulated mid-range and slow
+     phones, against ~25 ms on WebGPU. Building the features while the student speaks costs
+     ~0.5 % of a core.
+   - Not tested: real classroom speech and children's voices; a real iPad.
+
+   For step 3 this means:
+   - Run Smart Turn inside `workers/vadWorker.ts`, which already has the 16 kHz audio and the
+     pause events, so the main thread stays free.
+   - Use the int8 model in WASM everywhere (WebGPU is busy with Parakeet on the devices that
+     have it).
+   - Rule: VAD pause (≥ 300 ms), then Smart Turn. "Complete" sends; "unfinished" waits until
+     speech resumes or the maximum silence (~2 s) is reached.
+   - If the device is too slow (the first prediction takes over ~600 ms), skip Smart Turn for
+     the visit and use a plain ~1 s silence timeout.
 3. **Hands-free mode.**
    - Project field `voice_input_mode: "push_to_talk" | "hands_free"` (server default
      `push_to_talk`) + migration; configurator option; public chat reads it.
@@ -192,6 +234,29 @@ they work on devices without WebGPU too.
    - Engine boundary: the device engine is reached through one interface
      (`startStreaming`/`stop`, as today), so another engine (e.g. Moonshine later) drops in
      without touching the turn logic.
+
+   **Done (2026-11-09).**
+   - Backend: `Project.voice_input_mode` (migration `f8a9b0c1d2e3`, server default
+     `push_to_talk`), in the project schemas, the export and the public project.
+   - Configurator: a radio choice under "Voice input".
+   - Models: `fetch-stt-model.sh` also fetches Smart Turn v3.2 int8 (pinned revision + checksum,
+     with a BSD-2 `NOTICE.md`). The frontend uses `@micdrop/smart-turn` 0.3.0, exact pin; it runs
+     in `workers/vadWorker.ts` on the worker's own ONNX runtime, not the package's web loader.
+   - Turn rule: 300 ms pause, then Smart Turn decides. "Unfinished" ends the turn after 2 s of
+     silence at most. If the model is missing or too slow (> 600 ms per prediction), a 1 s
+     silence ends the turn instead.
+   - Listening pauses after each turn and resumes once the reply has been spoken (the page's
+     reply-pending state), or 1.5 s after a turn whose message never started a reply.
+   - Switching off mid-turn sends what was said; the composer's send ends the current turn.
+   - Push-to-talk projects never load Smart Turn.
+   - Checked in Edge with a WAV as the microphone, on the server path (no WebGPU there):
+     - each utterance became its own turn, sent ~0.4–0.7 s after the speech ended;
+     - listening resumed after each reply;
+     - switching off sent the turn in progress;
+     - push-to-talk behaved as before.
+
+     Not tested: the on-device (WebGPU) path in hands-free mode, a real iPad, real classroom
+     noise.
 4. **Latency Lab.** Report end-of-turn delay (speech end → message sent) so pause and threshold
    values can be tuned with data.
 

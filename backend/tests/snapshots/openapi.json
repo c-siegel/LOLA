@@ -2850,6 +2850,14 @@
               }
             ],
             "title": "Ttsvoiceclipid"
+          },
+          "voiceInputMode": {
+            "enum": [
+              "push_to_talk",
+              "hands_free"
+            ],
+            "title": "Voiceinputmode",
+            "type": "string"
           }
         },
         "required": [
@@ -2888,6 +2896,7 @@
           "ttsBrowserEnabled",
           "streamingEnabled",
           "chatLayout",
+          "voiceInputMode",
           "motionEnabled",
           "thinkingMotionsEnabled",
           "motionPrompt",
@@ -3402,6 +3411,21 @@
               }
             ],
             "title": "Ttsvoiceclipid"
+          },
+          "voiceInputMode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "push_to_talk",
+                  "hands_free"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voiceinputmode"
           }
         },
         "title": "ProjectUpdate",
@@ -4108,6 +4132,11 @@
             "default": true,
             "title": "Unlocked",
             "type": "boolean"
+          },
+          "voiceInputMode": {
+            "default": "push_to_talk",
+            "title": "Voiceinputmode",
+            "type": "string"
           }
         },
         "required": [

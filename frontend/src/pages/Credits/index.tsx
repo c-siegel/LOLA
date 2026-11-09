@@ -93,6 +93,23 @@ export function CreditsPage() {
             </div>
 
             <div className={styles.creditItem}>
+              <h3>Smart Turn</h3>
+              <p className={styles.author}>{t("credits.byAuthor", { name: "Daily (Pipecat)" })}</p>
+              <p className={styles.description}>{t("credits.speech.smartTurn.description")}</p>
+              <div className={styles.links}>
+                <a href="https://github.com/pipecat-ai/smart-turn" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "smart-turn" })}
+                </a>
+                <a href="https://github.com/Godefroy/micdrop" target="_blank" rel="noopener noreferrer">
+                  @micdrop/smart-turn
+                </a>
+              </div>
+              <div className={styles.license}>
+                <strong>{t("credits.licenseLabel")}</strong> BSD 2-Clause (model), MIT (@micdrop/smart-turn)
+              </div>
+            </div>
+
+            <div className={styles.creditItem}>
               <h3>Pocket TTS</h3>
               <p className={styles.author}>
                 {t("credits.byAuthor", {

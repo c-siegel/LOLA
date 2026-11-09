@@ -36,6 +36,8 @@ MAX_TOP_P = 1.0
 # STT is off (see frontend pages/PublicChat/index.tsx).
 ChatLayout = Literal["avatar_chat", "avatar_chat_collapsed", "avatar_only", "chat_only"]
 ThinkingMode = Literal["default", "on", "off"]
+# How voice input starts and ends, see features/projects/models.py::Project.voice_input_mode.
+VoiceInputMode = Literal["push_to_talk", "hands_free"]
 
 # How a project uses its knowledge bases (see features/knowledge/prompt.py): not at all, as
 # supplementary material, or as the only source it may answer from.
@@ -139,6 +141,7 @@ class ProjectOut(CamelModel):
     tts_browser_enabled: bool
     streaming_enabled: bool
     chat_layout: ChatLayout
+    voice_input_mode: VoiceInputMode
     motion_enabled: bool
     thinking_motions_enabled: bool
     motion_prompt: str | None
@@ -190,6 +193,7 @@ class ProjectUpdate(CamelModel):
     tts_browser_enabled: bool | None = None
     streaming_enabled: bool | None = None
     chat_layout: ChatLayout | None = None
+    voice_input_mode: VoiceInputMode | None = None
     motion_enabled: bool | None = None
     thinking_motions_enabled: bool | None = None
     # Blank clears it, i.e. back to the built-in default (see service.py::apply_update).
@@ -318,6 +322,7 @@ class ProjectExportData(BaseModel):
     tts_browser_enabled: bool = False
     streaming_enabled: bool = True
     chat_layout: ChatLayout = "avatar_chat"
+    voice_input_mode: VoiceInputMode = "push_to_talk"
     motion_enabled: bool = True
     thinking_motions_enabled: bool = False
     motion_prompt: str | None = Field(default=None, max_length=MAX_MOTION_PROMPT_LENGTH)

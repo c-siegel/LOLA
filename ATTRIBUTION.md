@@ -14,6 +14,8 @@ Only permissive licences are accepted (MIT, BSD, Apache-2.0, ISC, PSF, MPL-2.0 u
 | [MotionEngine](https://github.com/lhupyn/motion-engine) | Avatar gestures; vendored without its webcam feature ([details](frontend/src/vendor/motion-engine/ATTRIBUTION.md)) | lhupyn | MIT |
 | [Parakeet Redux](https://huggingface.co/moondream/parakeet-redux) ([ONNX export](https://huggingface.co/mrfakename/parakeet-redux-ONNX)) | Speech recognition model (on the device and on the server) | NVIDIA, Moondream, eschmidbauer, mrfakename | CC BY 4.0 |
 | [Silero VAD](https://github.com/snakers4/silero-vad) | Detecting speech pauses in the browser | Silero Team | MIT |
+| [Smart Turn](https://github.com/pipecat-ai/smart-turn) ([model](https://huggingface.co/pipecat-ai/smart-turn-v3)) | Detecting the end of a turn for hands-free voice input | Daily (Pipecat) | BSD-2-Clause |
+| [@micdrop/smart-turn](https://github.com/Godefroy/micdrop) | Running Smart Turn in the browser | Godefroy de Compreignac | MIT |
 | [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) (weights: [kyutai/pocket-tts](https://huggingface.co/kyutai/pocket-tts), [voices](https://huggingface.co/kyutai/tts-voices), ONNX exports [Lauro00000/k6-onnx-int8](https://huggingface.co/Lauro00000/k6-onnx-int8) and [c-siegel/pocket-tts-en-de-onnx-int8](https://huggingface.co/c-siegel/pocket-tts-en-de-onnx-int8)) | Local and on-device speech output | Kyutai Labs | Code MIT, weights and voices CC BY 4.0 |
 | [normt2s](https://github.com/c-siegel/normt2s) | Turns reply text into speakable text | c-siegel | MIT |
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime) and ONNX Runtime Web | Running the speech models | Microsoft | MIT |
