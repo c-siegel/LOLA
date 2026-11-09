@@ -1,6 +1,7 @@
 # Plan: STT rework — Parakeet only, Moonshine evaluation, VAD and hands-free input
 
-Status: **planned.** Written 2026-10-22 on branch `stt-rework` (all commits go there; the PR to
+Status: **phase 1 done** (results: [stt-evaluation.md](stt-evaluation.md), decision pending);
+phases 2–3 planned. Written 2026-10-22 on branch `stt-rework` (all commits go there; the PR to
 `working-branch` comes later).
 
 ## Goal
