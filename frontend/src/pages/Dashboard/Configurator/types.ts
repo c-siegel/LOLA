@@ -1,4 +1,4 @@
-import type { ChatLayout, ChecklistItem, KnowledgeMode, SpokenLanguage, SttServerEngine, ThinkingMode } from "@/types/project";
+import type { ChatLayout, ChecklistItem, KnowledgeMode, SpokenLanguage, ThinkingMode } from "@/types/project";
 
 // Local wizard state for screen 1e.
 export interface ConfiguratorDraft {
@@ -31,7 +31,6 @@ export interface ConfiguratorDraft {
   ttsVoice: string;
   ttsVoiceClipId: string | null;
   sttApiKeyId: string | null;
-  sttServerEngine: SttServerEngine | null;
   sttEnabled: boolean;
   sttBrowserEnabled: boolean;
   ttsBrowserEnabled: boolean;

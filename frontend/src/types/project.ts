@@ -47,15 +47,12 @@ export interface Project {
   // from — only used while ttsApiKeyId is null. null speaks with the default local voice.
   ttsVoiceClipId: string | null;
   spokenLanguage: SpokenLanguage;
-  // Reference to a key of type STT (mirrors ttsApiKeyId) — null keeps transcribing locally
-  // (see backend features/ai/stt).
+  // Reference to a key of type STT (mirrors ttsApiKeyId) — null keeps transcribing locally with
+  // the server's Parakeet model (see backend features/ai/stt).
   sttApiKeyId: string | null;
-  // Which local engine transcribes on the server when sttApiKeyId is null — null follows the
-  // deployment's STT_ENGINE (see useServerSttStatus in lib/providers.ts).
-  sttServerEngine: SttServerEngine | null;
   sttEnabled: boolean;
   // Whether this project prefers on-device (browser, WebGPU) transcription over sttApiKeyId/the
-  // server's local Whisper — only shown/usable in the Configurator when the deployment also
+  // server's local Parakeet — only shown/usable in the Configurator when the deployment also
   // allows it (see useBrowserSttStatus in lib/providers.ts).
   sttBrowserEnabled: boolean;
   // Whether the visitor's device speaks the replies (Pocket TTS in the browser), with the server's
@@ -131,9 +128,6 @@ export type SpokenLanguage = "de" | "en";
 // "supplement": use the material where it helps; "strict": answer only from it.
 export type KnowledgeMode = "off" | "supplement" | "strict";
 export const KNOWLEDGE_MODES: KnowledgeMode[] = ["off", "supplement", "strict"];
-
-// The local server STT engines (backend Settings.stt_engine / Project.stt_server_engine).
-export type SttServerEngine = "whisper" | "parakeet";
 
 export type ThinkingMode = "default" | "on" | "off";
 export const THINKING_MODES: ThinkingMode[] = ["default", "on", "off"];

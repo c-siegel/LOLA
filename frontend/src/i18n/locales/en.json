@@ -429,16 +429,11 @@
       "sttTitle": "Voice input (STT)",
       "sttText": "Enables the microphone button in the public chat. Off by default.",
       "sttKey": "Server speech recognition",
-      "sttKeyDefault": "Built-in — server default ({{engine}})",
-      "sttServerEngineOption": "Built-in — {{engine}}",
-      "sttServerEngines": {
-        "whisper": "Whisper",
-        "parakeet": "Parakeet"
-      },
-      "sttParakeetMissing": "(model not available on the server)",
-      "sttKeyHint": "Without a key, voice messages are transcribed locally on this server — with Whisper or Parakeet (faster, detects the language itself). Add a key of type STT under API keys to use GWDG SAIA instead.",
+      "sttKeyDefault": "Built-in — Parakeet on this server",
+      "sttParakeetMissing": "(model files missing on the server)",
+      "sttKeyHint": "Without a key, voice messages are transcribed locally on this server with Parakeet. Add a key of type STT under API keys to use GWDG SAIA instead.",
       "sttBrowserTitle": "On-device speech recognition (recommended)",
-      "sttBrowserText": "Voice messages are recognized on the visitor's own device with live text while they speak, so recordings never leave it. Each device downloads the model once (about 170 MB) before the chat opens. Devices without WebGPU automatically use the STT key or the server's Whisper instead.",
+      "sttBrowserText": "Voice messages are recognized on the visitor's own device with live text while they speak, so recordings never leave it. Each device downloads the model once (about 170 MB) before the chat opens. Devices without WebGPU automatically use the STT key or the server's Parakeet instead.",
       "streamingTitle": "Streamed replies",
       "streamingText": "The avatar starts speaking after the first sentence instead of waiting for the full reply. Off by default.",
       "localVoicePresets": "Preset voices",
@@ -858,7 +853,6 @@
     "stt": "Speech recognition (voice input)",
     "sttDevice": "On this device (Parakeet, WebGPU)",
     "sttServerProject": "Server, as the project is set up",
-    "sttServerWhisper": "Server, Whisper",
     "sttServerParakeet": "Server, Parakeet",
     "llm": "Language model",
     "llmProject": "As the project is set up",
@@ -1014,7 +1008,7 @@
       "title": "Backend Frameworks & Libraries",
       "fastapi": { "description": "Modern, fast web framework for building APIs with Python" },
       "sqlmodel": { "description": "SQL library for Python, based on Pydantic and SQLAlchemy" },
-      "fasterWhisper": { "description": "Fast implementation of OpenAI Whisper for speech recognition" },
+      "pyav": { "description": "Decodes voice messages for speech recognition on the server (FFmpeg bindings for Python)" },
       "pydantic": { "description": "Data validation using Python type annotations" }
     },
     "privacy": {

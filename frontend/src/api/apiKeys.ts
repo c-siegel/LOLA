@@ -1,6 +1,5 @@
 import { apiClient } from "./client";
 import type { ApiKey, ApiKeyInput, ProviderSpec } from "@/types/apiKey";
-import type { SttServerEngine } from "@/types/project";
 
 /** The local TTS sidecar (backend providers_router.py::local_tts_status). */
 export interface LocalTtsStatus {
@@ -25,7 +24,7 @@ export const apiKeysApi = {
   browserSttStatus: () => apiClient.get<{ available: boolean }>("/providers/browser-stt-status"),
   browserTtsStatus: () => apiClient.get<{ available: boolean; language: string }>("/providers/browser-tts-status"),
   serverSttStatus: () =>
-    apiClient.get<{ defaultEngine: SttServerEngine; parakeetAvailable: boolean }>("/providers/server-stt-status"),
+    apiClient.get<{ available: boolean }>("/providers/server-stt-status"),
   list: () => apiClient.get<ApiKey[]>("/api-keys"),
   create: (input: ApiKeyInput) => apiClient.post<ApiKey>("/api-keys", input),
   // Keys are addressed by their id (no longer by provider) — the same teacher can store several

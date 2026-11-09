@@ -235,7 +235,7 @@ export function useVoiceInput(options: VoiceInputOptions) {
 
   // Called on a detected speech pause once the current segment is long enough (see
   // RECORDING_SEGMENT_MIN_MS) — too-short segments are left alone and simply carried into the
-  // next one, since faster-whisper's accuracy on very short clips is poor.
+  // next one, since speech recognition on very short clips is poor.
   function cutSegment() {
     const recorder = mediaRecorderRef.current;
     const stream = recordingStreamRef.current;

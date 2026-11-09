@@ -144,7 +144,7 @@ async function speakOnDevice(ctx: TurnContext, input: Exclude<TurnInput, { kind:
 /** Speech input transcribed on the server after the student stops, like the public chat's
  * fallback. */
 async function speakToServer(ctx: TurnContext, input: Exclude<TurnInput, { kind: "text" }>): Promise<SpeechResult> {
-  const engine = ctx.config.sttMode === "server-whisper" ? "whisper" : ctx.config.sttMode === "server-parakeet" ? "parakeet" : "project";
+  const engine = ctx.config.sttMode === "server-parakeet" ? "parakeet" : "project";
   let audio: Blob;
   let audioSeconds: number;
   let t0: number;

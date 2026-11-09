@@ -429,16 +429,11 @@
       "sttTitle": "Spracheingabe (STT)",
       "sttText": "Aktiviert den Mikrofon-Button im öffentlichen Chat. Standardmäßig aus.",
       "sttKey": "Spracherkennung auf dem Server",
-      "sttKeyDefault": "Eingebaut — Server-Standard ({{engine}})",
-      "sttServerEngineOption": "Eingebaut — {{engine}}",
-      "sttServerEngines": {
-        "whisper": "Whisper",
-        "parakeet": "Parakeet"
-      },
-      "sttParakeetMissing": "(Modell auf dem Server nicht vorhanden)",
-      "sttKeyHint": "Ohne Schlüssel werden Sprachnachrichten lokal auf diesem Server transkribiert — mit Whisper oder Parakeet (schneller, erkennt die Sprache selbst). Lege unter API-Schlüsseln einen Schlüssel vom Typ STT an, um stattdessen GWDG SAIA zu nutzen.",
+      "sttKeyDefault": "Eingebaut — Parakeet auf diesem Server",
+      "sttParakeetMissing": "(Modelldateien fehlen auf dem Server)",
+      "sttKeyHint": "Ohne Schlüssel werden Sprachnachrichten lokal auf diesem Server mit Parakeet transkribiert. Lege unter API-Schlüsseln einen Schlüssel vom Typ STT an, um stattdessen GWDG SAIA zu nutzen.",
       "sttBrowserTitle": "Spracherkennung auf dem Gerät (empfohlen)",
-      "sttBrowserText": "Sprachnachrichten werden auf dem Gerät der Besucherin erkannt, mit Live-Text schon während des Sprechens — die Aufnahmen verlassen das Gerät nicht. Jedes Gerät lädt das Modell einmal herunter (etwa 170 MB), bevor der Chat startet. Geräte ohne WebGPU nutzen automatisch den STT-Schlüssel bzw. das Whisper des Servers.",
+      "sttBrowserText": "Sprachnachrichten werden auf dem Gerät der Besucherin erkannt, mit Live-Text schon während des Sprechens — die Aufnahmen verlassen das Gerät nicht. Jedes Gerät lädt das Modell einmal herunter (etwa 170 MB), bevor der Chat startet. Geräte ohne WebGPU nutzen automatisch den STT-Schlüssel bzw. Parakeet auf dem Server.",
       "streamingTitle": "Gestreamte Antworten",
       "streamingText": "Der Avatar beginnt schon nach dem ersten Satz zu sprechen, statt auf die vollständige Antwort zu warten. Standardmäßig aus.",
       "localVoicePresets": "Voreingestellte Stimmen",
@@ -858,7 +853,6 @@
     "stt": "Spracherkennung (Spracheingabe)",
     "sttDevice": "Auf diesem Gerät (Parakeet, WebGPU)",
     "sttServerProject": "Server, wie im Projekt eingestellt",
-    "sttServerWhisper": "Server, Whisper",
     "sttServerParakeet": "Server, Parakeet",
     "llm": "Sprachmodell",
     "llmProject": "Wie im Projekt eingestellt",
@@ -1014,7 +1008,7 @@
       "title": "Backend-Frameworks & Bibliotheken",
       "fastapi": { "description": "Modernes, schnelles Web-Framework für APIs mit Python" },
       "sqlmodel": { "description": "SQL-Bibliothek für Python, basierend auf Pydantic und SQLAlchemy" },
-      "fasterWhisper": { "description": "Schnelle Implementierung von OpenAI Whisper für Spracherkennung" },
+      "pyav": { "description": "Dekodiert Sprachnachrichten für die Spracherkennung auf dem Server (FFmpeg-Anbindung für Python)" },
       "pydantic": { "description": "Datenvalidierung mit Python Type Annotations" }
     },
     "privacy": {

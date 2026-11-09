@@ -119,7 +119,7 @@ export function LatencyLabPage() {
   const specs = useProviders().data ?? [];
   const browserSttAvailable = useBrowserSttStatus().data?.available ?? false;
   const localTtsAvailable = useLocalTtsStatus().data?.available ?? false;
-  const parakeetServerAvailable = useServerSttStatus().data?.parakeetAvailable ?? false;
+  const parakeetServerAvailable = useServerSttStatus().data?.available ?? false;
 
   const projects = projectsQuery.data ?? [];
   const llmKeys = (keysQuery.data ?? []).filter((key) => key.keyType === "llm");
@@ -128,7 +128,10 @@ export function LatencyLabPage() {
   const [config, setConfig] = useState<LabConfig>(() => {
     const merged = { ...DEFAULT_CONFIG, ...stored.config };
     // "browser" was Sopro in this browser, removed in favour of Pocket TTS.
-    return (merged.ttsMode as string) === "browser" ? { ...merged, ttsMode: "browser-pocket" } : merged;
+    if ((merged.ttsMode as string) === "browser") merged.ttsMode = "browser-pocket";
+    // "server-whisper" went with faster-whisper; Parakeet is the server's only local engine now.
+    if ((merged.sttMode as string) === "server-whisper") merged.sttMode = "server-parakeet";
+    return merged;
   });
   const [script, setScript] = useState(stored.script ?? DEFAULT_SCRIPT);
   const [repeats, setRepeats] = useState(stored.repeats ?? 3);
@@ -423,7 +426,6 @@ export function LatencyLabPage() {
                 {t("latencyLab.sttDevice")}
               </option>
               <option value="server-project">{t("latencyLab.sttServerProject")}</option>
-              <option value="server-whisper">{t("latencyLab.sttServerWhisper")}</option>
               <option value="server-parakeet" disabled={!parakeetServerAvailable}>
                 {t("latencyLab.sttServerParakeet")}
               </option>

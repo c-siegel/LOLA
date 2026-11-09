@@ -286,16 +286,16 @@ export function CreditsPage() {
             </div>
 
             <div className={styles.creditItem}>
-              <h3>faster-whisper</h3>
-              <p className={styles.author}>Guillaume Klein</p>
-              <p className={styles.description}>{t("credits.backend.fasterWhisper.description")}</p>
+              <h3>PyAV</h3>
+              <p className={styles.author}>PyAV contributors</p>
+              <p className={styles.description}>{t("credits.backend.pyav.description")}</p>
               <div className={styles.links}>
-                <a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener noreferrer">
-                  {t("credits.onGithub", { name: "faster-whisper" })}
+                <a href="https://github.com/PyAV-Org/PyAV" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "PyAV" })}
                 </a>
               </div>
               <div className={styles.license}>
-                <strong>{t("credits.licenseLabel")}</strong> MIT License
+                <strong>{t("credits.licenseLabel")}</strong> BSD-3-Clause License
               </div>
             </div>
 
