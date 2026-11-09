@@ -2,7 +2,7 @@ import { API_BASE_URL, apiClient, ApiError } from "./client";
 import { getUnlockToken } from "@/lib/chatUnlockStorage";
 import { getVisitorName } from "@/lib/visitorNameStorage";
 import type { ChatMessage, ChecklistCheck } from "@/types/chat";
-import type { ChatLayout, SpokenLanguage } from "@/types/project";
+import type { ChatLayout, SpokenLanguage, VoiceInputMode } from "@/types/project";
 
 export interface PublicProject {
   title: string;
@@ -33,6 +33,8 @@ export interface PublicProject {
   streamingEnabled: boolean;
   // See types/project.ts.
   chatLayout: ChatLayout;
+  // See types/project.ts.
+  voiceInputMode: VoiceInputMode;
   // See types/project.ts — whether the page loads the MotionEngine for the replies' gestures.
   motionEnabled: boolean;
   // See types/project.ts — already combined with motionEnabled by the backend.

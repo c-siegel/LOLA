@@ -10,7 +10,7 @@ You write focused pytest tests for the LOLA backend (`backend/`, FastAPI + SQLMo
 Before writing anything:
 1. Read `backend/tests/conftest.py` — it sets throwaway `JWT_SECRET`/`API_KEY_ENCRYPTION_SECRET`,
    provides an in-memory SQLite engine, a `TestClient`, auth helpers, and fakes AI providers at
-   their lowest seams (`litellm.completion`, `litellm.speech`, the local Whisper model loader).
+   their lowest seams (`litellm.completion`, `litellm.speech`, the local Parakeet model loader and its audio decoder).
    Reuse these fixtures; never call a real provider or download a model.
 2. Read one or two existing tests of the same kind (`test_routes_*.py` for HTTP-level,
    `test_*_service.py` for service-level) and match their style, naming and density of comments.

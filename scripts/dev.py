@@ -2,7 +2,7 @@
 """
 Local development runner: set up and start every LOLA service with one command.
 
-    python scripts/dev.py setup     # once: venvs, pip/npm installs, database migrations
+    python scripts/dev.py setup     # once: venvs, pip/npm installs, migrations, speech model
     python scripts/dev.py           # start backend + frontend + the optional services enabled in .env
     python scripts/dev.py start backend frontend rag   # start only these
 
@@ -119,6 +119,37 @@ def port_for(service: Service, env: dict[str, str]) -> int:
     return service.port
 
 
+# Where scripts/fetch-stt-model.sh puts the speech recognition model by default — the backend's
+# STT_PARAKEET_MODEL_DIR default points at the same folder.
+STT_MODEL_MANIFEST = ROOT / "models" / "parakeet-redux" / "v1" / "manifest.json"
+
+
+def find_sh() -> str | None:
+    """A POSIX shell for the fetch-*-model.sh scripts. On Windows, Git for Windows ships one that
+    often isn't on PATH, so look next to git as well."""
+    found = shutil.which("sh")
+    if found:
+        return found
+    git = shutil.which("git")
+    if IS_WINDOWS and git:
+        for candidate in (Path(git).parent.parent / "bin" / "sh.exe", Path(git).parent.parent / "usr" / "bin" / "sh.exe"):
+            if candidate.exists():
+                return str(candidate)
+    return None
+
+
+def fetch_stt_model() -> None:
+    """Download the Parakeet model the server (and the browsers) transcribe with. Re-running only
+    checks the checksums, so this is cheap after the first time."""
+    sh = find_sh()
+    if not sh:
+        print("Warning: no POSIX shell (sh) found, so the speech recognition model wasn't downloaded. "
+              "Run scripts/fetch-stt-model.sh yourself (e.g. from Git Bash); until then the server "
+              "can't transcribe voice messages.")
+        return
+    run([sh, "scripts/fetch-stt-model.sh"], ROOT)
+
+
 def run(cmd: list[str], cwd: Path) -> None:
     print(f"\n$ {' '.join(str(c) for c in cmd)}   (in {cwd.relative_to(ROOT)})", flush=True)
     result = subprocess.run(cmd, cwd=cwd)
@@ -157,6 +188,10 @@ def setup(names: list[str]) -> None:
         run([str(python), "-m", "pip", "install", "-e", f".{service.pip_extras}"], cwd)
         if name == "backend" and (ROOT / ".env").exists():
             run([str(python), "-m", "alembic", "upgrade", "head"], cwd)
+        if name == "backend":
+            # Required for server transcription since faster-whisper was removed (there's no
+            # fallback engine anymore); the frontend's on-device recognition uses the same files.
+            fetch_stt_model()
 
     print("\nSetup done. Start everything with: python scripts/dev.py")
 
@@ -222,6 +257,9 @@ def start(names: list[str]) -> None:
         sys.exit(f"Not set up yet: {', '.join(missing)}. Run: python scripts/dev.py setup {' '.join(missing)}")
 
     if "backend" in names:
+        if not env.get("STT_PARAKEET_MODEL_DIR") and not STT_MODEL_MANIFEST.exists():
+            print("Note: the speech recognition model is missing, so voice messages can't be "
+                  "transcribed. Run: python scripts/dev.py setup backend", flush=True)
         backend_python = str(venv_python(BY_NAME["backend"]))
         run([backend_python, "-m", "alembic", "upgrade", "head"], ROOT / "backend")
         # Same idempotent step docker/backend-entrypoint.sh runs, so ADMIN_EMAIL/ADMIN_PASSWORD

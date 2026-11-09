@@ -117,6 +117,9 @@
     "transcribing": "Transcribing …",
     "stopRecording": "Stop recording",
     "voiceInput": "Voice input",
+    "handsFreeStart": "Start hands-free voice input",
+    "handsFreeStop": "Turn off hands-free voice input",
+    "handsFreeUnavailable": "Hands-free voice input isn't available right now. Use the text field instead.",
     "stopResponse": "Stop response",
     "responseInterrupted": "Response interrupted.",
     "recordingFailed": "Part of your voice message could not be transmitted — it may be incomplete.",
@@ -437,17 +440,23 @@
       "voiceClipHint": "Pick a preset voice or — if voice cloning is set up on this server — a donated voice or one of your own voice clips. Add and test clips under",
       "sttTitle": "Voice input (STT)",
       "sttText": "Enables the microphone button in the public chat. Off by default.",
-      "sttKey": "Server speech recognition",
-      "sttKeyDefault": "Built-in — server default ({{engine}})",
-      "sttServerEngineOption": "Built-in — {{engine}}",
-      "sttServerEngines": {
-        "whisper": "Whisper",
-        "parakeet": "Parakeet"
+      "voiceInputModeTitle": "How students speak",
+      "voiceInputModes": {
+        "push_to_talk": {
+          "title": "Push to talk",
+          "text": "Students click the microphone to start and again to send. Works well in noisy rooms."
+        },
+        "hands_free": {
+          "title": "Hands-free",
+          "text": "Students switch the microphone on once. Each answer is sent by itself when they pause, and the microphone listens again after the avatar has replied. Best in a quiet room: other people talking nearby can be picked up too."
+        }
       },
-      "sttParakeetMissing": "(model not available on the server)",
-      "sttKeyHint": "Without a key, voice messages are transcribed locally on this server — with Whisper or Parakeet (faster, detects the language itself). Add a key of type STT under API keys to use GWDG SAIA instead.",
+      "sttKey": "Server speech recognition",
+      "sttKeyDefault": "Built-in — Parakeet on this server",
+      "sttParakeetMissing": "(model files missing on the server)",
+      "sttKeyHint": "Without a key, voice messages are transcribed locally on this server with Parakeet. Add a key of type STT under API keys to use GWDG SAIA instead.",
       "sttBrowserTitle": "On-device speech recognition (recommended)",
-      "sttBrowserText": "Voice messages are recognized on the visitor's own device with live text while they speak, so recordings never leave it. Each device downloads the model once (about 170 MB) before the chat opens. Devices without WebGPU automatically use the STT key or the server's Whisper instead.",
+      "sttBrowserText": "Voice messages are recognized on the visitor's own device with live text while they speak, so recordings never leave it. Each device downloads the model once (about 170 MB) before the chat opens. Devices without WebGPU automatically use the STT key or the server's Parakeet instead.",
       "streamingTitle": "Streamed replies",
       "streamingText": "The avatar starts speaking after the first sentence instead of waiting for the full reply. Off by default.",
       "localVoicePresets": "Preset voices",
@@ -868,7 +877,6 @@
     "stt": "Speech recognition (voice input)",
     "sttDevice": "On this device (Parakeet, WebGPU)",
     "sttServerProject": "Server, as the project is set up",
-    "sttServerWhisper": "Server, Whisper",
     "sttServerParakeet": "Server, Parakeet",
     "llm": "Language model",
     "llmProject": "As the project is set up",
@@ -1009,6 +1017,8 @@
     },
     "speech": {
       "title": "Speech Recognition and Output",
+      "sileroVad": { "description": "Detects when the student starts and stops speaking, so voice messages transcribed on the server are cut at real pauses" },
+      "smartTurn": { "description": "Decides at a pause whether the student has finished speaking, for hands-free voice input. Runs in the browser through @micdrop/smart-turn by Godefroy de Compreignac" },
       "parakeet": {
         "description": "Multilingual speech recognition model that runs on the visitor's device (ternary version of NVIDIA's Parakeet TDT 0.6B v3)",
         "note": "Original model by NVIDIA, ternary version by Moondream, ONNX export by eschmidbauer and mrfakename. Used unchanged; the files are only re-compressed for delivery."
@@ -1039,7 +1049,7 @@
       "title": "Backend Frameworks & Libraries",
       "fastapi": { "description": "Modern, fast web framework for building APIs with Python" },
       "sqlmodel": { "description": "SQL library for Python, based on Pydantic and SQLAlchemy" },
-      "fasterWhisper": { "description": "Fast implementation of OpenAI Whisper for speech recognition" },
+      "pyav": { "description": "Decodes voice messages for speech recognition on the server (FFmpeg bindings for Python)" },
       "pydantic": { "description": "Data validation using Python type annotations" }
     },
     "privacy": {
@@ -1644,6 +1654,7 @@
     "STT_REQUEST_FAILED": "Speech recognition failed.",
     "VOICE_INPUT_DISABLED": "Voice input isn't enabled for this project.",
     "VOICE_INPUT_UNAVAILABLE": "Voice input is currently unavailable.",
+    "SERVER_STT_MODEL_MISSING": "Server speech recognition isn't set up: the speech model files are missing on the server. Ask your administrator.",
     "UNSUPPORTED_AUDIO_FORMAT": "Unsupported audio format.",
     "AUDIO_FILE_TOO_LARGE": "Audio file is too large (10 MB maximum).",
     "CHAT_UNAVAILABLE": "Chat is currently unavailable.",

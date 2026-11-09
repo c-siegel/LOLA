@@ -39,7 +39,7 @@ Overview: [root README](../README.md). Code conventions: [AGENTS.md](../AGENTS.m
 | `src/styles/` | Global styles, plus `dashboard.module.css` with patterns the dashboard pages share through CSS Modules `composes` (e.g. the content card) |
 | `src/types/` | Shared TypeScript types |
 | `src/vendor/` | Third-party code copied in rather than installed: `motion-engine/` (the avatar's gestures, see its `ATTRIBUTION.md`) |
-| `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), on-device speech output for the public chat and the latency test — Pocket TTS (`pocketWorker.ts`, used through `src/lib/pocketTts.ts`; the generation itself is `src/lib/pocketTtsCore.ts`, the model comes from `scripts/fetch-tts-model.sh`) and the microphone capture AudioWorklet |
+| `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), on-device speech output for the public chat and the latency test — Pocket TTS (`pocketWorker.ts`, used through `src/lib/pocketTts.ts`; the generation itself is `src/lib/pocketTtsCore.ts`, the model comes from `scripts/fetch-tts-model.sh`), speech pause and end-of-turn detection — Silero VAD and Smart Turn (`vadWorker.ts`, used through `src/lib/vad.ts`; the models come from `scripts/fetch-stt-model.sh`) — and the microphone capture AudioWorklet |
 
 ## Pages
 

@@ -36,6 +36,7 @@ function toDraft(project: Project): ConfiguratorDraft {
     builtinAvatar: project.builtinAvatar,
     avatarBackgroundId: project.avatarBackgroundId,
     chatLayout: project.chatLayout,
+    voiceInputMode: project.voiceInputMode,
     motionEnabled: project.motionEnabled,
     thinkingMotionsEnabled: project.thinkingMotionsEnabled,
     gradeLevel: project.gradeLevel ?? "",
@@ -62,7 +63,6 @@ function toDraft(project: Project): ConfiguratorDraft {
     ttsVoice: project.ttsVoice ?? "",
     ttsVoiceClipId: project.ttsVoiceClipId,
     sttApiKeyId: project.sttApiKeyId,
-    sttServerEngine: project.sttServerEngine,
     sttEnabled: project.sttEnabled,
     sttBrowserEnabled: project.sttBrowserEnabled,
     ttsBrowserEnabled: project.ttsBrowserEnabled,
@@ -87,6 +87,7 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.builtinAvatar !== project.builtinAvatar ||
     draft.avatarBackgroundId !== project.avatarBackgroundId ||
     draft.chatLayout !== project.chatLayout ||
+    draft.voiceInputMode !== project.voiceInputMode ||
     draft.motionEnabled !== project.motionEnabled ||
     draft.thinkingMotionsEnabled !== project.thinkingMotionsEnabled ||
     (draft.gradeLevel || null) !== project.gradeLevel ||
@@ -111,7 +112,6 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.ttsVoice !== (project.ttsVoice ?? "") ||
     draft.ttsVoiceClipId !== project.ttsVoiceClipId ||
     draft.sttApiKeyId !== project.sttApiKeyId ||
-    draft.sttServerEngine !== project.sttServerEngine ||
     draft.sttEnabled !== project.sttEnabled ||
     draft.sttBrowserEnabled !== project.sttBrowserEnabled ||
     draft.ttsBrowserEnabled !== project.ttsBrowserEnabled ||
@@ -161,6 +161,7 @@ export function ConfiguratorPage() {
         builtinAvatar: data.builtinAvatar,
         avatarBackgroundId: data.avatarBackgroundId,
         chatLayout: data.chatLayout,
+        voiceInputMode: data.voiceInputMode,
         motionEnabled: data.motionEnabled,
         thinkingMotionsEnabled: data.thinkingMotionsEnabled,
         gradeLevel: data.gradeLevel || null,
@@ -185,7 +186,6 @@ export function ConfiguratorPage() {
         ttsVoice: data.ttsVoice || null,
         ttsVoiceClipId: data.ttsVoiceClipId,
         sttApiKeyId: data.sttApiKeyId,
-        sttServerEngine: data.sttServerEngine,
         sttEnabled: data.sttEnabled,
         sttBrowserEnabled: data.sttBrowserEnabled,
         ttsBrowserEnabled: data.ttsBrowserEnabled,

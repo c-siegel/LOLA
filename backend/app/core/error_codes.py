@@ -76,6 +76,9 @@ class ErrorCode:
     STT_REQUEST_FAILED = "STT_REQUEST_FAILED"
     VOICE_INPUT_DISABLED = "VOICE_INPUT_DISABLED"
     VOICE_INPUT_UNAVAILABLE = "VOICE_INPUT_UNAVAILABLE"
+    # The server's STT model files are missing (scripts/fetch-stt-model.sh), so voice messages
+    # can't be transcribed on the server. Shown to teachers; visitors get VOICE_INPUT_UNAVAILABLE.
+    SERVER_STT_MODEL_MISSING = "SERVER_STT_MODEL_MISSING"
     UNSUPPORTED_AUDIO_FORMAT = "UNSUPPORTED_AUDIO_FORMAT"
     AUDIO_FILE_TOO_LARGE = "AUDIO_FILE_TOO_LARGE"
     CHAT_UNAVAILABLE = "CHAT_UNAVAILABLE"

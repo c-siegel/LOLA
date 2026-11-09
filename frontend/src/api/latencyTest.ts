@@ -7,7 +7,7 @@ import { parseSseFrame } from "./publicChat";
 import type { ChatMessage } from "@/types/chat";
 
 export type ServerTtsMode = "project" | "local" | "none";
-export type ServerSttEngine = "project" | "whisper" | "parakeet";
+export type ServerSttEngine = "project" | "parakeet";
 
 export interface LatencyMessageRequest {
   message: string;

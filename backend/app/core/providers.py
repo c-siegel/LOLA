@@ -26,7 +26,7 @@ from app.core.error_codes import ErrorCode
 
 # What a stored API key is used for. LLM = large language model (chat), TTS = text-to-speech,
 # STT = speech-to-text. An STT key is optional — a project with none configured still transcribes
-# locally via the instance-wide Whisper server (see features/ai/stt).
+# locally with the server's Parakeet model (see features/ai/stt).
 
 KEY_TYPE_LLM = "llm"
 KEY_TYPE_TTS = "tts"

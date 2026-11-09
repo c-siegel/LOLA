@@ -1,7 +1,7 @@
-"""Tests for the server-side Parakeet engine (app/features/ai/stt/parakeet_local.py): when it's
-chosen, how it falls back to Whisper while its model files are missing, and the pure helpers
-that cut long audio and turn tokens into text. The last test runs the real model, but only where
-its files have been downloaded (scripts/fetch-stt-model.sh) — CI skips it."""
+"""Tests for the server-side Parakeet engine (app/features/ai/stt/parakeet_local.py): that it is
+the local engine, that missing model files are an error rather than a silent fallback, and the
+pure helpers that cut long audio and turn tokens into text. The last test runs the real model,
+but only where its files have been downloaded (scripts/fetch-stt-model.sh) — CI skips it."""
 
 from pathlib import Path
 
@@ -13,11 +13,11 @@ from app.features.ai.stt import get_stt_client, parakeet_local
 from app.features.ai.stt.parakeet_local import (
     FRAME_SAMPLES,
     LocalParakeetClient,
+    SttModelMissing,
     chunk_boundaries,
     detokenize,
 )
 from app.features.ai.stt.saia import SaiaClient
-from app.features.ai.stt.whisper_local import LocalWhisperClient
 from app.features.api_keys.models import UserApiKey
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -32,19 +32,8 @@ def _fresh_model_cache(monkeypatch):
     monkeypatch.setattr(parakeet_local, "_missing_model_logged", False)
 
 
-def test_engine_setting_picks_the_local_client(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "stt_engine", "parakeet")
+def test_without_a_key_the_local_client_transcribes() -> None:
     assert isinstance(get_stt_client(None), LocalParakeetClient)
-    monkeypatch.setattr(settings, "stt_engine", "whisper")
-    assert isinstance(get_stt_client(None), LocalWhisperClient)
-
-
-def test_a_projects_own_engine_wins_over_the_setting(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "stt_engine", "whisper")
-    assert isinstance(get_stt_client(None, "parakeet"), LocalParakeetClient)
-    monkeypatch.setattr(settings, "stt_engine", "parakeet")
-    assert isinstance(get_stt_client(None, "whisper"), LocalWhisperClient)
-    assert isinstance(get_stt_client(None, None), LocalParakeetClient)
 
 
 def test_model_available_checks_for_the_manifest(monkeypatch, tmp_path) -> None:
@@ -54,21 +43,16 @@ def test_model_available_checks_for_the_manifest(monkeypatch, tmp_path) -> None:
     assert parakeet_local.model_available()
 
 
-def test_a_cloud_key_wins_over_the_engine_setting(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "stt_engine", "parakeet")
+def test_a_cloud_key_wins_over_the_local_model() -> None:
     key = UserApiKey(user_id="u", provider="gwdg_saia", encrypted_api_key="x", masked_key="x")
     assert isinstance(get_stt_client(key), SaiaClient)
-    assert isinstance(get_stt_client(key, "parakeet"), SaiaClient)
 
 
-def test_falls_back_to_whisper_while_the_model_is_missing(monkeypatch, tmp_path) -> None:
+def test_missing_model_files_raise_instead_of_falling_back(monkeypatch, tmp_path) -> None:
+    # Regression: before faster-whisper was removed, missing files silently switched to Whisper.
     monkeypatch.setattr(settings, "stt_parakeet_model_dir", str(tmp_path))
-    calls = []
-    monkeypatch.setattr(
-        LocalWhisperClient, "transcribe", lambda self, audio, language, prompt=None: calls.append(language) or "whisper"
-    )
-    assert LocalParakeetClient().transcribe(b"audio", "de") == "whisper"
-    assert calls == ["de"]
+    with pytest.raises(SttModelMissing):
+        LocalParakeetClient().transcribe(b"audio", "de")
 
 
 def test_long_audio_is_cut_at_the_quietest_moment() -> None:

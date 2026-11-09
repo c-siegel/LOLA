@@ -11,7 +11,7 @@ from sqlmodel import Session
 
 from app.core.deps import get_owned_project, get_session
 from app.core.error_codes import ErrorCode
-from app.features.ai.stt import transcribe_audio
+from app.features.ai.stt import SttModelMissing, transcribe_audio
 from app.features.api_keys.crypto import scrub_key_from_text
 from app.features.api_keys.resolve import resolve_stt_key
 from app.features.chat.audio_upload import read_audio_upload
@@ -79,11 +79,11 @@ def transcribe(
 
     stt_key = resolve_stt_key(session, project)
     try:
-        text = transcribe_audio(
-            content, project.spoken_language, api_key_record=stt_key, engine=project.stt_server_engine
-        )
+        text = transcribe_audio(content, project.spoken_language, api_key_record=stt_key)
+    except SttModelMissing as exc:
+        raise HTTPException(status_code=503, detail=ErrorCode.SERVER_STT_MODEL_MISSING) from exc
     except Exception as exc:
-        # Scrubbed like preview_message's error above; without a key, local Whisper ran and
+        # Scrubbed like preview_message's error above; without a key, the local model ran and
         # there's nothing to redact.
         message = scrub_key_from_text(str(exc), stt_key.encrypted_api_key) if stt_key else str(exc)
         raise HTTPException(

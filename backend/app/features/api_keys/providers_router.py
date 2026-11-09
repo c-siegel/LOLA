@@ -91,9 +91,5 @@ def browser_tts_status(_: User = Depends(get_current_user)):
 
 @router.get("/server-stt-status", response_model=ServerSttStatusOut)
 def server_stt_status(_: User = Depends(get_current_user)):
-    """The deployment's default local server STT engine (Settings.stt_engine) and whether a
-    project may pick Parakeet instead (its model files are present)."""
-    return ServerSttStatusOut(
-        default_engine=settings.stt_engine,
-        parakeet_available=parakeet_local.model_available(),
-    )
+    """Whether the server can transcribe without a cloud STT key (its model files are present)."""
+    return ServerSttStatusOut(available=parakeet_local.model_available())

@@ -2,7 +2,7 @@
 // time is in ms since the end of the student's input ("t0": the recording stopped, the clip
 // ended, or the text was sent) — the moment from which a student waits.
 
-export type SttMode = "device" | "server-project" | "server-whisper" | "server-parakeet";
+export type SttMode = "device" | "server-project" | "server-parakeet";
 /** "browser-pocket": Pocket TTS in this browser. */
 export type TtsMode = "project" | "local" | "browser-pocket" | "none";
 

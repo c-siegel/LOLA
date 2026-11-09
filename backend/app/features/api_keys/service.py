@@ -126,7 +126,7 @@ def delete_key(session: Session, key: UserApiKey) -> None:
         project.tts_api_key_id = None
         session.add(project)
 
-    # Same for STT — falls back to the instance-wide local Whisper engine, not a broken state.
+    # Same for STT — falls back to the server's local Parakeet model, not a broken state.
     for project in session.exec(select(Project).where(Project.stt_api_key_id == key.id)).all():
         project.stt_api_key_id = None
         session.add(project)

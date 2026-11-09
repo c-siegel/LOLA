@@ -6,6 +6,7 @@ import base64
 from conftest import LLM_REPLY, TTS_BYTES, create_project, parse_sse, publish
 
 from app.core.config import settings
+from app.features.ai.stt.parakeet_local import LocalParakeetClient
 from app.features.chat import pipeline
 from app.features.chat.motion import MOTION_PROMPT
 
@@ -239,16 +240,34 @@ def test_stream_without_llm_key_is_503(client, anon, teacher):
     assert response.json() == {"detail": "CHAT_UNAVAILABLE"}
 
 
-def test_transcribe(anon, chat_project, fake_ai):
+def test_transcribe(anon, chat_project, fake_ai, monkeypatch):
     slug = chat_project["shareSlug"]
+    # The local model ignores language and prompt, so they're checked where the route hands
+    # them to the STT client (a cloud provider would use both).
+    sent = {}
+    original = LocalParakeetClient.transcribe
+
+    def spy(self, audio_bytes, language, initial_prompt=None):
+        sent.update(language=language, initial_prompt=initial_prompt)
+        return original(self, audio_bytes, language, initial_prompt)
+
+    monkeypatch.setattr(LocalParakeetClient, "transcribe", spy)
     response = anon.post(f"/public/{slug}/transcriptions", files=_audio(), data={"initial_prompt": "a" * 600 + "END"})
     assert response.status_code == 200
     body = response.json()
     assert body["text"] == "hallo welt"
     assert isinstance(body["sttMs"], float)
-    sent = fake_ai.transcribe_calls[-1]
+    assert fake_ai.transcribe_calls
     assert sent["language"] == "de"
     assert len(sent["initial_prompt"]) == 500 and sent["initial_prompt"].endswith("END")
+
+
+def test_transcribe_without_model_files_is_503(anon, chat_project, missing_stt_model):
+    # Regression: missing model files used to fall back to Whisper silently; now there is no
+    # fallback engine, and visitors get the generic "voice input unavailable".
+    response = anon.post(f"/public/{chat_project['shareSlug']}/transcriptions", files=_audio())
+    assert response.status_code == 503
+    assert response.json() == {"detail": "VOICE_INPUT_UNAVAILABLE"}
 
 
 def test_transcribe_rejections(client, anon, chat_project, fake_ai):
@@ -261,7 +280,7 @@ def test_transcribe_rejections(client, anon, chat_project, fake_ai):
     assert too_big.status_code == 400
     assert too_big.json() == {"detail": "AUDIO_FILE_TOO_LARGE"}
 
-    fake_ai.stt_text = None  # makes the fake model's text.strip() raise
+    fake_ai.stt_error = RuntimeError("model crashed")
     failing = anon.post(f"/public/{slug}/transcriptions", files=_audio())
     assert failing.status_code == 503
     assert failing.json() == {"detail": "VOICE_INPUT_UNAVAILABLE"}

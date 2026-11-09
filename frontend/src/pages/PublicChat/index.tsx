@@ -470,7 +470,8 @@ export function PublicChatPage() {
   });
 
   const tutorForVoice = tutorQuery.data;
-  const { isRecording, isFinalizingRecording, micErrorKey, sttLoadProgress, toggleRecording } = useVoiceInput({
+  const { isRecording, isFinalizingRecording, handsFreeOn, micErrorKey, sttLoadProgress, toggleRecording, finishRecording } =
+    useVoiceInput({
     slug,
     modelUrl:
       tutorForVoice?.sttEnabled && tutorForVoice.browserSttModelUrl && gatePassed(tutorForVoice, visitorNameProvided)
@@ -480,6 +481,7 @@ export function PublicChatPage() {
     input,
     setInput,
     replyPending: sendMutation.isPending,
+    handsFree: tutorForVoice?.voiceInputMode === "hands_free",
     onFinalText: sendMessage,
     onNotice: (key) => setMessages((prev) => [...prev, { role: "system", content: t(key) }]),
     // While the model loads, the avatar's own ready-autoplay of the greeting waits (see
@@ -571,7 +573,7 @@ export function PublicChatPage() {
     // swallow the reply's audio silently.
     avatarRef.current?.unlockAudio();
     if (isRecording) {
-      toggleRecording();
+      finishRecording();
       return;
     }
     if (isFinalizingRecording) return;
@@ -758,24 +760,31 @@ export function PublicChatPage() {
     : t("publicChat.privacyNotSaved");
 
   // On the avatar stage normally, in the composer on a chat-only page.
+  // Hands-free: the button is an on/off switch for listening, usable even while the avatar answers.
   const micButton = tutor.sttEnabled && (
     <button
       type="button"
-      className={`${styles.roundButton} ${isRecording ? styles.recording : ""}`}
+      className={`${styles.roundButton} ${isRecording || handsFreeOn ? styles.recording : ""}`}
       onClick={toggleRecording}
-      disabled={isFinalizingRecording || (!isRecording && sendMutation.isPending)}
-      aria-label={
-        isFinalizingRecording
-          ? t("publicChat.transcribing")
-          : isRecording
-            ? t("publicChat.stopRecording")
-            : t("publicChat.voiceInput")
+      disabled={
+        handsFreeOn ? false : isFinalizingRecording || (!isRecording && sendMutation.isPending)
       }
-      aria-pressed={isRecording}
+      aria-label={
+        handsFreeOn
+          ? t("publicChat.handsFreeStop")
+          : isFinalizingRecording
+            ? t("publicChat.transcribing")
+            : isRecording
+              ? t("publicChat.stopRecording")
+              : tutor.voiceInputMode === "hands_free"
+                ? t("publicChat.handsFreeStart")
+                : t("publicChat.voiceInput")
+      }
+      aria-pressed={handsFreeOn || isRecording}
     >
-      {isFinalizingRecording ? (
+      {isFinalizingRecording && !handsFreeOn ? (
         <Loader2 size={22} className={styles.spinIcon} />
-      ) : isRecording ? (
+      ) : isRecording || handsFreeOn ? (
         <Square size={20} fill="currentColor" />
       ) : (
         <Mic size={22} />

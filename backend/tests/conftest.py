@@ -8,7 +8,7 @@ env_file (LOLA_ENV_FILE="") and litellm, which in its default "DEV" mode copies 
 .env into os.environ when imported (LITELLM_MODE=PRODUCTION).
 
 The AI providers are faked at their lowest stable seams (litellm.completion/litellm.speech for
-LLM/TTS, the local Whisper model loader for STT), so the route tests exercise the whole stack
+LLM/TTS, the local Parakeet model loader and audio decoder for STT), so the route tests exercise the whole stack
 above them and keep working while the code above those seams is restructured.
 """
 
@@ -38,14 +38,19 @@ from app.core.config import settings  # noqa: E402
 from app.core.security import create_access_token, hash_password  # noqa: E402
 from app.core.urls import API_PREFIX  # noqa: E402
 from app.db.session import get_session  # noqa: E402
+from app.features.ai.stt import parakeet_local  # noqa: E402
 from app.features.users.models import User  # noqa: E402
 from app.main import app  # noqa: E402
 
 # Module attributes holding the process-wide `engine` that code opens its own Session(engine)
 # with (outside the request-scoped get_session dependency) — redirected to the test engine.
 ENGINE_TARGETS = ["app.features.chat.conversation_store.engine", "app.features.evaluation.runner.engine"]
-# Where the local Whisper model is loaded (patched so no model is ever downloaded).
-STT_MODEL_TARGET = "app.features.ai.stt.whisper_local._model"
+# Where the local Parakeet model is loaded (patched so no model files are needed), and the
+# decoder it feeds (patched so the tests' placeholder bytes don't have to be real audio; the
+# decoder has its own tests in test_stt_audio.py).
+STT_MODEL_TARGET = "app.features.ai.stt.parakeet_local._model"
+STT_DECODE_TARGET = "app.features.ai.stt.parakeet_local.decode_audio"
+_REAL_STT_MODEL = parakeet_local._model
 
 UPLOAD_DIR_SETTINGS = [
     "avatar_upload_dir",
@@ -122,7 +127,8 @@ class FakeAI:
             completion_tokens_details=SimpleNamespace(reasoning_tokens=0),
         )
         self.tts_error: Exception | None = None
-        self.stt_text = " hallo welt "
+        self.stt_text = "hallo welt"
+        self.stt_error: Exception | None = None
         self.completion_calls: list[dict] = []
         self.speech_calls: list[dict] = []
         self.transcribe_calls: list[dict] = []
@@ -149,15 +155,21 @@ class FakeAI:
             raise self.tts_error
         return SimpleNamespace(content=TTS_BYTES)
 
-    def whisper_model(self):
+    def stt_model(self):
         fake = self
 
         class _Model:
-            def transcribe(self, audio, **kwargs):
-                fake.transcribe_calls.append(kwargs)
-                return [SimpleNamespace(text=fake.stt_text)], None
+            def transcribe(self, audio):
+                fake.transcribe_calls.append({"audio": audio})
+                if fake.stt_error is not None:
+                    raise fake.stt_error
+                return fake.stt_text
 
         return _Model()
+
+    @staticmethod
+    def decode_audio(audio_bytes: bytes):
+        return audio_bytes
 
 
 @pytest.fixture
@@ -165,8 +177,18 @@ def fake_ai(monkeypatch):
     fake = FakeAI()
     monkeypatch.setattr(litellm, "completion", fake.completion)
     monkeypatch.setattr(litellm, "speech", fake.speech)
-    monkeypatch.setattr(STT_MODEL_TARGET, fake.whisper_model)
+    monkeypatch.setattr(STT_MODEL_TARGET, fake.stt_model)
+    monkeypatch.setattr(STT_DECODE_TARGET, fake.decode_audio)
     return fake
+
+
+@pytest.fixture
+def missing_stt_model(fake_ai, monkeypatch, tmp_path):
+    """The server's STT model files aren't downloaded: the real model loader runs against an empty
+    folder (fake_ai's fake model is taken out again)."""
+    monkeypatch.setattr(STT_MODEL_TARGET, _REAL_STT_MODEL)
+    monkeypatch.setattr(parakeet_local, "_loaded_model", None)
+    monkeypatch.setattr(settings, "stt_parakeet_model_dir", str(tmp_path / "no-model"))
 
 
 def make_user(engine, *, email: str = "teacher@example.com", name: str = "Teacher", is_admin: bool = False) -> User:

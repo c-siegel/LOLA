@@ -199,7 +199,7 @@ def deep_turn_budget(request: Request, visitor_id: str, project_id: str) -> Call
 def enforce_public_transcribe_rate_limit(request: Request, visitor_id: str) -> None:
     """Limit how often voice recordings can be submitted for transcription, per visitor and per IP."""
     # Same two-dimension reasoning and check order as the chat limit above — transcription is more expensive
-    # per call (Whisper runs in-process), hence enforced on its own settings.
+    # per call (the STT model runs in-process), hence enforced on its own settings.
     message = ErrorCode.RATE_LIMIT_TRANSCRIBE
     _enforce(
         f"transcribe-visitor:{visitor_id}",

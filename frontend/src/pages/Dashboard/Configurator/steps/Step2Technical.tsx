@@ -19,19 +19,13 @@ import {
   useServerSttStatus,
 } from "@/lib/providers";
 import { SPOKEN_LANGUAGE_VALUES } from "@/lib/speechOptions";
-import { REASONING_EFFORTS, REASONING_MODES, type ReasoningEffort, type ReasoningMode, type SttServerEngine } from "@/types/project";
+import { REASONING_EFFORTS, REASONING_MODES, VOICE_INPUT_MODES, type ReasoningEffort, type ReasoningMode } from "@/types/project";
 import type { StepProps } from "../types";
 import styles from "./shared.module.css";
 
 // Placeholder while no key has been chosen yet — a <select> always needs a controlled string
 // value, but draft.llmApiKeyId is null until the teacher picks one.
 const NO_MODEL_SELECTED = "";
-
-// The STT dropdown mixes two kinds of choices in one <select>: a server engine (stored in
-// draft.sttServerEngine) or an STT key (draft.sttApiKeyId). Engine options get this prefix so
-// their values can never collide with a key id.
-const STT_ENGINE_PREFIX = "engine:";
-const STT_SERVER_ENGINES: SttServerEngine[] = ["whisper", "parakeet"];
 
 // Same idea for the local voice: a sidecar voice (draft.ttsVoice, a preset or "donation:<name>")
 // or one of the teacher's clips (draft.ttsVoiceClipId).
@@ -104,7 +98,7 @@ export function Step2Technical({ draft, onChange }: StepProps) {
     return Boolean(findProvider(specs, key.provider)?.ttsModelFixed);
   });
   // STT (currently only GWDG SAIA) is optional — with no key selected, transcription keeps
-  // running through a built-in local engine (Whisper or Parakeet, see backend features/ai/stt), so
+  // running through the server's built-in Parakeet model (see backend features/ai/stt), so
   // unlike LLM there's no "nothing set up" warning callout here. TTS below follows the same rule
   // once local TTS is available for this deployment (localTtsAvailable).
   const sttKeys = (keysQuery.data ?? []).filter((key) => {
@@ -112,22 +106,8 @@ export function Step2Technical({ draft, onChange }: StepProps) {
     if (key.modelId) return true;
     return Boolean(findProvider(specs, key.provider)?.sttModelFixed);
   });
-  const serverSttStatusQuery = useServerSttStatus();
-  const defaultSttEngine = serverSttStatusQuery.data?.defaultEngine ?? "whisper";
-  const parakeetAvailable = serverSttStatusQuery.data?.parakeetAvailable ?? false;
-  const sttSelectValue = draft.sttApiKeyId
-    ? draft.sttApiKeyId
-    : draft.sttServerEngine
-      ? STT_ENGINE_PREFIX + draft.sttServerEngine
-      : NO_MODEL_SELECTED;
-  function handleSttChoice(value: string) {
-    if (value.startsWith(STT_ENGINE_PREFIX)) {
-      onChange({ sttApiKeyId: null, sttServerEngine: value.slice(STT_ENGINE_PREFIX.length) as SttServerEngine });
-    } else {
-      // A key, or the deployment default — either way no engine of the project's own.
-      onChange({ sttApiKeyId: value || null, sttServerEngine: null });
-    }
-  }
+  // Assumed available until the status has loaded, so no warning flashes up on every visit.
+  const serverSttAvailable = useServerSttStatus().data?.available ?? true;
   const keysLoaded = keysQuery.isSuccess && providersQuery.isSuccess;
   const hasNoModels = keysLoaded && llmKeys.length === 0;
   // What the chosen model can do with a reasoning setting (decided per model by the backend); for
@@ -153,7 +133,7 @@ export function Step2Technical({ draft, onChange }: StepProps) {
     draft.topP !== DEFAULT_TOP_P && t("configurator.step2.topP"),
     draft.ttsEnabled && !draft.streamingEnabled && t("configurator.step2.streamingTitle"),
     showVoiceName && draft.ttsVoice.trim() !== "" && t("configurator.step2.voiceOptional"),
-    draft.sttEnabled && sttSelectValue !== NO_MODEL_SELECTED && t("configurator.step2.sttKey"),
+    draft.sttEnabled && draft.sttApiKeyId !== null && t("configurator.step2.sttKey"),
     draft.sttEnabled && browserSttAvailable && !draft.sttBrowserEnabled && t("configurator.step2.sttBrowserTitle"),
   ].filter((label): label is string => Boolean(label));
 
@@ -424,6 +404,25 @@ export function Step2Technical({ draft, onChange }: StepProps) {
         onChange={(e) => onChange({ sttEnabled: e.target.checked })}
         info={t("configurator.step2.sttText")}
       />
+      {draft.sttEnabled && (
+        <fieldset className={styles.radioGroup}>
+          <legend className={styles.label}>{t("configurator.step2.voiceInputModeTitle")}</legend>
+          {VOICE_INPUT_MODES.map((mode) => (
+            <label key={mode} className={styles.toggleRow}>
+              <input
+                type="radio"
+                name="voice-input-mode"
+                checked={draft.voiceInputMode === mode}
+                onChange={() => onChange({ voiceInputMode: mode })}
+              />
+              <span className={styles.toggleCopy}>
+                <strong>{t(`configurator.step2.voiceInputModes.${mode}.title`)}</strong>
+                <span>{t(`configurator.step2.voiceInputModes.${mode}.text`)}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
 
       <AdvancedSection changed={advancedChanged}>
         <div className={styles.field}>
@@ -498,29 +497,14 @@ export function Step2Technical({ draft, onChange }: StepProps) {
             <select
               id="stt-key"
               className={styles.select}
-              value={sttSelectValue}
-              onChange={(e) => handleSttChoice(e.target.value)}
+              value={draft.sttApiKeyId ?? NO_MODEL_SELECTED}
+              onChange={(e) => onChange({ sttApiKeyId: e.target.value || null })}
               disabled={!keysLoaded}
             >
               <option value={NO_MODEL_SELECTED}>
-                {t("configurator.step2.sttKeyDefault", {
-                  engine: t(`configurator.step2.sttServerEngines.${defaultSttEngine}`),
-                })}
+                {t("configurator.step2.sttKeyDefault")}
+                {serverSttAvailable ? "" : ` ${t("configurator.step2.sttParakeetMissing")}`}
               </option>
-              {STT_SERVER_ENGINES.map((engine) => (
-                <option
-                  key={engine}
-                  value={STT_ENGINE_PREFIX + engine}
-                  // Parakeet only runs once its model files are on the server — still listed (greyed
-                  // out) so the option is discoverable, and kept selectable if already chosen.
-                  disabled={engine === "parakeet" && !parakeetAvailable && draft.sttServerEngine !== "parakeet"}
-                >
-                  {t("configurator.step2.sttServerEngineOption", {
-                    engine: t(`configurator.step2.sttServerEngines.${engine}`),
-                  })}
-                  {engine === "parakeet" && !parakeetAvailable ? ` ${t("configurator.step2.sttParakeetMissing")}` : ""}
-                </option>
-              ))}
               {sttKeys.map((key) => (
                 <option key={key.id} value={key.id}>
                   {keyDisplayName(key, specs)} · {modelLabel(key, specs)}
