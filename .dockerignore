@@ -4,7 +4,6 @@
 **/*.pyc
 backend/*.db
 backend/uploads/
-backend/whisper-cache/
 **/*.egg-info/
 
 # Node / Frontend

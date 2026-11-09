@@ -24,14 +24,17 @@ services:
       retries: 3
       start_period: 10s
     volumes:
-      # On-device speech recognition model, served by Caddy at /models/ (see Caddyfile). Filled by
-      # the stt-model service below.
+      # Speech recognition model, served by Caddy at /models/ for on-device recognition (see
+      # Caddyfile). Filled by the stt-model service below.
       - ${LOLA_DATA_DIR}/models:/models:ro
 
-  # Downloads the on-device speech recognition model into the data directory, then exits (see
-  # scripts/fetch-stt-model.sh). Runs on every `up`, but only downloads what's missing or damaged,
-  # so after the first run it finishes in seconds. `web` deliberately doesn't wait for it: the
-  # site is up right away, and browsers use server transcription until the model is complete.
+  # Downloads the speech recognition model into the data directory, then exits (see
+  # scripts/fetch-stt-model.sh). The browsers (on-device recognition) and the backend (server
+  # transcription) use the same files. Runs on every `up`, but only downloads what's missing or
+  # damaged, so after the first run it finishes in seconds. Nothing waits for it: the site is up
+  # right away, and voice input works as soon as the model is complete (the backend picks the
+  # files up without a restart). It can't be the other way round anyway: this service waits for
+  # the backend, whose entrypoint prepares the folder.
   stt-model:
     image: ghcr.io/c-siegel/lola:frontend
     pull_policy: always
@@ -212,10 +215,8 @@ services:
       # bypassable by sending a made-up X-Forwarded-For header.
       FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-172.16.0.0/12,10.0.0.0/8,192.168.0.0/16}
 
-      STT_MODEL_CACHE_DIR: /data/whisper-cache
       VOICE_CLIP_UPLOAD_DIR: /data/uploads/voice-clips
-      # Only used with STT_ENGINE=parakeet: the same files the stt-model service downloads for
-      # the browsers.
+      # Server transcription: the same files the stt-model service downloads for the browsers.
       STT_PARAKEET_MODEL_DIR: /data/models/parakeet-redux/v1
 
       # --- Admin bootstrap, optional — creates/promotes this account to admin on startup, see

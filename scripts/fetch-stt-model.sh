@@ -1,7 +1,8 @@
 #!/bin/sh
-# Downloads the on-device speech-to-text (STT) model that visitors' browsers load in the public
-# chat (Parakeet Redux, see frontend/src/lib/parakeetStt.ts), verifies it, and stores a gzipped
-# copy of every file next to it.
+# Downloads the speech-to-text (STT) model (Parakeet Redux), verifies it, and stores a gzipped copy
+# of every file next to it. Visitors' browsers load it for on-device recognition (see
+# frontend/src/lib/parakeetStt.ts), and the backend transcribes with the same files (see
+# backend/app/features/ai/stt/parakeet_local.py) — required there, there's no fallback engine.
 #
 # Why self-hosted and pre-compressed: the model is ~380 MB raw, but its weights are ternary
 # (-1/0/+1) packed into 4-bit blocks, so gzip shrinks the download to ~170 MB without changing a
@@ -77,8 +78,8 @@ echo "$FILES" | while read -r name sha; do
   fi
 done
 
-# Written last, and the frontend loads nothing without it: until every file above is in place,
-# browsers just fall back to server transcription instead of loading a half-downloaded model.
+# Written last, and neither the frontend nor the backend loads anything without it: a
+# half-downloaded model is never used.
 # The frontend also reads raw (uncompressed) sizes from here for its progress bar: with gzip
 # transfer encoding, the Content-Length header carries the *compressed* size while the browser
 # hands the page decompressed bytes, so the header alone can't say how far along it is.
