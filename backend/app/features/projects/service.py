@@ -24,6 +24,7 @@ from app.core.security import hash_password
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.resolve import get_owned_key_of_type
 from app.features.chat.bridge import audio_cache as bridge_audio_cache
+from app.features.chat.reasoning_router import adaptive_reasoning_available
 from app.features.chat.models import Conversation, ProjectAccess
 from app.features.evaluation import cleanup as evaluation_cleanup
 from app.features.knowledge.models import KnowledgeBase
@@ -40,6 +41,19 @@ _NO_CHAT_PASSWORD_SENT = object()
 class UnknownApiKey(DomainError):
     status_code = 400
     detail = ErrorCode.UNKNOWN_API_KEY
+
+
+class AdaptiveReasoningUnavailable(DomainError):
+    status_code = 400
+    detail = ErrorCode.ADAPTIVE_REASONING_UNAVAILABLE
+
+
+def _check_reasoning_mode(data: ProjectUpdate, current: str | None) -> None:
+    """Refuse switching a project to "adaptive" where the deployment can't offer it (see
+    chat/reasoning_router.py). A project that already is adaptive may be saved unchanged: it then
+    reasons on every turn, and the configurator says so."""
+    if data.reasoning_mode == "adaptive" and current != "adaptive" and not adaptive_reasoning_available(timeout=5.0):
+        raise AdaptiveReasoningUnavailable()
 
 
 class UnknownAvatar(DomainError):
@@ -198,6 +212,7 @@ def create_project(session: Session, user_id: str, data: ProjectUpdate) -> Proje
     # anyway and the DB model has a default for everything except title/user_id (see
     # features/projects/models.py) — the frontend always sends a title on creation ("+ New project") anyway.
     _check_references(session, user_id, data)
+    _check_reasoning_mode(data, None)
     create_data = data.model_dump(exclude_unset=True)
     chat_password = create_data.pop("chat_password", _NO_CHAT_PASSWORD_SENT)
     knowledge_base_ids = create_data.pop("knowledge_base_ids", None)
@@ -219,6 +234,7 @@ def create_project(session: Session, user_id: str, data: ProjectUpdate) -> Proje
 def apply_update(session: Session, project: Project, data: ProjectUpdate) -> Project:
     """Validate and apply a ProjectUpdate (only the fields actually sent), including the chat password."""
     _check_references(session, project.user_id, data)
+    _check_reasoning_mode(data, project.reasoning_mode)
     update_data = data.model_dump(exclude_unset=True)
     if "motion_prompt" in update_data and not (update_data["motion_prompt"] or "").strip():
         update_data["motion_prompt"] = None

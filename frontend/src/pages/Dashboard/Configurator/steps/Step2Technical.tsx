@@ -13,6 +13,7 @@ import {
   modelLabel,
   useBrowserSttStatus,
   useBrowserTtsStatus,
+  useKnowledgeStatus,
   useLocalTtsStatus,
   useProviders,
   useServerSttStatus,
@@ -134,6 +135,12 @@ export function Step2Technical({ draft, onChange }: StepProps) {
   const selectedLlmKey = llmKeys.find((key) => key.id === draft.llmApiKeyId);
   const reasoningSupport = selectedLlmKey?.reasoningSupport ?? "none";
   const reasons = draft.reasoningMode === "always" || draft.reasoningMode === "adaptive";
+  // "Only for arguments" needs the knowledge service with a suitable embedding model. A project that
+  // already uses it keeps the option (so the select shows its value) and gets a warning instead.
+  const adaptiveAvailable = useKnowledgeStatus().data?.adaptiveReasoning ?? false;
+  const reasoningModes = REASONING_MODES.filter(
+    (mode) => mode !== "adaptive" || adaptiveAvailable || draft.reasoningMode === "adaptive",
+  );
   // The level applies to whichever model reasons: the second one if there is one.
   const deepKey = llmKeys.find((key) => key.id === draft.deepLlmApiKeyId);
   const deepSupport = (deepKey ?? selectedLlmKey)?.reasoningSupport ?? "none";
@@ -199,13 +206,16 @@ export function Step2Technical({ draft, onChange }: StepProps) {
               value={draft.reasoningMode}
               onChange={(e) => onChange({ reasoningMode: e.target.value as ReasoningMode })}
             >
-              {REASONING_MODES.map((mode) => (
+              {reasoningModes.map((mode) => (
                 <option key={mode} value={mode}>
                   {t(`configurator.step2.reasoningOptions.${mode}`)}
                 </option>
               ))}
             </select>
           </div>
+          {draft.reasoningMode === "adaptive" && !adaptiveAvailable && (
+            <Callout variant="warning">{t("configurator.step2.adaptiveUnavailable")}</Callout>
+          )}
           {reasons && (
             <>
               <div className={styles.field}>

@@ -38,6 +38,14 @@ Phase 2 is done except for the experimental self-escalation (the fast model star
 many arguments. Decided differently from the plan: the bridge audio is rendered lazily into an
 in-memory cache (per voice and key) instead of a stored file per project.
 
+Routing decision: the word-list rules catch only 29 % of the arguments in a hand-written test set,
+so "adaptive" is now offered only where the knowledge service runs EmbeddingGemma 2
+(`reasoning_router.ADAPTIVE_EMBEDDING_MODELS`); elsewhere an adaptive project reasons on every turn.
+Next: replace the rules there with a classifier on EmbeddingGemma 2 embeddings (98 % of arguments,
+5 % false escalations on the same set): train and ship its weights, let the knowledge service
+return the decision with the retrieval result, and test it on messages from other authors first.
+The service needs the EmbeddingGemma loading fix from `working-branch` (d6515bb).
+
 Self-escalation probe (`scripts/escalation_probe.py`, cases in `scripts/escalation_cases.json`): on
 2026-11-07 lfm3-omni-2b in LM Studio could not do the marker inside the persona reply. Without examples
 it wrote `::deep::` at the start of nearly every reply (83 % of ordinary messages); with four examples

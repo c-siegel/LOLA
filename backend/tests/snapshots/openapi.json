@@ -1869,6 +1869,11 @@
       },
       "KnowledgeStatusOut": {
         "properties": {
+          "adaptiveReasoning": {
+            "default": false,
+            "title": "Adaptivereasoning",
+            "type": "boolean"
+          },
           "available": {
             "title": "Available",
             "type": "boolean"

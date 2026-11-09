@@ -6,6 +6,8 @@ import pytest
 from app.core.config import settings
 from tests.conftest import create_key, create_project, parse_sse, publish
 
+pytestmark = pytest.mark.usefixtures("adaptive_available")
+
 THINKING = {"chat_template_kwargs": {"enable_thinking": True}}
 NOT_THINKING = {"chat_template_kwargs": {"enable_thinking": False}}
 ARGUMENT = "Ich behaupte, dass das falsch ist, weil die Zahl negativ wird"

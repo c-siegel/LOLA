@@ -37,7 +37,13 @@ from app.features.chat.conversation_store import save_turn
 from app.features.chat.checklist import Check, Checklist, checklist_for, checklist_prompt
 from app.features.chat.motion import MotionMark, compose_system_prompt, extract_markers
 from app.features.chat import bridge
-from app.features.chat.reasoning_router import DEEP_TIMEOUT_SECONDS, FAST_ROUTE, RouteDecision, decide
+from app.features.chat.reasoning_router import (
+    DEEP_TIMEOUT_SECONDS,
+    FAST_ROUTE,
+    RouteDecision,
+    adaptive_reasoning_available,
+    decide,
+)
 from app.features.knowledge.prompt import reference_block
 from app.features.knowledge.retrieval import KnowledgeContext, Passage, prepare_knowledge, retrieve, sources_for_transcript
 from app.features.media.service import voice_reference_for_project
@@ -109,6 +115,9 @@ class ChatContext:
     deep_llm_key: UserApiKey | None = None
     # Whether a reasoning turn is introduced by a short spoken phrase (chat/bridge.py).
     bridge_enabled: bool = False
+    # Whether this deployment offers adaptive reasoning (reasoning_router.adaptive_reasoning_available);
+    # checked only for adaptive projects, which otherwise reason on every turn.
+    adaptive_available: bool = False
 
 
 @dataclass
@@ -190,6 +199,7 @@ def prepare_chat(session: Session, project: Project, llm_key: UserApiKey | None 
         reasoning_effort=project.reasoning_effort,
         deep_llm_key=deep_key if deep_key is not api_key else None,
         bridge_enabled=project.bridge_enabled,
+        adaptive_available=project.reasoning_mode == "adaptive" and adaptive_reasoning_available(),
         start_prompt=project.start_prompt,
         tts_voice=project.tts_voice,
         spoken_language=project.spoken_language,
@@ -226,6 +236,7 @@ def _route(context: ChatContext, turn: ChatTurn) -> RouteDecision:
         budget=turn.deep_budget,
         fast_only=turn.fast_only,
         forced=turn.force_route,
+        adaptive_available=context.adaptive_available,
     )
 
 

@@ -32,6 +32,7 @@ from sqlmodel import Session, SQLModel, create_engine  # noqa: E402
 
 import app.db.base  # noqa: E402,F401  (registers every model's table on SQLModel.metadata)
 from app.core import rate_limit  # noqa: E402
+from app.features.chat import reasoning_router  # noqa: E402
 from app.features.chat.bridge import audio_cache as bridge_audio_cache  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.security import create_access_token, hash_password  # noqa: E402
@@ -84,6 +85,7 @@ def client(engine, monkeypatch, tmp_path):
     rate_limit._hits.clear()
     rate_limit._windows.clear()
     bridge_audio_cache.clear()
+    reasoning_router._unavailable_until = 0.0
     yield new_client()
     app.dependency_overrides.clear()
     rate_limit._hits.clear()
@@ -236,3 +238,18 @@ def parse_sse(text: str) -> list[tuple[str, dict]]:
         lines = dict(line.split(": ", 1) for line in block.split("\n"))
         events.append((lines["event"], json.loads(lines["data"])))
     return events
+
+
+@pytest.fixture
+def adaptive_available(monkeypatch):
+    """A deployment that offers adaptive reasoning: the knowledge service runs EmbeddingGemma 2
+    (see chat/reasoning_router.py::ADAPTIVE_EMBEDDING_MODELS), faked at rag_client's one seam."""
+    from app.features.knowledge import rag_client
+    from tests import fake_rag
+
+    monkeypatch.setattr(fake_rag, "LOCAL_MODEL", "onnx-community/embeddinggemma-2-ONNX")
+    monkeypatch.setattr(settings, "rag_enabled", True)
+    monkeypatch.setattr(settings, "rag_service_token", fake_rag.TOKEN)
+    monkeypatch.setattr(rag_client, "_client", fake_rag.FakeRag().client())
+    monkeypatch.setattr(rag_client, "_capabilities_cache", None)
+    monkeypatch.setattr(reasoning_router, "_unavailable_until", 0.0)

@@ -10,6 +10,8 @@ from app.features.chat.pipeline import ChatTurn, _bridge_chunk, prepare_chat, st
 from app.features.projects.models import Project
 from tests.conftest import create_key, create_project, parse_sse, publish
 
+pytestmark = pytest.mark.usefixtures("adaptive_available")
+
 ARGUMENT = "Ich behaupte, dass das falsch ist, weil die Zahl negativ wird"
 SMALL_TALK = "Wie geht es dir heute so"
 VLLM = {"provider": "openai_compatible", "apiBase": "http://vllm.local/v1"}
