@@ -46,4 +46,4 @@ local-tts/build/
 
 #doc generation
 LOLA.cc.json.gz
-.archify
+.archify/

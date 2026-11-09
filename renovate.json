@@ -1,0 +1,64 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "baseBranchPatterns": ["working-branch"],
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "dependencyDashboardTitle": "Dependency dashboard",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "schedule": ["at any time"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "packageRules": [
+    {
+      "description": "One PR per component for non-breaking updates, to keep the PR list short.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "frontend minor and patch updates"
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["backend/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "backend minor and patch updates"
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["rag/**", "rag-eval/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "knowledge services minor and patch updates"
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["local-tts/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "local TTS minor and patch updates"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "Docker base images"
+    },
+    {
+      "description": "Capped on purpose: faster-whisper still passes an argument PyAV 19 removed (see backend/pyproject.toml). Listed on the dashboard; a PR only opens when approved there.",
+      "matchPackageNames": ["av"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Pre-1.0 packages capped at the minor version on purpose: before 1.0 a minor release may break behaviour. Update them deliberately via the dashboard.",
+      "matchPackageNames": ["normt2s", "ragas", "langchain-community", "fastembed", "sqlite-vec"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
