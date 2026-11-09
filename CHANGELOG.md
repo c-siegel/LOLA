@@ -88,6 +88,10 @@ are only recorded in the [git tags](https://github.com/c-siegel/LOLA/tags).
   longer spoken or shown.
 - EmbeddingGemma 2 failed to load in the knowledge service with current onnxruntime versions
   ("External data path escapes model directory").
+- **Forced password change**: after an account created or reset by an admin set its own password,
+  the dashboard sent it straight back to the password form, without any message. It now opens
+  the dashboard and confirms the change. Admins also get a confirmation when they create an
+  account or reset a password.
 
 ### Security
 

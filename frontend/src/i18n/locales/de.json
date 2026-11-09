@@ -231,7 +231,8 @@
   "forcePasswordChange": {
     "title": "Passwort ändern",
     "description": "Eine Administratorin/ein Administrator hat dieses Passwort für dich gesetzt. Wähle ein neues, um fortzufahren.",
-    "submit": "Speichern und fortfahren"
+    "submit": "Speichern und fortfahren",
+    "successToast": "Passwort geändert. Ab jetzt meldest du dich mit dem neuen Passwort an."
   },
   "admin": {
     "users": {
@@ -254,6 +255,8 @@
       "disable": "Deaktivieren",
       "resetPassword": "Passwort zurücksetzen",
       "resetPasswordTitle": "Passwort zurücksetzen für {{name}}",
+      "createdToast": "Konto für {{name}} angelegt. Beim ersten Anmelden muss ein eigenes Passwort gewählt werden.",
+      "passwordResetToast": "Passwort für {{name}} zurückgesetzt. Beim nächsten Anmelden muss ein neues gewählt werden.",
       "empty": "Noch keine Konten vorhanden.",
       "actionFailed": "Aktion fehlgeschlagen. Bitte erneut versuchen.",
       "addUser": "Konto hinzufügen",

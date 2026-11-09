@@ -231,7 +231,8 @@
   "forcePasswordChange": {
     "title": "Change your password",
     "description": "An administrator set this password for you. Choose a new one to continue.",
-    "submit": "Save and continue"
+    "submit": "Save and continue",
+    "successToast": "Password changed. From now on, sign in with your new password."
   },
   "admin": {
     "users": {
@@ -254,6 +255,8 @@
       "disable": "Disable",
       "resetPassword": "Reset password",
       "resetPasswordTitle": "Reset password for {{name}}",
+      "createdToast": "Account for {{name}} created. A new password has to be chosen at the first sign-in.",
+      "passwordResetToast": "Password for {{name}} reset. A new one has to be chosen at the next sign-in.",
       "empty": "No accounts yet.",
       "actionFailed": "Action failed. Please try again.",
       "addUser": "Add account",
