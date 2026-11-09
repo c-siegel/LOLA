@@ -19,7 +19,6 @@ How to use:
     text = LocalParakeetClient().transcribe(audio_bytes, "de")
 """
 
-import io
 import json
 import logging
 import os
@@ -28,15 +27,14 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
-from faster_whisper.audio import decode_audio
 
 from app.core.config import settings
+from app.features.ai.stt.audio import SAMPLE_RATE, decode_audio
 from app.features.ai.stt.capacity import transcription_slot
 from app.features.ai.stt.whisper_local import LocalWhisperClient
 
 logger = logging.getLogger(__name__)
 
-SAMPLE_RATE = 16000
 # One encoder step covers 8 feature frames of 10 ms each (see the model's config.json).
 FRAME_SAMPLES = 1280
 BLANK_TOKEN = 8192
@@ -211,6 +209,5 @@ class LocalParakeetClient:
                 logger.warning("%s — using local Whisper until it's downloaded.", exc)
             return LocalWhisperClient().transcribe(audio_bytes, language, initial_prompt)
         with transcription_slot():
-            # Same decoder faster-whisper uses (PyAV): handles the browser's WebM/Opus directly.
-            audio = decode_audio(io.BytesIO(audio_bytes), sampling_rate=SAMPLE_RATE)
+            audio = decode_audio(audio_bytes)
             return model.transcribe(audio)
