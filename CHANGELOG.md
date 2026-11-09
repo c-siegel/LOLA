@@ -92,3 +92,6 @@ are only recorded in the [git tags](https://github.com/c-siegel/LOLA/tags).
 - Cached bridge-phrase audio, which can be in a teacher's cloned voice, is deleted together with
   its project, voice clip or account.
 - Whether a model can reason is looked up in a bundled table only, never by contacting a provider.
+- React Router updated from 6.30 to 7.18 to fix the vulnerabilities reported for v6 (Dependabot
+  alerts #2 and #3). Pages and links work as before; switching to a page that is still loading
+  now keeps the previous page on screen instead of briefly showing the loading indicator.
