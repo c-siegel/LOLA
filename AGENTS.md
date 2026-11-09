@@ -78,6 +78,7 @@ There is no linter/formatter config. CI (`.github/workflows/tests.yml`) runs `py
 
 **Docs**
 - New env variable → `.env.example` (with a comment saying which deploy path uses it) and the matching README. New feature/provider/route → update the relevant README section.
+- Every change someone using or running LOLA would notice gets an entry under `## [Unreleased]` in `CHANGELOG.md`, in the same pull request (Added / Changed / Removed / Fixed / Security). Say what to do where an upgrade needs action (migrations, env variables, model files). Dependency updates from Renovate need no entry.
 
 **Code style**
 - Code comments are always in English. When you come across a German comment, translate it.
