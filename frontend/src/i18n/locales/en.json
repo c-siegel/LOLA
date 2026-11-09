@@ -1536,9 +1536,13 @@
     }
   },
   "customPage": {
-    "notFoundTitle": "Page not found",
-    "notFoundText": "This page doesn't exist or isn't published.",
-    "backHome": "Back to the home page"
+    "notFoundText": "This page doesn't exist or isn't published."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "This address doesn't exist. The link may be out of date or contain a typo.",
+    "backHome": "Back to the home page",
+    "backToDashboard": "Back to the overview"
   },
   "errors": {
     "PAGE_NOT_FOUND": "Page not found.",

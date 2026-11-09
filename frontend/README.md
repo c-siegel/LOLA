@@ -61,6 +61,7 @@ Overview: [root README](../README.md). Code conventions: [AGENTS.md](../AGENTS.m
 | `/c/:projectSlug` | `PublicChat` | The public chat page visitors use — no login required. Shows a loading screen until the on-device speech recognition model is ready (or has failed, in which case voice input uses the server). Projects with on-device speech output load Pocket TTS in the background and speak replies on the device once it's ready (messages then go out with `speakOnDevice`); until then, the server speaks |
 | `/impressum`, `/datenschutz`, `/credits` | `Imprint`, `Privacy`, `Credits` | Legal/attribution pages (German URLs, matching German legal terminology). Imprint and privacy show an admin's Markdown when there is one (visitor's language, then English), otherwise the built-in template — see `lib/pages.ts` |
 | `/p/:slug` | `CustomPage` | Pages an admin created, e.g. an accessibility statement; published ones can be linked in the site footer |
+| `*` | `NotFound` | Any other address: "Page not found" (`components/NotFound`, also used for unknown custom pages and, inside the shell, unknown `/dashboard/…` addresses). Adds a `noindex` robots meta tag, since the SPA answers every address with 200 |
 
 ## Debugging
 

@@ -1536,9 +1536,13 @@
     }
   },
   "customPage": {
-    "notFoundTitle": "Seite nicht gefunden",
-    "notFoundText": "Diese Seite gibt es nicht oder sie ist nicht veröffentlicht.",
-    "backHome": "Zur Startseite"
+    "notFoundText": "Diese Seite gibt es nicht oder sie ist nicht veröffentlicht."
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "text": "Diese Adresse gibt es nicht. Vielleicht ist der Link veraltet oder enthält einen Tippfehler.",
+    "backHome": "Zur Startseite",
+    "backToDashboard": "Zur Übersicht"
   },
   "errors": {
     "PAGE_NOT_FOUND": "Seite nicht gefunden.",

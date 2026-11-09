@@ -41,6 +41,9 @@ are only recorded in the [git tags](https://github.com/c-siegel/LOLA/tags).
   pages also send `X-Robots-Tag: noindex`, so a chat link posted elsewhere doesn't show up in
   search results. Under a `BASE_PATH`, copy the rules from `/<BASE_PATH>/robots.txt` into the
   shared host's own `robots.txt`, since crawlers only read the one at the root.
+- **404 page**: an address that doesn't exist now shows "Page not found" with a link back to the
+  home page instead of an empty page; inside the dashboard it keeps the sidebar and links to the
+  overview. It tells search engines not to index it.
 
 ### Changed
 
