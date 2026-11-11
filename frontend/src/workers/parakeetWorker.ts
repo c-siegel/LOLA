@@ -11,7 +11,7 @@ import * as ort from "onnxruntime-web/webgpu";
 // Imported as a URL so Vite emits the file and we can tell onnxruntime-web exactly where it is —
 // its own lookup (relative to the bundle) breaks once Vite has moved the bundle around.
 import ortWasmUrl from "onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url";
-import { loadModelFile, openModelCache, pruneModelCache, type ManifestFile } from "@/lib/modelFiles";
+import { MODEL_CACHES, loadModelFile, openModelCache, pruneModelCache, type ManifestFile } from "@/lib/modelFiles";
 
 ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
 // Multi-threaded WASM needs SharedArrayBuffer, which browsers only allow on a cross-origin-isolated
@@ -38,7 +38,7 @@ const MAX_SEGMENT_SECONDS = 20;
 const MIN_DECODE_SECONDS = 0.3;
 const SILENT_SEGMENT_KEEP_SECONDS = 0.5;
 
-const MODEL_CACHE = "lola-stt-models";
+const MODEL_CACHE = MODEL_CACHES.stt;
 
 interface Manifest {
   version: string;

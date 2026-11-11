@@ -50,9 +50,9 @@
       "groupName": "Docker base images"
     },
     {
-      "description": "Capped on purpose: faster-whisper still passes an argument PyAV 19 removed (see backend/pyproject.toml). Listed on the dashboard; a PR only opens when approved there.",
-      "matchPackageNames": ["av"],
-      "matchUpdateTypes": ["major"],
+      "description": "Held at the three.js version @met4citizen/talkinghead declares (^0.186): a newer three.js installs a second copy next to it and ships both in the bundle (~150 kB gzip more). Bump it together with a TalkingHead release that allows the newer version.",
+      "matchPackageNames": ["three"],
+      "matchUpdateTypes": ["major", "minor"],
       "dependencyDashboardApproval": true
     },
     {

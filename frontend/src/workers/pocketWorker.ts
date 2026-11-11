@@ -11,7 +11,7 @@ import * as ort from "onnxruntime-web/wasm";
 // Imported as a URL so Vite emits it — onnxruntime-web's own lookup breaks once Vite has moved the
 // bundle (see parakeetWorker.ts).
 import ortWasmUrl from "onnxruntime-web/ort-wasm-simd-threaded.wasm?url";
-import { loadModelFile, openModelCache, pruneModelCache, type ManifestFile } from "@/lib/modelFiles";
+import { MODEL_CACHES, loadModelFile, openModelCache, pruneModelCache, type ManifestFile } from "@/lib/modelFiles";
 import {
   PocketTtsModel,
   createPocketTokenizer,
@@ -26,7 +26,7 @@ ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
 // The int8 model still runs about three times faster than real time on one laptop core.
 ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
 
-const MODEL_CACHE = "lola-tts-models";
+const MODEL_CACHE = MODEL_CACHES.tts;
 
 interface Manifest {
   version: string;

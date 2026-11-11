@@ -1,7 +1,9 @@
 #!/bin/sh
-# Downloads the on-device speech-to-text (STT) model that visitors' browsers load in the public
-# chat (Parakeet Redux, see frontend/src/lib/parakeetStt.ts), verifies it, and stores a gzipped
-# copy of every file next to it.
+# Downloads the speech-to-text (STT) model (Parakeet Redux), the voice activity detector (Silero
+# VAD) and the end-of-turn model (Smart Turn), verifies them, and stores a gzipped copy of every
+# file next to it. Visitors' browsers load it for on-device recognition (see
+# frontend/src/lib/parakeetStt.ts), and the backend transcribes with the same files (see
+# backend/app/features/ai/stt/parakeet_local.py) — required there, there's no fallback engine.
 #
 # Why self-hosted and pre-compressed: the model is ~380 MB raw, but its weights are ternary
 # (-1/0/+1) packed into 4-bit blocks, so gzip shrinks the download to ~170 MB without changing a
@@ -41,8 +43,54 @@ encoder-model.onnx ade2c65c188776b3662db620a553ab82ac7e9ca11a7be6b696bcc5190f753
 vocab.txt d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d
 "
 
+# Silero VAD (MIT, snakers4/silero-vad): speech detection in the browser, which finds the pauses
+# the server fallback cuts a recording at (see frontend/src/workers/vadWorker.ts). Chosen over
+# Parakeet's own VAD model after a comparison, see docs/stt-plan.md (phase 3, step 0).
+VAD_VERSION="v6.2"
+VAD_COMMIT="5cd7945676eb32225748052e2e6a0580e4686a08" # tag v6.2.3
+VAD_SHA256="1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"
+VAD_TARGET="$TARGET_ROOT/silero-vad/$VAD_VERSION"
+
+# Smart Turn (BSD-2-Clause, pipecat-ai/smart-turn-v3): decides at a pause whether the student's
+# turn sounds finished, for hands-free voice input (see frontend/src/workers/vadWorker.ts). The
+# int8 checkpoint, which runs on the CPU in every browser. See docs/stt-plan.md (phase 3, step 2).
+TURN_VERSION="v3.2"
+TURN_REVISION="f766f81d3cfdf7737ac64aad813d91bbfd56bf93"
+TURN_SHA256="2bb026316b14a660486a75b1733cd3fbab8c2fd0314dc9af7be49f8cca967e4f"
+TURN_TARGET="$TARGET_ROOT/smart-turn/$TURN_VERSION"
+
 # BusyBox's sha256sum has no --status, so compare the printed hash instead of using -c.
 hash_ok() { [ "$(sha256sum "$1" | cut -d ' ' -f 1)" = "$2" ]; }
+
+# fetch_verified <url> <file> <sha256>: downloads the file unless an intact copy is already there.
+fetch_verified() {
+  if [ -f "$2" ] && hash_ok "$2" "$3"; then
+    echo "ok        $(basename "$2")"
+    return
+  fi
+  echo "download  $(basename "$2")"
+  curl -fsSL --retry 3 -o "$2.part" "$1"
+  if ! hash_ok "$2.part" "$3"; then
+    rm -f "$2.part"
+    echo "Checksum mismatch for $(basename "$2") — refusing to install it." >&2
+    exit 1
+  fi
+  mv "$2.part" "$2"
+  rm -f "$2.gz"
+}
+
+# ensure_gzip <file>: (re)writes the .gz copy Caddy serves.
+ensure_gzip() {
+  # Checked by decompressing, not just by existence: an interrupted earlier run can leave a
+  # truncated .gz behind, and Caddy would keep serving it — browsers then stall partway through.
+  if [ ! -f "$1.gz" ] || ! gzip -t "$1.gz" 2>/dev/null; then
+    echo "gzip      $(basename "$1")"
+    # Written to .part first and renamed when complete, so an interruption never leaves a
+    # broken .gz under the name Caddy serves.
+    gzip -9 -c "$1" > "$1.gz.part"
+    mv "$1.gz.part" "$1.gz"
+  fi
+}
 
 for tool in curl sha256sum gzip; do
   command -v "$tool" >/dev/null || { echo "Missing required tool: $tool" >&2; exit 1; }
@@ -52,33 +100,12 @@ mkdir -p "$TARGET"
 
 echo "$FILES" | while read -r name sha; do
   [ -n "$name" ] || continue
-  file="$TARGET/$name"
-  if [ -f "$file" ] && hash_ok "$file" "$sha"; then
-    echo "ok        $name"
-  else
-    echo "download  $name"
-    curl -fsSL --retry 3 -o "$file.part" "https://huggingface.co/$REPO/resolve/$REVISION/$name"
-    if ! hash_ok "$file.part" "$sha"; then
-      rm -f "$file.part"
-      echo "Checksum mismatch for $name — refusing to install it." >&2
-      exit 1
-    fi
-    mv "$file.part" "$file"
-    rm -f "$file.gz"
-  fi
-  # Checked by decompressing, not just by existence: an interrupted earlier run can leave a
-  # truncated .gz behind, and Caddy would keep serving it — browsers then stall partway through.
-  if [ ! -f "$file.gz" ] || ! gzip -t "$file.gz" 2>/dev/null; then
-    echo "gzip      $name"
-    # Written to .part first and renamed when complete, so an interruption never leaves a
-    # broken .gz under the name Caddy serves.
-    gzip -9 -c "$file" > "$file.gz.part"
-    mv "$file.gz.part" "$file.gz"
-  fi
+  fetch_verified "https://huggingface.co/$REPO/resolve/$REVISION/$name" "$TARGET/$name" "$sha"
+  ensure_gzip "$TARGET/$name"
 done
 
-# Written last, and the frontend loads nothing without it: until every file above is in place,
-# browsers just fall back to server transcription instead of loading a half-downloaded model.
+# Written last, and neither the frontend nor the backend loads anything without it: a
+# half-downloaded model is never used.
 # The frontend also reads raw (uncompressed) sizes from here for its progress bar: with gzip
 # transfer encoding, the Content-Length header carries the *compressed* size while the browser
 # hands the page decompressed bytes, so the header alone can't say how far along it is.
@@ -101,9 +128,75 @@ gzip -9 -c "$TARGET/manifest.json.part" > "$TARGET/manifest.json.gz.part"
 mv "$TARGET/manifest.json.gz.part" "$TARGET/manifest.json.gz"
 mv "$TARGET/manifest.json.part" "$TARGET/manifest.json"
 
+mkdir -p "$VAD_TARGET"
+fetch_verified "https://raw.githubusercontent.com/snakers4/silero-vad/$VAD_COMMIT/src/silero_vad/data/silero_vad.onnx" \
+  "$VAD_TARGET/silero_vad.onnx" "$VAD_SHA256"
+ensure_gzip "$VAD_TARGET/silero_vad.onnx"
+# Same manifest format as Parakeet's (read by frontend/src/workers/vadWorker.ts), written last.
+cat > "$VAD_TARGET/manifest.json.part" <<EOF
+{
+  "version": "$VAD_VERSION",
+  "source": "https://github.com/snakers4/silero-vad/tree/$VAD_COMMIT",
+  "sampleRate": 16000,
+  "files": {
+    "vad": { "path": "silero_vad.onnx", "bytes": $(wc -c < "$VAD_TARGET/silero_vad.onnx" | tr -d ' ') }
+  }
+}
+EOF
+gzip -9 -c "$VAD_TARGET/manifest.json.part" > "$VAD_TARGET/manifest.json.gz.part"
+mv "$VAD_TARGET/manifest.json.gz.part" "$VAD_TARGET/manifest.json.gz"
+mv "$VAD_TARGET/manifest.json.part" "$VAD_TARGET/manifest.json"
+
+mkdir -p "$TURN_TARGET"
+fetch_verified "https://huggingface.co/pipecat-ai/smart-turn-v3/resolve/$TURN_REVISION/smart-turn-v3.2-cpu.onnx" \
+  "$TURN_TARGET/smart-turn-v3.2-cpu.onnx" "$TURN_SHA256"
+ensure_gzip "$TURN_TARGET/smart-turn-v3.2-cpu.onnx"
+# BSD-2-Clause: redistributing the model means passing its notice on with it.
+cat > "$TURN_TARGET/NOTICE.md" <<'EOF'
+# Smart Turn v3.2
+
+`smart-turn-v3.2-cpu.onnx` is the int8 checkpoint of Smart Turn v3.2 by Daily (Pipecat),
+https://huggingface.co/pipecat-ai/smart-turn-v3, unchanged.
+
+BSD 2-Clause License
+
+Copyright (c) 2024–2025, Daily
+
+Redistribution and use in source and binary forms, with or without modification, are permitted
+provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions
+   and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of
+   conditions and the following disclaimer in the documentation and/or other materials provided
+   with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+EOF
+cat > "$TURN_TARGET/manifest.json.part" <<EOF
+{
+  "version": "$TURN_VERSION",
+  "source": "https://huggingface.co/pipecat-ai/smart-turn-v3/tree/$TURN_REVISION",
+  "sampleRate": 16000,
+  "files": {
+    "turn": { "path": "smart-turn-v3.2-cpu.onnx", "bytes": $(wc -c < "$TURN_TARGET/smart-turn-v3.2-cpu.onnx" | tr -d ' ') }
+  }
+}
+EOF
+gzip -9 -c "$TURN_TARGET/manifest.json.part" > "$TURN_TARGET/manifest.json.gz.part"
+mv "$TURN_TARGET/manifest.json.gz.part" "$TURN_TARGET/manifest.json.gz"
+mv "$TURN_TARGET/manifest.json.part" "$TURN_TARGET/manifest.json"
+
 # Also repairs files from an earlier run under a stricter umask. On storage with its own ACLs
 # (e.g. a TrueNAS dataset) chmod can be refused — then grant read access in the ACL instead.
 chmod -R a+rX "$TARGET_ROOT" 2>/dev/null || echo "Warning: could not make $TARGET_ROOT world-readable — the web server may answer 403." >&2
 
-echo "Done: $TARGET"
+echo "Done: $TARGET, $VAD_TARGET and $TURN_TARGET"
 echo "Transfer size per device (gzip): $(cat "$TARGET"/*.gz | wc -c | awk '{printf "%.0f MB", $1 / 1000000}')"

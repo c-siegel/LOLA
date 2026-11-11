@@ -8,7 +8,6 @@ import pytest
 
 from app.core.config import settings
 from app.features.ai.tts import local
-from app.features.chat import public_router
 from conftest import browser_url, create_key, create_project, parse_sse, publish
 
 WAV = b"RIFF-fake-wav"
@@ -109,35 +108,18 @@ def test_project_voice_is_sent_to_the_sidecar(client, anon, keyless_tts_project,
 
 
 def test_server_stt_status(client, teacher, monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "stt_engine", "whisper")
     monkeypatch.setattr(settings, "stt_parakeet_model_dir", str(tmp_path))
-    assert client.get("/providers/server-stt-status").json() == {"defaultEngine": "whisper", "parakeetAvailable": False}
-    monkeypatch.setattr(settings, "stt_engine", "parakeet")
+    assert client.get("/providers/server-stt-status").json() == {"available": False}
     (tmp_path / "manifest.json").write_text("{}")
-    assert client.get("/providers/server-stt-status").json() == {"defaultEngine": "parakeet", "parakeetAvailable": True}
+    assert client.get("/providers/server-stt-status").json() == {"available": True}
 
 
-def test_project_picks_its_own_server_stt_engine(client, anon, keyless_tts_project, monkeypatch):
+def test_the_removed_server_engine_field_is_ignored(client, keyless_tts_project):
+    # Frontends from before faster-whisper was removed still send sttServerEngine.
     project_id = keyless_tts_project["id"]
-    assert client.get(f"/projects/{project_id}").json()["sttServerEngine"] is None
-    assert client.put(f"/projects/{project_id}", json={"sttServerEngine": "nonsense"}).status_code == 422
-    client.put(f"/projects/{project_id}", json={"sttServerEngine": "parakeet"})
-    assert client.get(f"/projects/{project_id}").json()["sttServerEngine"] == "parakeet"
-
-    engines = []
-    monkeypatch.setattr(
-        public_router,
-        "transcribe_audio",
-        lambda content, language, prompt=None, api_key_record=None, engine=None: engines.append(engine) or "Hallo",
-    )
-    slug = keyless_tts_project["shareSlug"]
-    response = anon.post(f"/public/{slug}/transcriptions", files={"audio": ("a.webm", b"audio", "audio/webm")})
+    response = client.put(f"/projects/{project_id}", json={"sttServerEngine": "whisper", "title": "Neu"})
     assert response.status_code == 200, response.text
-    assert engines == ["parakeet"]
-
-    # null resets it to the deployment default.
-    client.put(f"/projects/{project_id}", json={"sttServerEngine": None})
-    assert client.get(f"/projects/{project_id}").json()["sttServerEngine"] is None
+    assert "sttServerEngine" not in client.get(f"/projects/{project_id}").json()
 
 
 def test_chat_layout_is_saved_validated_and_public(client, anon, keyless_tts_project):
@@ -149,6 +131,27 @@ def test_chat_layout_is_saved_validated_and_public(client, anon, keyless_tts_pro
     client.put(f"/projects/{project_id}", json={"chatLayout": "chat_only"})
     assert client.get(f"/projects/{project_id}").json()["chatLayout"] == "chat_only"
     assert anon.get(f"/public/{slug}").json()["chatLayout"] == "chat_only"
+
+
+def test_voice_input_mode_is_saved_validated_and_public(client, anon, keyless_tts_project):
+    project_id = keyless_tts_project["id"]
+    slug = keyless_tts_project["shareSlug"]
+    assert client.get(f"/projects/{project_id}").json()["voiceInputMode"] == "push_to_talk"
+    assert anon.get(f"/public/{slug}").json()["voiceInputMode"] == "push_to_talk"
+    assert client.put(f"/projects/{project_id}", json={"voiceInputMode": "always_on"}).status_code == 422
+    client.put(f"/projects/{project_id}", json={"voiceInputMode": "hands_free"})
+    assert client.get(f"/projects/{project_id}").json()["voiceInputMode"] == "hands_free"
+    assert anon.get(f"/public/{slug}").json()["voiceInputMode"] == "hands_free"
+
+
+def test_voice_input_mode_survives_export_and_import(client, keyless_tts_project):
+    project_id = keyless_tts_project["id"]
+    client.put(f"/projects/{project_id}", json={"voiceInputMode": "hands_free"})
+    exported = client.get(f"/projects/{project_id}/export")
+    assert exported.status_code == 200
+    imported = client.post("/projects/import", files={"file": ("p.yaml", exported.content, "application/x-yaml")})
+    assert imported.status_code in (200, 201), imported.text
+    assert imported.json()["voiceInputMode"] == "hands_free"
 
 
 def test_without_sidecar_a_keyless_tts_project_replies_text_only(anon, keyless_tts_project):
@@ -196,3 +199,20 @@ def test_browser_stt_is_on_by_default_and_each_side_can_opt_out(client, anon, ke
     client.put(f"/projects/{keyless_tts_project['id']}", json={"sttBrowserEnabled": True})
     monkeypatch.setattr(settings, "browser_stt_enabled", False)
     assert anon.get(f"/public/{slug}").json()["browserSttModelUrl"] is None
+
+
+def test_public_settings_name_the_on_device_models(anon, monkeypatch):
+    # The student start page downloads these before any chat is chosen, so they follow the
+    # deployment switches only (and carry the sub-path like every other URL handed out).
+    monkeypatch.setattr(settings, "base_path", "/lola")
+    monkeypatch.setattr(settings, "browser_stt_enabled", True)
+    monkeypatch.setattr(settings, "browser_tts_enabled", True)
+    public = anon.get("/settings/public").json()
+    assert public["browserSttModelUrl"] == "/lola" + settings.browser_stt_model_url
+    assert public["browserTtsModelUrl"] == "/lola" + settings.browser_tts_model_url
+
+    monkeypatch.setattr(settings, "browser_stt_enabled", False)
+    monkeypatch.setattr(settings, "browser_tts_enabled", False)
+    public = anon.get("/settings/public").json()
+    assert public["browserSttModelUrl"] is None
+    assert public["browserTtsModelUrl"] is None

@@ -30,8 +30,15 @@ export interface Project {
   // ::_sampling_params). temperature 0.0-2.0, topP 0.0-1.0 — the backend checks the same limits.
   temperature: number;
   topP: number;
-  // Reasoning switch for models that support it; "default" leaves the model's own behaviour.
-  thinkingMode: ThinkingMode;
+  // Reasoning for models that support it; "default" leaves the model's own behaviour alone.
+  reasoningMode: ReasoningMode;
+  // Level for models that take one; null = the provider's own default.
+  reasoningEffort: ReasoningEffort | null;
+  // A second model for the turns that reason; null: the main model answers those too.
+  deepLlmApiKeyId: string | null;
+  deepLlmModel: string | null;
+  // Speak a short phrase while a reasoning turn is still thinking.
+  bridgeEnabled: boolean;
   published: boolean;
   shareSlug: string | null;
   saveConversations: boolean;
@@ -47,15 +54,12 @@ export interface Project {
   // from — only used while ttsApiKeyId is null. null speaks with the default local voice.
   ttsVoiceClipId: string | null;
   spokenLanguage: SpokenLanguage;
-  // Reference to a key of type STT (mirrors ttsApiKeyId) — null keeps transcribing locally
-  // (see backend features/ai/stt).
+  // Reference to a key of type STT (mirrors ttsApiKeyId) — null keeps transcribing locally with
+  // the server's Parakeet model (see backend features/ai/stt).
   sttApiKeyId: string | null;
-  // Which local engine transcribes on the server when sttApiKeyId is null — null follows the
-  // deployment's STT_ENGINE (see useServerSttStatus in lib/providers.ts).
-  sttServerEngine: SttServerEngine | null;
   sttEnabled: boolean;
   // Whether this project prefers on-device (browser, WebGPU) transcription over sttApiKeyId/the
-  // server's local Whisper — only shown/usable in the Configurator when the deployment also
+  // server's local Parakeet — only shown/usable in the Configurator when the deployment also
   // allows it (see useBrowserSttStatus in lib/providers.ts).
   sttBrowserEnabled: boolean;
   // Whether the visitor's device speaks the replies (Pocket TTS in the browser), with the server's
@@ -69,6 +73,9 @@ export interface Project {
   // What the public chat page shows: avatar + chat (open or starting collapsed), the avatar alone
   // (voice only) or the chat alone (no 3D model loaded) — see pages/PublicChat/index.tsx.
   chatLayout: ChatLayout;
+  // How the public chat's mic button works: one recording per click, or hands-free turns that end
+  // by themselves (see pages/PublicChat/useVoiceInput.ts). Only matters with sttEnabled.
+  voiceInputMode: VoiceInputMode;
   // Whether the avatar uses body language: the LLM marks gestures in its replies, which the
   // vendored MotionEngine plays (see backend features/chat/motion.py). No effect with "chat_only".
   motionEnabled: boolean;
@@ -132,14 +139,17 @@ export type SpokenLanguage = "de" | "en";
 export type KnowledgeMode = "off" | "supplement" | "strict";
 export const KNOWLEDGE_MODES: KnowledgeMode[] = ["off", "supplement", "strict"];
 
-// The local server STT engines (backend Settings.stt_engine / Project.stt_server_engine).
-export type SttServerEngine = "whisper" | "parakeet";
+export type ReasoningMode = "default" | "off" | "always" | "adaptive";
+export const REASONING_MODES: ReasoningMode[] = ["default", "off", "always", "adaptive"];
 
-export type ThinkingMode = "default" | "on" | "off";
-export const THINKING_MODES: ThinkingMode[] = ["default", "on", "off"];
+export type ReasoningEffort = "low" | "medium" | "high";
+export const REASONING_EFFORTS: ReasoningEffort[] = ["low", "medium", "high"];
 
 export type ChatLayout = "avatar_chat" | "avatar_chat_collapsed" | "avatar_only" | "chat_only";
 export const CHAT_LAYOUTS: ChatLayout[] = ["avatar_chat", "avatar_chat_collapsed", "avatar_only", "chat_only"];
+
+export type VoiceInputMode = "push_to_talk" | "hands_free";
+export const VOICE_INPUT_MODES: VoiceInputMode[] = ["push_to_talk", "hands_free"];
 
 export interface ProjectStats {
   totalProjects: number;

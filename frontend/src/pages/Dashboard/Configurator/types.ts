@@ -1,4 +1,4 @@
-import type { ChatLayout, ChecklistItem, KnowledgeMode, SpokenLanguage, SttServerEngine, ThinkingMode } from "@/types/project";
+import type { ChatLayout, ChecklistItem, KnowledgeMode, ReasoningEffort, ReasoningMode, SpokenLanguage, VoiceInputMode } from "@/types/project";
 
 // Local wizard state for screen 1e.
 export interface ConfiguratorDraft {
@@ -9,6 +9,7 @@ export interface ConfiguratorDraft {
   builtinAvatar: string | null;
   avatarBackgroundId: string | null;
   chatLayout: ChatLayout;
+  voiceInputMode: VoiceInputMode;
   motionEnabled: boolean;
   thinkingMotionsEnabled: boolean;
   gradeLevel: string;
@@ -18,7 +19,10 @@ export interface ConfiguratorDraft {
   llmApiKeyId: string | null;
   temperature: number;
   topP: number;
-  thinkingMode: ThinkingMode;
+  reasoningMode: ReasoningMode;
+  reasoningEffort: ReasoningEffort | null;
+  deepLlmApiKeyId: string | null;
+  bridgeEnabled: boolean;
   saveConversations: boolean;
   requireVisitorName: boolean;
   surveyBeforeUrl: string;
@@ -31,7 +35,6 @@ export interface ConfiguratorDraft {
   ttsVoice: string;
   ttsVoiceClipId: string | null;
   sttApiKeyId: string | null;
-  sttServerEngine: SttServerEngine | null;
   sttEnabled: boolean;
   sttBrowserEnabled: boolean;
   ttsBrowserEnabled: boolean;

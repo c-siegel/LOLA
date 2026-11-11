@@ -29,10 +29,44 @@ delete the plan once nothing in it is open.
 
 ## Adaptive reasoning ([plan](adaptive-reasoning-plan.md))
 
-Nothing is implemented. Start with phase 0:
-- Add time to first token and cached-token counts to the Latency Lab and measure the `off` baseline.
-- Add `ThinkTagGuard`: a model that emits `<think>` in its content is spoken aloud today. This is a
-  bug on its own, so it needs a regression test.
-- Decide, from the baseline, whether moving per-turn material behind the history (prompt order)
-  pays off.
+Done: phase 0a (`ThinkTagGuard`), 0b (token and cache counts in the Latency Lab) and phase 1
+(`reasoning_mode` default/off/always with effort, per-model provider mapping, reasoning budgets,
+timeout with fallback to the fast route, SSE keep-alives, the route in the Latency Lab).
+
+Phase 2 is done except for the experimental self-escalation (the fast model starting a reply with
+`::deep::`), which was left out on purpose: build it only if the Latency Lab shows the rules miss too
+many arguments. Decided differently from the plan: the bridge audio is rendered lazily into an
+in-memory cache (per voice and key) instead of a stored file per project.
+
+Routing decision: the word-list rules catch only 29 % of the arguments in a hand-written test set,
+so "adaptive" is now offered only where the knowledge service runs EmbeddingGemma 2
+(`reasoning_router.ADAPTIVE_EMBEDDING_MODELS`); elsewhere an adaptive project reasons on every turn.
+Next: replace the rules there with a classifier on EmbeddingGemma 2 embeddings (98 % of arguments,
+5 % false escalations on the same set): train and ship its weights, let the knowledge service
+return the decision with the retrieval result, and test it on messages from other authors first.
+The service needs the EmbeddingGemma loading fix from `working-branch` (d6515bb).
+
+Self-escalation probe (`scripts/escalation_probe.py`, cases in `scripts/escalation_cases.json`): on
+2026-11-07 lfm3-omni-2b in LM Studio could not do the marker inside the persona reply. Without examples
+it wrote `::deep::` at the start of nearly every reply (83 % of ordinary messages); with four examples
+it sent 79 % of the arguments and 28 % of ordinary messages, and followed a student's request to write
+the marker in 33 % of cases. A separate DEEP/FAST call sent 100 % of the arguments and 17 % of ordinary
+messages (the factual questions 14 and 20), against 36 % and 25 % for the word-list rules, and took
+56 ms (median). Next: improve the classifier prompt, try qwen/qwen3-4b-2507, and compare end to end.
+
+Open after phase 2:
+- Phase 3, the evaluation (plan §10): router precision and recall against human labels, answer
+  quality, perceived latency. Needs the ethics process before real lesson turns are labelled.
+- A classifier only if the rules prove too weak (plan §7).
+- Show the route in the transcript view of the analytics page (the API already returns it).
+- Warm the bridge phrases when a project is opened instead of on its first turn.
+
+Phase 0c, prompt order, waits for measurements:
+- Run the Latency Lab script with reasoning `off` on each target provider (OpenAI, GWDG, Ollama or
+  vLLM) and note first-token time and cached prompt tokens against prompt tokens.
+- Decide from those numbers whether moving the per-turn material (checklist status line, knowledge
+  passages) behind the history pays off; if so, do it as its own PR and re-check answer quality with
+  `rag-eval`. Test cases to write then: the system prompt is identical across turns of one
+  conversation, the late material still reaches every provider (including the Arcana body), and a
+  provider that rejects a second system message gets the user-role preface.
 - Open: the ethics process for labelled lesson data, and whether students see a thinking indicator.

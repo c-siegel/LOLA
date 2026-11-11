@@ -112,11 +112,15 @@
   "publicChat": {
     "unavailable": "Dieser Chat ist nicht verfügbar.",
     "endChat": "Chat beenden",
+    "backToStart": "Zurück zur Startseite",
     "surveyBeforeTitle": "Umfrage vor dem Chat",
     "continueToChat": "Weiter zum Chat",
     "transcribing": "Transkription läuft",
     "stopRecording": "Aufnahme beenden",
     "voiceInput": "Spracheingabe",
+    "handsFreeStart": "Freihändige Spracheingabe starten",
+    "handsFreeStop": "Freihändige Spracheingabe ausschalten",
+    "handsFreeUnavailable": "Freihändige Spracheingabe ist gerade nicht verfügbar. Nutze stattdessen das Textfeld.",
     "stopResponse": "Antwort stoppen",
     "responseInterrupted": "Antwort unterbrochen.",
     "recordingFailed": "Ein Teil deiner Sprachnachricht konnte nicht übertragen werden — sie könnte unvollständig sein.",
@@ -143,7 +147,8 @@
     "privacySaved": "Dieses Gespräch wird anonym gespeichert und kann von deiner Lehrkraft gelesen werden.",
     "privacySavedWithName": "Dieses Gespräch wird zusammen mit dem von dir eingegebenen Namen/ID gespeichert und kann von deiner Lehrkraft gelesen werden.",
     "privacyNotSaved": "Dieses Gespräch wird nicht gespeichert.",
-    "whichModel": "Mit welcher KI spreche ich?",
+    "aiNotice": "Du sprichst mit einer KI. Sie kann Fehler machen – prüfe wichtige Angaben.",
+    "chatInfo": "Infos zu diesem Chat",
     "modelTooltip": "Du sprichst mit dem KI-Modell {{model}}. Deine Nachrichten werden dorthin geschickt, um eine Antwort zu erzeugen.",
     "modelTooltipUnknown": "Du sprichst mit einem KI-Modell. Deine Nachrichten werden dorthin geschickt, um eine Antwort zu erzeugen.",
     "messagePlaceholder": "Schreib deine Frage …",
@@ -162,6 +167,39 @@
       "description": "Bevor es losgeht, gib bitte deinen Namen oder deine ID ein.",
       "nameLabel": "Name oder ID",
       "submit": "Weiter"
+    }
+  },
+  "start": {
+    "title": "Chat starten",
+    "description": "Gib den Schlüssel ein, den du von deiner Lehrkraft bekommen hast.",
+    "keyLabel": "Schlüssel",
+    "keyPlaceholder": "z. B. ABCDE",
+    "submit": "Weiter",
+    "unknownKey": "Zu diesem Schlüssel gibt es keinen Chat. Prüf die Buchstaben und versuch es noch einmal.",
+    "genericError": "Der Chat konnte nicht geöffnet werden. Bitte versuch es noch einmal.",
+    "models": {
+      "summaryLoading": "Sprachmodelle werden auf dieses Gerät geladen … {{percent}} %",
+      "summaryReady": "Die Sprachmodelle sind auf diesem Gerät gespeichert.",
+      "summaryFailed": "Nicht alle Sprachmodelle konnten geladen werden.",
+      "summaryNone": "Dieser Server bietet keine Sprachmodelle für das Gerät an.",
+      "details": "Details zu den Sprachmodellen",
+      "intro": "Damit Spracheingabe und Sprachausgabe im Chat sofort bereit sind, lädt diese Seite die Modelle schon vorher auf das Gerät. Der Avatar wird erst im Chat geladen.",
+      "names": {
+        "stt": "Spracherkennung",
+        "tts": "Sprachausgabe",
+        "vad": "Erkennung von Sprechpausen"
+      },
+      "waiting": "Wartet …",
+      "downloading": "{{loaded}} von {{total}} MB",
+      "ready": "Gespeichert ({{size}} MB)",
+      "unavailable": "Wird nicht angeboten",
+      "unsupported": "Nicht nötig – dieses Gerät nutzt den Server",
+      "error": "Fehler beim Laden",
+      "storageUsage": "Belegter Speicher: {{used}} MB von {{quota}} MB",
+      "storageUsageNoQuota": "Belegter Speicher: {{used}} MB",
+      "persisted": "Der Browser behält die Dateien dauerhaft.",
+      "notPersisted": "Der Browser darf die Dateien bei Speichermangel löschen – sie werden dann neu geladen.",
+      "retry": "Erneut versuchen"
     }
   },
   "profile": {
@@ -205,7 +243,7 @@
       "title": "Schüler:innen, die einen Chat-Link nutzen",
       "noAccount": "Schüler:innen brauchen kein Konto. Es gibt keine Registrierung, kein Login und kein seitenübergreifendes Tracking.",
       "cookie": "Ein einzelnes technisches Cookie enthält eine zufällig erzeugte Besuchsnummer. Sie dient dazu, Gespräche auseinanderzuhalten und Nutzungsgrenzen durchzusetzen — sie identifiziert keine Person und wird nicht weitergegeben.",
-      "recording": "Lehrkräfte können die Aufzeichnung pro Chat aktivieren. Ist sie aktiv, steht das direkt über dem Eingabefeld, und das Gespräch wird unter der anonymen Besuchsnummer gespeichert, sodass die Lehrkraft es später lesen kann. Ist sie aus, werden Nachrichten nach dem Senden der Antwort nicht gespeichert.",
+      "recording": "Lehrkräfte können die Aufzeichnung pro Chat aktivieren. Ob das der Fall ist, steht im Chat hinter der Schaltfläche „?“. Ist sie aktiv, wird das Gespräch unter der anonymen Besuchsnummer gespeichert, sodass die Lehrkraft es später lesen kann. Ist sie aus, werden Nachrichten nach dem Senden der Antwort nicht gespeichert.",
       "visitorName": "Lehrkräfte können zusätzlich festlegen, dass Schüler:innen vor dem Chat einen Namen oder eine ID eingeben müssen. Ist das aktiviert UND die Aufzeichnung eingeschaltet, wird dieser Name zusammen mit dem gespeicherten Gespräch angezeigt — der Chat ist dann nicht mehr anonym. Ist die Aufzeichnung ausgeschaltet, wird der eingegebene Name nirgends gespeichert."
     },
     "ai": {
@@ -227,7 +265,8 @@
   "forcePasswordChange": {
     "title": "Passwort ändern",
     "description": "Eine Administratorin/ein Administrator hat dieses Passwort für dich gesetzt. Wähle ein neues, um fortzufahren.",
-    "submit": "Speichern und fortfahren"
+    "submit": "Speichern und fortfahren",
+    "successToast": "Passwort geändert. Ab jetzt meldest du dich mit dem neuen Passwort an."
   },
   "admin": {
     "users": {
@@ -250,6 +289,8 @@
       "disable": "Deaktivieren",
       "resetPassword": "Passwort zurücksetzen",
       "resetPasswordTitle": "Passwort zurücksetzen für {{name}}",
+      "createdToast": "Konto für {{name}} angelegt. Beim ersten Anmelden muss ein eigenes Passwort gewählt werden.",
+      "passwordResetToast": "Passwort für {{name}} zurückgesetzt. Beim nächsten Anmelden muss ein neues gewählt werden.",
       "empty": "Noch keine Konten vorhanden.",
       "actionFailed": "Aktion fehlgeschlagen. Bitte erneut versuchen.",
       "addUser": "Konto hinzufügen",
@@ -406,9 +447,18 @@
       "temperature": "Temperatur",
       "temperatureHint": "Wie viel Zufall das Modell haben darf. Niedrig (0-0,3) liefert sachliche, gut wiederholbare Antworten; etwa 0,7 ist ein guter Allround-Wert; über 1,2 wird es kreativ, driftet aber ab. Wird dem Modell als `temperature` übergeben.",
       "topP": "Top P",
-      "thinking": "Denken",
-      "thinkingHint": "Ob das Modell vor der Antwort nachdenkt (Reasoning). „Modell-Standard“ ändert nichts. „Aus“ überspringt das Nachdenken, die Antwort beginnt dann deutlich früher; „An“ erzwingt es. Nur Modelle, die das Nachdenken umschalten können, reagieren darauf (z. B. Qwen3-Hybridmodelle auf einem vLLM-Server), andere ignorieren es. Wird als `chat_template_kwargs.enable_thinking` gesendet.",
-      "thinkingOptions": {"default": "Modell-Standard", "on": "An", "off": "Aus"},
+      "reasoning": "Nachdenken",
+      "reasoningHint": "Ob das Modell vor der Antwort nachdenkt (Reasoning). „Modell-Standard“ ändert nichts. „Aus“ überspringt das Nachdenken, die Antwort beginnt dann deutlich früher. „Immer“ verlangt es bei jeder Antwort: Das passt zu Argumenten und Beweisen, macht die Antworten aber langsamer und bei den meisten Anbietern teurer. „Nur bei Argumenten“ entscheidet pro Nachricht: Smalltalk wird schnell beantwortet, eine Nachricht, die argumentiert oder widerspricht, bekommt das Nachdenken. Diese Einstellung gibt es nur, wenn der Wissensdienst dieses Servers ein passendes Embedding-Modell verwendet. Nur Modelle, die das Nachdenken umschalten können, reagieren darauf.",
+      "adaptiveUnavailable": "„Nur bei Argumenten“ ist auf diesem Server gerade nicht verfügbar (dafür braucht es den Wissensdienst mit einem passenden Embedding-Modell). Dieses Projekt denkt deshalb bei jeder Antwort nach, wie bei „Immer“.",
+      "reasoningOptions": {"default": "Modell-Standard", "off": "Aus", "always": "Immer", "adaptive": "Nur bei Argumenten"},
+      "deepModel": "Modell für schwierige Nachrichten",
+      "deepModelHint": "Ein zweites Modell, das die Nachrichten mit Nachdenken beantwortet, während das Modell oben den Rest beantwortet. So kann ein kleines, schnelles Modell den Smalltalk übernehmen und ein größeres die Argumente. Ohne Auswahl antwortet dasselbe Modell auf beides.",
+      "deepModelSame": "Dasselbe Modell",
+      "bridge": "Kurzer Satz beim Nachdenken",
+      "bridgeHint": "Vor einer Antwort, die Nachdenken braucht, sagt der Avatar einen kurzen neutralen Satz wie „Einen Augenblick, ich denke kurz darüber nach“. Er sagt nichts zur Frage selbst. Braucht Sprachausgabe mit Streaming. Direkt nach einem Serverstart werden die Sätze noch vorbereitet und deshalb übersprungen.",
+      "reasoningEffort": "Denktiefe",
+      "reasoningEffortHint": "Wie viel das Modell vor der Antwort nachdenkt. Höhere Stufen dauern länger und kosten mehr. „Anbieter-Standard“ überlässt die Stufe dem Anbieter.",
+      "reasoningEffortOptions": {"default": "Anbieter-Standard", "low": "Niedrig", "medium": "Mittel", "high": "Hoch"},
       "topPHint": "Schränkt ein, aus wie vielen Wörtern das Modell wählen darf: bei 1,0 aus allen, bei 0,5 nur aus den wahrscheinlichsten, die zusammen 50 % der Wahrscheinlichkeit ausmachen. Ohne konkreten Grund bei 1,0 lassen \u2014 es wirkt ähnlich wie die Temperatur, und beides gleichzeitig zu senken macht Antworten sehr eintönig.",
       "language": "Sprache",
       "spokenLanguageOptions": { "de": "Deutsch", "en": "Englisch" },
@@ -428,17 +478,23 @@
       "voiceClipHint": "Wähle eine voreingestellte Stimme oder — wenn auf diesem Server das Stimmklonen eingerichtet ist — eine gespendete Stimme oder einen deiner eigenen Stimmclips. Clips anlegen und anhören unter",
       "sttTitle": "Spracheingabe (STT)",
       "sttText": "Aktiviert den Mikrofon-Button im öffentlichen Chat. Standardmäßig aus.",
-      "sttKey": "Spracherkennung auf dem Server",
-      "sttKeyDefault": "Eingebaut — Server-Standard ({{engine}})",
-      "sttServerEngineOption": "Eingebaut — {{engine}}",
-      "sttServerEngines": {
-        "whisper": "Whisper",
-        "parakeet": "Parakeet"
+      "voiceInputModeTitle": "Wie Schüler:innen sprechen",
+      "voiceInputModes": {
+        "push_to_talk": {
+          "title": "Zum Sprechen klicken",
+          "text": "Schüler:innen klicken auf das Mikrofon, um zu beginnen, und noch einmal, um abzuschicken. Funktioniert auch in lauten Räumen gut."
+        },
+        "hands_free": {
+          "title": "Freihändig",
+          "text": "Schüler:innen schalten das Mikrofon einmal ein. Jede Antwort wird bei einer Sprechpause von selbst abgeschickt, und nach der Antwort des Avatars hört das Mikrofon wieder zu. Am besten in einem ruhigen Raum: Andere, die in der Nähe sprechen, können mit aufgenommen werden."
+        }
       },
-      "sttParakeetMissing": "(Modell auf dem Server nicht vorhanden)",
-      "sttKeyHint": "Ohne Schlüssel werden Sprachnachrichten lokal auf diesem Server transkribiert — mit Whisper oder Parakeet (schneller, erkennt die Sprache selbst). Lege unter API-Schlüsseln einen Schlüssel vom Typ STT an, um stattdessen GWDG SAIA zu nutzen.",
+      "sttKey": "Spracherkennung auf dem Server",
+      "sttKeyDefault": "Eingebaut — Parakeet auf diesem Server",
+      "sttParakeetMissing": "(Modelldateien fehlen auf dem Server)",
+      "sttKeyHint": "Ohne Schlüssel werden Sprachnachrichten lokal auf diesem Server mit Parakeet transkribiert. Lege unter API-Schlüsseln einen Schlüssel vom Typ STT an, um stattdessen GWDG SAIA zu nutzen.",
       "sttBrowserTitle": "Spracherkennung auf dem Gerät (empfohlen)",
-      "sttBrowserText": "Sprachnachrichten werden auf dem Gerät der Besucherin erkannt, mit Live-Text schon während des Sprechens — die Aufnahmen verlassen das Gerät nicht. Jedes Gerät lädt das Modell einmal herunter (etwa 170 MB), bevor der Chat startet. Geräte ohne WebGPU nutzen automatisch den STT-Schlüssel bzw. das Whisper des Servers.",
+      "sttBrowserText": "Sprachnachrichten werden auf dem Gerät der Besucherin erkannt, mit Live-Text schon während des Sprechens — die Aufnahmen verlassen das Gerät nicht. Jedes Gerät lädt das Modell einmal herunter (etwa 170 MB), bevor der Chat startet. Geräte ohne WebGPU nutzen automatisch den STT-Schlüssel bzw. Parakeet auf dem Server.",
       "streamingTitle": "Gestreamte Antworten",
       "streamingText": "Der Avatar beginnt schon nach dem ersten Satz zu sprechen, statt auf die vollständige Antwort zu warten. Standardmäßig aus.",
       "localVoicePresets": "Voreingestellte Stimmen",
@@ -577,7 +633,8 @@
       "sessions": "Sessions",
       "messages": "Nachrichten",
       "avgDuration": "Ø Dauer",
-      "tokenCost": "Token-Kosten"
+      "tokenCost": "Token-Kosten",
+      "deepReplies": "Antworten mit Nachdenken"
     },
     "granularity": { "day": "Tag", "week": "Woche", "month": "Monat" },
     "selection": {
@@ -858,7 +915,6 @@
     "stt": "Spracherkennung (Spracheingabe)",
     "sttDevice": "Auf diesem Gerät (Parakeet, WebGPU)",
     "sttServerProject": "Server, wie im Projekt eingestellt",
-    "sttServerWhisper": "Server, Whisper",
     "sttServerParakeet": "Server, Parakeet",
     "llm": "Sprachmodell",
     "llmProject": "Wie im Projekt eingestellt",
@@ -926,6 +982,13 @@
     "turnsTitle": "Alle Nachrichten",
     "config": "Konfiguration",
     "input": "Eingabe",
+    "route": "Reasoning",
+    "routeHint": "Wie die Runde geroutet wurde. Deep: Das Modell sollte nachdenken. Fast: Das Nachdenken war aus, oder ein Budget oder Timeout hat darauf zurückgeschaltet. Default: Es wurde nichts gesendet.",
+    "routeValue": {"default": "Standard", "fast": "schnell", "deep": "tief"},
+    "routeSetting": "Reasoning-Weg",
+    "routeAuto": "Wie das Projekt entscheidet",
+    "routeFast": "Schnell erzwingen",
+    "routeDeep": "Tief erzwingen",
     "chunks": "Teile",
     "contextLosses": "Kontextverluste des Avatars",
     "errorColumn": "Fehler",
@@ -938,6 +1001,10 @@
       "sttServerMs": "STT auf dem Server",
       "llmFirstTokenMs": "LLM erstes Token",
       "llmTotalMs": "LLM fertig",
+      "promptTokens": "Prompt-Tokens",
+      "cachedTokens": "Prompt-Tokens aus dem Cache",
+      "completionTokens": "Antwort-Tokens",
+      "reasoningTokens": "Reasoning-Tokens",
       "firstChunkTextReadyMs": "Erster Satz fertig",
       "firstChunkTtsMs": "TTS erster Satz",
       "ttsTotalMs": "TTS gesamt",
@@ -955,6 +1022,10 @@
       "sttServerMs": "Nur Spracherkennung auf dem Server: die Zeit, die der Server selbst zum Erkennen brauchte (ohne Hochladen).",
       "llmFirstTokenMs": "Server: vom Eingang der Nachricht bis zum ersten Wort des Sprachmodells (nur mit Streaming).",
       "llmTotalMs": "Server: bis die ganze Antwort des Sprachmodells da ist.",
+      "promptTokens": "Server: an das Sprachmodell gesendete Tokens (Systemprompt, Verlauf, Wissens-Textstellen, Nachricht). Leer, wenn der Anbieter keine Nutzung meldet.",
+      "cachedTokens": "Server: wie viele der Prompt-Tokens der Anbieter aus seinem Prompt-Cache bedient hat. Mehr heißt schnellerer, günstigerer Start; viele Anbieter cachen erst Prompts ab etwa 1.000 Tokens, manche melden es nicht.",
+      "completionTokens": "Server: vom Sprachmodell erzeugte Tokens, inklusive verdecktem Reasoning, wo der Anbieter es mitzählt.",
+      "reasoningTokens": "Server: verdeckte Reasoning-Tokens (als Ausgabe berechnet, nie gesprochen). 0 oder leer bei Modellen ohne Reasoning.",
       "firstChunkTextReadyMs": "Server: bis der erste Satz vollständig ist und an die Sprachausgabe geht.",
       "firstChunkTtsMs": "Wie lange die Sprachausgabe für den ersten Satz brauchte – auf dem Server oder im Browser bis zum ersten Ton.",
       "ttsTotalMs": "Synthesezeit aller Sätze zusammen.",
@@ -984,6 +1055,8 @@
     },
     "speech": {
       "title": "Spracherkennung und Sprachausgabe",
+      "sileroVad": { "description": "Erkennt, wann die Schülerin zu sprechen beginnt und aufhört, damit auf dem Server transkribierte Sprachnachrichten an echten Pausen geteilt werden" },
+      "smartTurn": { "description": "Entscheidet bei einer Sprechpause, ob die Schülerin fertig ist, für die freihändige Spracheingabe. Läuft im Browser über @micdrop/smart-turn von Godefroy de Compreignac" },
       "parakeet": {
         "description": "Mehrsprachiges Spracherkennungsmodell, das auf dem Gerät der Besucherin läuft (ternäre Version von NVIDIAs Parakeet TDT 0.6B v3)",
         "note": "Originalmodell von NVIDIA, ternäre Version von Moondream, ONNX-Export von eschmidbauer und mrfakename. Unverändert verwendet; die Dateien werden für die Auslieferung nur neu komprimiert."
@@ -1014,7 +1087,7 @@
       "title": "Backend-Frameworks & Bibliotheken",
       "fastapi": { "description": "Modernes, schnelles Web-Framework für APIs mit Python" },
       "sqlmodel": { "description": "SQL-Bibliothek für Python, basierend auf Pydantic und SQLAlchemy" },
-      "fasterWhisper": { "description": "Schnelle Implementierung von OpenAI Whisper für Spracherkennung" },
+      "pyav": { "description": "Dekodiert Sprachnachrichten für die Spracherkennung auf dem Server (FFmpeg-Anbindung für Python)" },
       "pydantic": { "description": "Datenvalidierung mit Python Type Annotations" }
     },
     "privacy": {
@@ -1501,9 +1574,13 @@
     }
   },
   "customPage": {
-    "notFoundTitle": "Seite nicht gefunden",
-    "notFoundText": "Diese Seite gibt es nicht oder sie ist nicht veröffentlicht.",
-    "backHome": "Zur Startseite"
+    "notFoundText": "Diese Seite gibt es nicht oder sie ist nicht veröffentlicht."
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "text": "Diese Adresse gibt es nicht. Vielleicht ist der Link veraltet oder enthält einen Tippfehler.",
+    "backHome": "Zur Startseite",
+    "backToDashboard": "Zur Übersicht"
   },
   "errors": {
     "PAGE_NOT_FOUND": "Seite nicht gefunden.",
@@ -1612,12 +1689,14 @@
     "BACKGROUND_INVALID_CONTENT": "Datei ist kein gültiges PNG oder JPEG.",
     "BACKGROUND_NOT_FOUND": "Hintergrundbild nicht gefunden.",
     "UNKNOWN_API_KEY": "Unbekannter API-Schlüssel.",
+    "ADAPTIVE_REASONING_UNAVAILABLE": "„Nur bei Argumenten“ ist auf diesem Server nicht verfügbar: Dafür braucht es den Wissensdienst mit einem passenden Embedding-Modell.",
     "API_KEY_NOT_FOUND": "API-Key nicht gefunden.",
     "NO_LLM_MODEL_SELECTED": "Kein Modell für dieses Projekt ausgewählt. Lege zuerst im Tab API einen Schlüssel vom Typ LLM an.",
     "LLM_REQUEST_FAILED": "LLM-Anfrage fehlgeschlagen.",
     "STT_REQUEST_FAILED": "Spracherkennung fehlgeschlagen.",
     "VOICE_INPUT_DISABLED": "Spracheingabe ist für dieses Projekt nicht aktiviert.",
     "VOICE_INPUT_UNAVAILABLE": "Spracheingabe ist momentan nicht verfügbar.",
+    "SERVER_STT_MODEL_MISSING": "Die Spracherkennung auf dem Server ist nicht eingerichtet: Die Dateien des Sprachmodells fehlen auf dem Server. Wende dich an deine Administration.",
     "UNSUPPORTED_AUDIO_FORMAT": "Nicht unterstütztes Audioformat.",
     "AUDIO_FILE_TOO_LARGE": "Audiodatei ist zu groß (maximal 10 MB).",
     "CHAT_UNAVAILABLE": "Der Chat ist momentan nicht verfügbar.",

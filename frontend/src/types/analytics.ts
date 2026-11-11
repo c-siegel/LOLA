@@ -9,6 +9,9 @@ export interface AnalyticsStats {
   avgDurationDeltaPct: number;
   tokenCostEur: number;
   tokenCostDeltaPct: number;
+  // Replies of projects that route between a fast and a deep model, by route.
+  fastReplies: number;
+  deepReplies: number;
 }
 
 export interface SessionRow {
@@ -69,6 +72,9 @@ export type TranscriptMessage = Omit<ChatMessage, "checks"> & {
   sources?: TranscriptSource[] | null;
   motions?: TranscriptMotion[] | null;
   checks?: TranscriptCheck[] | null;
+  // Reasoning projects only: the route ("fast" or "deep") and the model that answered.
+  route?: string | null;
+  model?: string | null;
 };
 
 export type Granularity = "day" | "week" | "month";

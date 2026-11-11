@@ -174,6 +174,13 @@ def test_preview_message_errors(client, teacher, chat_project, fake_ai):
     assert body["audioBase64"] is None
 
 
+def test_preview_transcribe_without_model_files_tells_the_teacher(client, chat_project, missing_stt_model):
+    files = {"audio": ("rec.webm", b"fake-audio", "audio/webm")}
+    response = client.post(f"/projects/{chat_project['id']}/chat/transcriptions", files=files)
+    assert response.status_code == 503
+    assert response.json() == {"detail": "SERVER_STT_MODEL_MISSING"}
+
+
 def test_preview_transcribe(client, chat_project, fake_ai):
     files = {"audio": ("rec.webm", b"fake-audio", "audio/webm")}
     response = client.post(f"/projects/{chat_project['id']}/chat/transcriptions", files=files)
@@ -184,7 +191,7 @@ def test_preview_transcribe(client, chat_project, fake_ai):
     assert bad.status_code == 400
     assert bad.json() == {"detail": "UNSUPPORTED_AUDIO_FORMAT"}
 
-    fake_ai.stt_text = None
+    fake_ai.stt_error = RuntimeError("model crashed")
     failing = client.post(f"/projects/{chat_project['id']}/chat/transcriptions", files=files)
     assert failing.status_code == 502
     assert failing.json()["detail"]["code"] == "STT_REQUEST_FAILED"

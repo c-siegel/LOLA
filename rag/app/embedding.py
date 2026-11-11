@@ -19,6 +19,7 @@ How to use:
 
 import logging
 import math
+import os
 import threading
 from dataclasses import dataclass
 from typing import Protocol
@@ -206,14 +207,21 @@ class OnnxTextModel:
 
 
 def _download_onnx_model(model_id: str, source: OnnxSource, cache_dir: str) -> tuple[str, str]:
-    """Fetch the pinned files (a no-op once cached); returns the graph's and tokenizer's paths."""
+    """Fetch the pinned files (a no-op once downloaded); returns the graph's and tokenizer's paths.
+
+    Into a plain folder per model and revision, not the Hugging Face cache: there every file is a
+    symlink into its own blob folder, and onnxruntime (1.31 and later) refuses external weights that
+    resolve outside the graph's folder ("External data path escapes model directory"). As real files,
+    the sidecars sit next to the graph, where onnxruntime looks for them.
+    """
     from huggingface_hub import hf_hub_download
 
+    folder = os.path.join(cache_dir, "onnx", model_id.replace("/", "--"), source.revision)
+
     def fetch(filename: str) -> str:
-        return hf_hub_download(model_id, filename, revision=source.revision, cache_dir=cache_dir)
+        return hf_hub_download(model_id, filename, revision=source.revision, local_dir=folder)
 
     graph = fetch(source.graph)
-    # Sidecars (external weights) land next to the graph in the snapshot folder, where onnxruntime looks.
     for sidecar in source.sidecars:
         fetch(sidecar)
     return graph, fetch(source.tokenizer)

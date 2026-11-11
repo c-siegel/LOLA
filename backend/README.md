@@ -20,9 +20,11 @@ Overview and setup: [root README](../README.md). This file covers backend detail
 - **Alembic** — database schema migrations (`alembic/versions/`).
 - **litellm** — a single client that talks to different LLM/TTS providers, so the app isn't
   locked to one vendor.
-- **faster-whisper** — runs speech-to-text directly inside the backend process (no separate
-  service needed). Optionally replaced by **Parakeet Redux** on ONNX Runtime (`STT_ENGINE=parakeet`),
-  the same model the browsers use for on-device recognition.
+- **Parakeet Redux on ONNX Runtime** — runs speech-to-text directly inside the backend process
+  (no separate service needed), with the same model files the browsers use for on-device
+  recognition. **PyAV** decodes the uploaded recordings. The files are required: run
+  `scripts/fetch-stt-model.sh` (or `python scripts/dev.py setup`); without them, server
+  transcription answers 503 unless the project has a cloud STT key.
 - **JWT (JSON Web Tokens) + bcrypt** — authentication and password hashing.
 
 ## Folder map
@@ -46,7 +48,7 @@ raise `DomainError`s (`app/core/errors.py`) instead of HTTP exceptions.
 | `app/features/pages/` | Admin-editable public pages — landing page texts, imprint, privacy policy, custom pages — per language with a change history: public (`/pages`) and admin (`/admin/pages`) |
 | `app/features/projects/` | Project CRUD, publishing, YAML export/import, cached start-prompt audio |
 | `app/features/chat/` | Public chat (`/public/{slug}`) and the configurator's preview chat; `pipeline.py` combines LLM → save → TTS for both |
-| `app/features/ai/` | One package each for LLM, TTS and STT, with one module per provider behind a small interface (`get_llm_client`, `get_tts_client`, `get_stt_client`) — including the local-TTS sidecar and local Whisper fallbacks |
+| `app/features/ai/` | One package each for LLM, TTS and STT, with one module per provider behind a small interface (`get_llm_client`, `get_tts_client`, `get_stt_client`) — including the local-TTS sidecar and the local Parakeet STT model |
 | `app/features/api_keys/` | The user's stored provider keys (`/api-keys`), the provider registry and speech-option status routes (`/providers`), key resolution and encryption |
 | `app/features/media/` | Avatar model and background image libraries |
 | `app/features/pronunciation/` | Each teacher's TTS word list (`/pronunciation`), preset packs (`presets/*.json`), import/export and the test box; the matching engine itself is `app/features/ai/tts/pronunciation.py` |
@@ -78,7 +80,7 @@ the frontend uses them as-is.
 | Login required, own resource | Same, but also 404s (not 403) if the resource belongs to someone else — this hides whether it even exists, an IDOR (Insecure Direct Object Reference) defense. Checked by `app/core/ownership.py::get_owned` (or `find_owned`, which returns `None` instead). |
 | Admin only | Login required, and the account's `is_admin` flag must be set (`get_current_admin`). |
 | Owner, or public if published | 404 unless you own the resource — *or* it's attached to a published project, in which case anonymous visitors can fetch it too (e.g. an avatar file the public chat needs to display). |
-| Visitor, rate-limited | No login — a published project's public chat. Visitors are tracked by an anonymous `ah_visitor_id` cookie, not a `User` account, and every route here is rate-limited per visitor. |
+| Visitor, rate-limited | No login — a published project's public chat. Visitors are tracked by an anonymous `ah_visitor_id` cookie, not a `User` account, and every route here is rate-limited per visitor. Replies with reasoning (`reasoning_mode` "always") also spend a separate budget per visitor, IP and project (`DEEP_*` in `.env.example`); over it the reply comes without reasoning. |
 
 Every error response is `{"detail": "<CODE>"}` (a few routes nest it as
 `{"detail": {"code": "<CODE>", "message": "..."}}` to add provider error text) — see
@@ -147,7 +149,7 @@ library models) or `builtinAvatar` (a bundled default like `"julia"`), its backg
 | `POST /projects/{project_id}/chat/messages` | `app/features/chat/preview_router.py` | Login required, own resource | Send a message to the project's LLM and return the reply, for the in-app preview chat. |
 | `POST /projects/{project_id}/chat/transcriptions` | `app/features/chat/preview_router.py` | Login required, own resource | Transcribe a voice message for the in-app preview chat. |
 | `POST /projects/{project_id}/latency-test/messages` | `app/features/chat/latency_router.py` | Login required, own resource | Latency test: answer a message as SSE with per-module timings, optionally with another of the owner's LLM keys (`llmApiKeyId`), another TTS path (`ttsMode`: `project`/`local`/`none`) or without streaming (`streaming: false`). Never saved. |
-| `POST /projects/{project_id}/latency-test/transcriptions` | `app/features/chat/latency_router.py` | Login required, own resource | Latency test: transcribe a recording on the server (`engine`: `project`/`whisper`/`parakeet`) and return `{text, sttMs, engine}`. |
+| `POST /projects/{project_id}/latency-test/transcriptions` | `app/features/chat/latency_router.py` | Login required, own resource | Latency test: transcribe a recording on the server (`engine`: `project`, or `parakeet` to skip the project's STT key) and return `{text, sttMs, engine}`. |
 
 ### Public chat — `app/features/chat/public_router.py` (prefix `/public`)
 
@@ -281,7 +283,7 @@ duplicating that data. Keys are encrypted at rest.
 | `GET /providers/local-tts-status` | `providers_router.py` | Login required | Whether this deployment's local-TTS sidecar is enabled, and — if it answers — whether it clones voices, its languages and its voices (presets, plus donated voices with cloning) for the configurator's picker. Cached for a minute. |
 | `GET /providers/browser-stt-status` | `providers_router.py` | Login required | Whether on-device (WebGPU) transcription is enabled for this deployment. |
 | `GET /providers/browser-tts-status` | `providers_router.py` | Login required | Whether on-device speech output is offered (`BROWSER_TTS_ENABLED`) and the language of its model. |
-| `GET /providers/server-stt-status` | `providers_router.py` | Login required | The deployment's default server STT engine and whether a project may pick Parakeet instead (its model files are present). |
+| `GET /providers/server-stt-status` | `providers_router.py` | Login required | Whether the server can transcribe without a cloud STT key, i.e. whether its Parakeet model files are present (`{available}`). |
 | `GET /api-keys` | `router.py` | Login required | List the current user's stored keys, with how many projects use each one. |
 | `POST /api-keys` | `router.py` | Login required | Store a new API key. |
 | `PUT /api-keys/{key_id}` | `router.py` | Login required, own resource | Update a stored key; re-syncs any projects using it as their LLM source. |
@@ -365,7 +367,7 @@ audio) and come back unchanged when it's re-enabled.
 
 | Method & path | Auth | Description |
 |---|---|---|
-| `GET /settings/public` | Public | The public-facing site settings (imprint details, whether self-registration is open) — see `/admin/settings` for the full, admin-only version. |
+| `GET /settings/public` | Public | The public-facing site settings (imprint details, whether self-registration is open) plus the on-device speech model URLs (`browserSttModelUrl`, `browserTtsModelUrl`, null when `BROWSER_STT_ENABLED`/`BROWSER_TTS_ENABLED` is off) for the student start page — see `/admin/settings` for the full, admin-only version. |
 
 ### Editable pages — `app/features/pages/` (prefixes `/pages`, `/admin/pages`)
 
@@ -407,7 +409,7 @@ underscore); helpers named `_like_this` are file-private and left out. Paths are
 | `features/ai/tts/pronunciation.py` | Compiling a teacher's word list | `compile_rules(rules)` → a cached normt2s `RuleSet` of `normt2s.Rule(term, spoken, whole_word, case_sensitive)`. `spell_out(term)`, `placeholder_count(text)`. |
 | `features/pronunciation/service.py` | Managing the word list | `list_entries(...)`, `create_entry(...)`, `update_entry(...)`, `delete_entry(...)`.<br>`rules_for(session, user_id, language)` — what to pass as `synthesize_speech(..., pronunciation=)`.<br>`import_text(...)`, `export_csv(...)`. |
 | `features/pronunciation/presets.py` | Preset packs | `all_packs()`, `get_pack(id, language)`, `apply_pack(...)`, `remove_pack(...)`, `applied_count(...)`. |
-| `features/ai/stt/` | Speech-to-text (STT) transcription | `transcribe_audio(audio_bytes, language, initial_prompt, api_key_record)` — locally via faster-whisper or Parakeet (`Settings.stt_engine`), or a cloud provider if configured.<br>`get_stt_client(api_key_record)` → `.transcribe(...)`; a SAIA client also has `.test()`.<br>`capacity.transcription_slot()` — limits concurrent local transcriptions. |
+| `features/ai/stt/` | Speech-to-text (STT) transcription | `transcribe_audio(audio_bytes, language, initial_prompt, api_key_record)` — locally via Parakeet (`parakeet_local.py`, raises `SttModelMissing` without its files), or a cloud provider if configured. `audio.decode_audio()` turns uploads into 16 kHz mono.<br>`get_stt_client(api_key_record)` → `.transcribe(...)`; a SAIA client also has `.test()`.<br>`capacity.transcription_slot()` — limits concurrent local transcriptions. |
 | `features/chat/pipeline.py` | One chat turn for the public and preview chat | `prepare_chat(session, project)` — resolve keys and snapshot the project.<br>`reply_turn(context, turn)` — LLM → save → TTS.<br>`stream_turn(context, turn)` — `(event, data)` pairs for the SSE stream. |
 | `features/api_keys/resolve.py` | Which of a project's API keys to use | `resolve_llm_key(session, project)`, `resolve_tts_key(...)`, `resolve_stt_key(...)`.<br>`get_user_api_key(...)`, `get_owned_key_of_type(...)` — lookups.<br>`provider_from_model(llm_model)`, `browser_stt_model_url_for(project)`, `effective_api_base(key)`. |
 | `features/api_keys/service.py` | Managing stored keys | `list_keys_with_usage(session, user_id)`, `create_key(...)`, `update_key(...)`, `delete_key(...)`, `run_key_test(session, key)`. |
@@ -494,7 +496,7 @@ means a stage didn't run at all (e.g. TTS disabled or no key configured), never 
 | | `llmFirstTokenMs` | Time until the LLM's first token arrived. |
 | | `ttsMs` | Summed synthesis time across all chunks. |
 | (SSE `chunk` events) | `textReadyMs`, `ttsMs`, `sentMs` | Per chunk: when its text was handed to TTS, how long its synthesis took (`null` without TTS), and when it was sent — all since the request started. |
-| `POST /{slug}/transcriptions` | `sttMs` | Wall-clock time inside the STT (speech-to-text) call — local Whisper or Parakeet, or the cloud provider. |
+| `POST /{slug}/transcriptions` | `sttMs` | Wall-clock time inside the STT (speech-to-text) call — local Parakeet, or the cloud provider. |
 
 How to use: the dashboard's latency test page (`/dashboard/latency`, routes
 `/projects/{id}/latency-test/*` above) combines these numbers with client-side timings (network

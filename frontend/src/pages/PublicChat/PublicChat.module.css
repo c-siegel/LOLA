@@ -61,7 +61,7 @@
   right: 0;
   z-index: 20;
   width: max-content;
-  max-width: min(16rem, calc(100vw - var(--space-5) * 2));
+  max-width: min(18rem, calc(100vw - var(--space-5) * 2));
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   background: var(--neutral-900, #1f2933);
@@ -82,6 +82,15 @@
   right: var(--space-3);
   border: 5px solid transparent;
   border-bottom-color: var(--neutral-900, #1f2933);
+}
+
+/* Spans, not paragraphs: the bubble sits inside the header's <span> wrapper. */
+.infoTipLine {
+  display: block;
+}
+
+.infoTipLine + .infoTipLine {
+  margin-top: var(--space-2);
 }
 
 .infoTipOpen .infoTipBubble {

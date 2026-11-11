@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Mic, MessageCircle, Play, Send, Square, LogOut, X } from "lucide-react";
+import { Home, Loader2, Mic, MessageCircle, Play, Send, Square, LogOut, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
@@ -20,8 +20,10 @@ import { doneStepIds } from "@/lib/checklist";
 import { getVisitorName } from "@/lib/visitorNameStorage";
 import { useAutoResizeTextarea } from "@/hooks/useAutoResizeTextarea";
 import type { ChatMessage } from "@/types/chat";
+import { BRIDGE_DELAY_MS } from "@/lib/bridgePhrase";
 import type { ChatLayout } from "@/types/project";
 import { NameGate, PasswordGate, gatePassed, isLocked } from "./Gate";
+import type { FromStartState } from "@/pages/Start";
 import { ModelInfoButton } from "./ModelInfoButton";
 import { useVoiceInput } from "./useVoiceInput";
 import styles from "./PublicChat.module.css";
@@ -117,6 +119,9 @@ function SttLoadingScreen({ progress, onStart }: { progress: LoadProgress | null
 export function PublicChatPage() {
   const { t } = useTranslation();
   const { projectSlug } = useParams<{ projectSlug: string }>();
+  // Opened from the student start page: a home-screen web app has no back button, so the header
+  // offers the way back (which also forgets this student's unlock and name, see pages/Start).
+  const fromStart = (useLocation().state as FromStartState | null)?.fromStart === true;
   const slug = projectSlug!;
 
   const tutorQuery = useQuery({
@@ -297,13 +302,20 @@ export function PublicChatPage() {
     // chained callback, so the check has to happen here, not just at the click itself.
     const signal = abortControllerRef.current?.signal;
     if (signal?.aborted) return;
+    if (chunk.bridge) {
+      await delay(BRIDGE_DELAY_MS, signal);
+      if (signal?.aborted) return;
+    }
+    // The bridge phrase is only said: it isn't part of the reply, and the thinking gestures go on
+    // until the reply's own first chunk.
+    const reveal = chunk.bridge ? () => undefined : () => revealStreamedChunk(chunk);
     if (chunk.index === 0) avatarRef.current?.stopThinking();
     if (chunk.spoken !== undefined) {
-      await speakOnDevice(chunk.spoken, () => revealStreamedChunk(chunk), signal);
+      await speakOnDevice(chunk.spoken, reveal, signal);
       return;
     }
     if (!chunk.audioBase64) {
-      revealStreamedChunk(chunk);
+      reveal();
       return;
     }
     let audioBuffer: AudioBuffer | null = null;
@@ -314,7 +326,7 @@ export function PublicChatPage() {
     }
     // Revealed right as the audio is about to start (or right after we know it won't) — not
     // earlier — so the bubble text stays in step with what's actually audible.
-    revealStreamedChunk(chunk);
+    reveal();
     if (!audioBuffer) return;
     try {
       avatarRef.current?.speakBuffer(audioBuffer);
@@ -370,6 +382,7 @@ export function PublicChatPage() {
       // Decided once per message: a model that finishes loading mid-reply waits for the next one.
       const onDevice = speaksOnDevice();
       deviceQueueEndRef.current = 0;
+      let streamFailed = false;
       if (tutor.streamingEnabled && tutor.ttsEnabled) {
         try {
           await publicChatApi.sendMessageStream(
@@ -397,9 +410,10 @@ export function PublicChatPage() {
           // Nothing was shown/spoken yet at this point (see sendMessageStream's contract) — safe
           // to retry via the always-available plain endpoint below instead of failing outright.
           console.error("Streaming chat failed, falling back to a plain request.", error);
+          streamFailed = true;
         }
       }
-      const res = await publicChatApi.sendMessage(slug, message, history, signal, onDevice);
+      const res = await publicChatApi.sendMessage(slug, message, history, signal, onDevice, streamFailed);
       return { kind: "plain" as const, res };
     },
     onSuccess: async (result) => {
@@ -460,7 +474,8 @@ export function PublicChatPage() {
   });
 
   const tutorForVoice = tutorQuery.data;
-  const { isRecording, isFinalizingRecording, micErrorKey, sttLoadProgress, toggleRecording } = useVoiceInput({
+  const { isRecording, isFinalizingRecording, handsFreeOn, micErrorKey, sttLoadProgress, toggleRecording, finishRecording } =
+    useVoiceInput({
     slug,
     modelUrl:
       tutorForVoice?.sttEnabled && tutorForVoice.browserSttModelUrl && gatePassed(tutorForVoice, visitorNameProvided)
@@ -470,6 +485,7 @@ export function PublicChatPage() {
     input,
     setInput,
     replyPending: sendMutation.isPending,
+    handsFree: tutorForVoice?.voiceInputMode === "hands_free",
     onFinalText: sendMessage,
     onNotice: (key) => setMessages((prev) => [...prev, { role: "system", content: t(key) }]),
     // While the model loads, the avatar's own ready-autoplay of the greeting waits (see
@@ -561,7 +577,7 @@ export function PublicChatPage() {
     // swallow the reply's audio silently.
     avatarRef.current?.unlockAudio();
     if (isRecording) {
-      toggleRecording();
+      finishRecording();
       return;
     }
     if (isFinalizingRecording) return;
@@ -740,7 +756,8 @@ export function PublicChatPage() {
   // Says what actually happens to the conversation, straight from the project's setting — the
   // page used to claim "chat isn't saved" unconditionally, which was untrue whenever the teacher
   // had recording switched on. A separate wording when a name/ID was also collected: "saved
-  // anonymously" would be inaccurate once a name is attached to it.
+  // anonymously" would be inaccurate once a name is attached to it. Shown in the "?" bubble in
+  // the header, which every layout has; the visible spot under the chat title goes to aiNotice.
   const privacyNotice = tutor.saveConversations
     ? tutor.requireVisitorName
       ? t("publicChat.privacySavedWithName")
@@ -748,24 +765,31 @@ export function PublicChatPage() {
     : t("publicChat.privacyNotSaved");
 
   // On the avatar stage normally, in the composer on a chat-only page.
+  // Hands-free: the button is an on/off switch for listening, usable even while the avatar answers.
   const micButton = tutor.sttEnabled && (
     <button
       type="button"
-      className={`${styles.roundButton} ${isRecording ? styles.recording : ""}`}
+      className={`${styles.roundButton} ${isRecording || handsFreeOn ? styles.recording : ""}`}
       onClick={toggleRecording}
-      disabled={isFinalizingRecording || (!isRecording && sendMutation.isPending)}
-      aria-label={
-        isFinalizingRecording
-          ? t("publicChat.transcribing")
-          : isRecording
-            ? t("publicChat.stopRecording")
-            : t("publicChat.voiceInput")
+      disabled={
+        handsFreeOn ? false : isFinalizingRecording || (!isRecording && sendMutation.isPending)
       }
-      aria-pressed={isRecording}
+      aria-label={
+        handsFreeOn
+          ? t("publicChat.handsFreeStop")
+          : isFinalizingRecording
+            ? t("publicChat.transcribing")
+            : isRecording
+              ? t("publicChat.stopRecording")
+              : tutor.voiceInputMode === "hands_free"
+                ? t("publicChat.handsFreeStart")
+                : t("publicChat.voiceInput")
+      }
+      aria-pressed={handsFreeOn || isRecording}
     >
-      {isFinalizingRecording ? (
+      {isFinalizingRecording && !handsFreeOn ? (
         <Loader2 size={22} className={styles.spinIcon} />
-      ) : isRecording ? (
+      ) : isRecording || handsFreeOn ? (
         <Square size={20} fill="currentColor" />
       ) : (
         <Mic size={22} />
@@ -795,6 +819,17 @@ export function PublicChatPage() {
           <h1>{tutor.title}</h1>
         </div>
         <div className={styles.headerActions}>
+          {fromStart && (
+            <Link
+              to="/start"
+              replace
+              className={styles.infoButton}
+              aria-label={t("publicChat.backToStart")}
+              title={t("publicChat.backToStart")}
+            >
+              <Home size={24} />
+            </Link>
+          )}
           <LanguageSwitcher compact />
           {stage === "chat" && (
             <button
@@ -808,7 +843,7 @@ export function PublicChatPage() {
               <LogOut size={24} />
             </button>
           )}
-          <ModelInfoButton llmModel={tutor.llmModel} />
+          <ModelInfoButton llmModel={tutor.llmModel} privacyNotice={privacyNotice} />
         </div>
       </header>
 
@@ -870,10 +905,10 @@ export function PublicChatPage() {
                     <Play size={24} fill="currentColor" />
                   </button>
                 )}
-                {/* Avatar only: the privacy notice and any notices normally sit in the chat column. */}
+                {/* Avatar only: the AI notice and any notices normally sit in the chat column. */}
                 {!hasChat && (
                   <div className={styles.stageTop}>
-                    <p className={styles.stageNote}>{privacyNotice}</p>
+                    <p className={styles.stageNote}>{t("publicChat.aiNotice")}</p>
                     {stageNotice && (
                       <p className={`${styles.stageNote} ${styles.stageNotice}`} role="status">
                         {stageNotice}
@@ -950,12 +985,12 @@ export function PublicChatPage() {
               <div className={`${styles.chatColumn} ${!showAvatar ? styles.chatColumnSolo : ""}`} ref={chatColumnRef}>
                 <div className={styles.chatColumnHeader}>
                   <h2>{t("publicChat.chatTitle")}</h2>
-                  <p className={styles.privacyNote}>{privacyNotice}</p>
+                  <p className={styles.privacyNote}>{t("publicChat.aiNotice")}</p>
                 </div>
 
                 {/* Same sentence as the desktop subtitle above — only one of the two is ever visible
                     (see the media query in PublicChat.module.css), so students get it either way. */}
-                <p className={`${styles.privacyNote} ${styles.privacyNoteMobile}`}>{privacyNotice}</p>
+                <p className={`${styles.privacyNote} ${styles.privacyNoteMobile}`}>{t("publicChat.aiNotice")}</p>
 
                 {/* Chat only: no stage to float over, so the plan sits above the thread. */}
                 {!showAvatar && tutor.checklist && (

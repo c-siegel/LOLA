@@ -7,6 +7,7 @@ endpoint, and secret all come from the stored key record the project references
 (Project.llm_api_key_id).
 """
 
+import dataclasses
 import logging
 import time
 from collections.abc import Iterator
@@ -15,8 +16,10 @@ import litellm
 
 from app.core.error_codes import ErrorCode
 from app.core.providers import build_model_string, get_provider
-from app.features.ai.llm.base import ChatRequest
-from app.features.ai.llm.history import build_messages, sampling_params, thinking_extra_body
+from app.features.ai.llm.base import ChatRequest, LLMUsage
+from app.features.ai.llm.history import build_messages, sampling_params
+from app.features.ai.llm.reasoning import reasoning_kwargs, sampling_allowed
+from app.features.ai.llm.think_guard import ThinkTagGuard, strip_think_tags
 from app.features.api_keys.crypto import reveal_api_key_for_litellm
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.resolve import effective_api_base
@@ -57,7 +60,7 @@ def _resolve_call(api_key_record: UserApiKey, model_id: str) -> tuple[str, dict]
     return model, ({"api_base": api_base} if api_base else {})
 
 
-def _retry_transient(call):
+def _retry_transient(call, transient=_TRANSIENT_LLM_ERRORS):
     """Call `call`, retrying a transient provider failure up to _LLM_MAX_ATTEMPTS times.
 
     Only safe for calls that produce nothing until they return — a streamed reply hands out text
@@ -66,7 +69,7 @@ def _retry_transient(call):
     for attempt in range(1, _LLM_MAX_ATTEMPTS + 1):
         try:
             return call()
-        except _TRANSIENT_LLM_ERRORS as exc:
+        except transient as exc:
             if attempt == _LLM_MAX_ATTEMPTS:
                 raise
             logger.warning(
@@ -78,11 +81,19 @@ def _retry_transient(call):
             time.sleep(_LLM_RETRY_DELAYS[attempt - 1])
 
 
-def _thinking_kwargs(api_key_record: UserApiKey, request: ChatRequest) -> dict:
-    """litellm kwargs for the project's thinking switch, only for providers that honour it."""
-    spec = get_provider(api_key_record.provider)
-    body = thinking_extra_body(request) if spec and spec.thinking_switch else {}
-    return {"extra_body": body} if body else {}
+def _request_params(api_key_record: UserApiKey, request: ChatRequest) -> dict:
+    """Sampling and reasoning keyword arguments for litellm, kept consistent with each other."""
+    reasoning = reasoning_kwargs(api_key_record.provider, api_key_record.model_id or "", request.reasoning)
+    sampling = sampling_params(request) if sampling_allowed(api_key_record.provider, reasoning) else {}
+    return {**sampling, **reasoning, **({"timeout": request.timeout} if request.timeout is not None else {})}
+
+
+def _transient_errors(request: ChatRequest) -> tuple[type[Exception], ...]:
+    """The errors worth another attempt. A timeout set on the request is the caller's decision that
+    waiting longer is pointless (the pipeline falls back to a faster answer), so it isn't retried."""
+    if request.timeout is None:
+        return _TRANSIENT_LLM_ERRORS
+    return tuple(error for error in _TRANSIENT_LLM_ERRORS if error is not litellm.Timeout)
 
 
 class LiteLLMClient:
@@ -91,8 +102,18 @@ class LiteLLMClient:
     def __init__(self, api_key_record: UserApiKey) -> None:
         self._key = api_key_record
 
-    def complete(self, request: ChatRequest) -> str:
+    def complete(self, request: ChatRequest, usage: LLMUsage | None = None) -> str:
         """Send the request and return the reply text."""
+        try:
+            return self._complete(request, usage)
+        except litellm.BadRequestError as exc:
+            if request.reasoning is None:
+                raise
+            # A model that doesn't take the reasoning setting must still answer, just not as asked.
+            logger.warning("Provider rejected the reasoning setting, retrying without it (%s)", type(exc).__name__)
+            return self._complete(dataclasses.replace(request, reasoning=None), usage)
+
+    def _complete(self, request: ChatRequest, usage: LLMUsage | None) -> str:
         api_key = reveal_api_key_for_litellm(self._key.encrypted_api_key)
         model, extra = _resolve_call(self._key, self._key.model_id or "")
         response = _retry_transient(
@@ -100,19 +121,35 @@ class LiteLLMClient:
                 model=model,
                 api_key=api_key,
                 messages=build_messages(request),
-                **sampling_params(request),
-                **_thinking_kwargs(self._key, request),
+                **_request_params(self._key, request),
                 **extra,
-            )
+            ),
+            _transient_errors(request),
         )
+        if usage is not None:
+            usage.update_from(getattr(response, "usage", None))
         content = response.choices[0].message.content
         # None (not "") when e.g. a content filter blocked the reply or the model answered with a
         # tool call — raised so callers treat it as the failed LLM call it is.
         if content is None:
             raise ValueError("LLM returned an empty reply")
-        return content
+        return strip_think_tags(content)
 
-    def stream(self, request: ChatRequest) -> Iterator[str]:
+    def stream(self, request: ChatRequest, usage: LLMUsage | None = None) -> Iterator[str]:
+        """Streamed chat; like complete(), drops a reasoning setting the provider rejects."""
+        yielded = False
+        try:
+            for delta in self._stream(request, usage):
+                yielded = True
+                yield delta
+            return
+        except litellm.BadRequestError as exc:
+            if yielded or request.reasoning is None:
+                raise
+            logger.warning("Provider rejected the reasoning setting, retrying without it (%s)", type(exc).__name__)
+        yield from self._stream(dataclasses.replace(request, reasoning=None), usage)
+
+    def _stream(self, request: ChatRequest, usage: LLMUsage | None) -> Iterator[str]:
         """Streamed chat, retrying transient provider failures.
 
         Retrying is only safe while nothing has been yielded yet: once the caller holds a delta
@@ -125,24 +162,38 @@ class LiteLLMClient:
 
         for attempt in range(1, _LLM_MAX_ATTEMPTS + 1):
             yielded = False
+            # Per attempt: a retry only happens before anything was yielded, so no state must carry over.
+            guard = ThinkTagGuard()
             try:
                 response = litellm.completion(
                     model=model,
                     api_key=api_key,
                     messages=build_messages(request),
                     stream=True,
-                    **sampling_params(request),
-                    **_thinking_kwargs(self._key, request),
+                    # Without this the providers send no token counts while streaming. Only asked
+                    # for when the caller wants them: not every OpenAI-compatible server knows it.
+                    **({"stream_options": {"include_usage": True}} if usage is not None else {}),
+                    **_request_params(self._key, request),
                     **extra,
                 )
                 for chunk in response:
+                    if usage is not None and getattr(chunk, "usage", None) is not None:
+                        usage.update_from(chunk.usage)
+                    # The usage chunk has no choices at all.
+                    if not chunk.choices:
+                        continue
                     # litellm emits role-only and finish chunks with delta.content == None.
                     delta = chunk.choices[0].delta.content
                     if delta is not None:
-                        yielded = True
-                        yield delta
+                        safe_text = guard.feed(delta)
+                        if safe_text:
+                            yielded = True
+                            yield safe_text
+                tail = guard.flush()
+                if tail:
+                    yield tail
                 return
-            except _TRANSIENT_LLM_ERRORS as exc:
+            except _transient_errors(request) as exc:
                 if yielded or attempt == _LLM_MAX_ATTEMPTS:
                     raise
                 logger.warning(

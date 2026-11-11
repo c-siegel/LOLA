@@ -112,11 +112,15 @@
   "publicChat": {
     "unavailable": "This chat isn't available.",
     "endChat": "End chat",
+    "backToStart": "Back to the start page",
     "surveyBeforeTitle": "Survey before the chat",
     "continueToChat": "Continue to chat",
     "transcribing": "Transcribing …",
     "stopRecording": "Stop recording",
     "voiceInput": "Voice input",
+    "handsFreeStart": "Start hands-free voice input",
+    "handsFreeStop": "Turn off hands-free voice input",
+    "handsFreeUnavailable": "Hands-free voice input isn't available right now. Use the text field instead.",
     "stopResponse": "Stop response",
     "responseInterrupted": "Response interrupted.",
     "recordingFailed": "Part of your voice message could not be transmitted — it may be incomplete.",
@@ -143,7 +147,8 @@
     "privacySaved": "This conversation is saved anonymously and can be read by your teacher.",
     "privacySavedWithName": "This conversation is saved together with the name/ID you entered and can be read by your teacher.",
     "privacyNotSaved": "This conversation is not saved.",
-    "whichModel": "Which AI am I talking to?",
+    "aiNotice": "You're talking to an AI. It can make mistakes, so check important information.",
+    "chatInfo": "About this chat",
     "modelTooltip": "You're talking to the AI model {{model}}. Your messages are sent to it to generate a reply.",
     "modelTooltipUnknown": "You're talking to an AI model. Your messages are sent to it to generate a reply.",
     "messagePlaceholder": "Type your question …",
@@ -162,6 +167,39 @@
       "description": "Before we start, please enter your name or ID.",
       "nameLabel": "Name or ID",
       "submit": "Continue"
+    }
+  },
+  "start": {
+    "title": "Start a chat",
+    "description": "Enter the key you got from your teacher.",
+    "keyLabel": "Key",
+    "keyPlaceholder": "e.g. ABCDE",
+    "submit": "Continue",
+    "unknownKey": "There's no chat with this key. Check the letters and try again.",
+    "genericError": "The chat couldn't be opened. Please try again.",
+    "models": {
+      "summaryLoading": "Loading speech models onto this device … {{percent}} %",
+      "summaryReady": "The speech models are stored on this device.",
+      "summaryFailed": "Not all speech models could be loaded.",
+      "summaryNone": "This server doesn't offer on-device speech models.",
+      "details": "Speech model details",
+      "intro": "So that voice input and speech output are ready right away in the chat, this page loads the models onto the device in advance. The avatar is only loaded in the chat.",
+      "names": {
+        "stt": "Speech recognition",
+        "tts": "Speech output",
+        "vad": "Pause detection"
+      },
+      "waiting": "Waiting …",
+      "downloading": "{{loaded}} of {{total}} MB",
+      "ready": "Stored ({{size}} MB)",
+      "unavailable": "Not offered",
+      "unsupported": "Not needed – this device uses the server",
+      "error": "Failed to load",
+      "storageUsage": "Storage used: {{used}} MB of {{quota}} MB",
+      "storageUsageNoQuota": "Storage used: {{used}} MB",
+      "persisted": "The browser keeps the files permanently.",
+      "notPersisted": "The browser may delete the files when storage runs low – they're then loaded again.",
+      "retry": "Try again"
     }
   },
   "profile": {
@@ -205,7 +243,7 @@
       "title": "Students using a chat link",
       "noAccount": "Students do not need an account. There is no registration, no login, and no tracking across websites.",
       "cookie": "A single technical cookie holds a randomly generated visitor number. It is used to tell conversations apart and to enforce usage limits — it does not identify a person and is not shared with anyone.",
-      "recording": "Teachers can switch on recording per chat. When it is on, the chat page says so directly above the message box, and the conversation is stored under the anonymous visitor number so the teacher can read it later. When it is off, messages are not stored after the reply is sent.",
+      "recording": "Teachers can switch on recording per chat. The \"?\" button in the chat says whether it is on. When it is on, the conversation is stored under the anonymous visitor number so the teacher can read it later. When it is off, messages are not stored after the reply is sent.",
       "visitorName": "Teachers can additionally require students to enter a name or ID before the chat starts. If that's enabled AND recording is switched on, that name is shown alongside the saved conversation — the chat is then no longer anonymous. If recording is off, the entered name is not stored anywhere."
     },
     "ai": {
@@ -227,7 +265,8 @@
   "forcePasswordChange": {
     "title": "Change your password",
     "description": "An administrator set this password for you. Choose a new one to continue.",
-    "submit": "Save and continue"
+    "submit": "Save and continue",
+    "successToast": "Password changed. From now on, sign in with your new password."
   },
   "admin": {
     "users": {
@@ -250,6 +289,8 @@
       "disable": "Disable",
       "resetPassword": "Reset password",
       "resetPasswordTitle": "Reset password for {{name}}",
+      "createdToast": "Account for {{name}} created. A new password has to be chosen at the first sign-in.",
+      "passwordResetToast": "Password for {{name}} reset. A new one has to be chosen at the next sign-in.",
       "empty": "No accounts yet.",
       "actionFailed": "Action failed. Please try again.",
       "addUser": "Add account",
@@ -406,9 +447,18 @@
       "temperature": "Temperature",
       "temperatureHint": "How much randomness the model is allowed. Low (0-0.3) gives focused, repeatable answers; around 0.7 is a good all-round setting; above 1.2 replies get creative but start to wander. Sent to the model as `temperature`.",
       "topP": "Top P",
-      "thinking": "Thinking",
-      "thinkingHint": "Whether the model reasons before it answers. \"Model default\" changes nothing. \"Off\" skips the reasoning, which makes replies start much sooner; \"On\" forces it. Only models that can switch reasoning react to this (e.g. Qwen3 hybrid models on a vLLM server); others ignore it. Sent as `chat_template_kwargs.enable_thinking`.",
-      "thinkingOptions": {"default": "Model default", "on": "On", "off": "Off"},
+      "reasoning": "Reasoning",
+      "reasoningHint": "Whether the model reasons before it answers. \"Model default\" changes nothing. \"Off\" skips the reasoning, which makes replies start much sooner. \"Always\" asks for it on every reply: it suits arguments and proofs but makes replies slower and, with most providers, more expensive. \"Only for arguments\" decides per message: small talk gets a quick answer, a message that argues or objects gets the reasoning. It is offered only where this server's knowledge service runs a suitable embedding model. Only models that can switch reasoning react to this.",
+      "adaptiveUnavailable": "\"Only for arguments\" isn't available on this server right now (it needs the knowledge service with a suitable embedding model), so this project reasons on every reply, as with \"Always\".",
+      "reasoningOptions": {"default": "Model default", "off": "Off", "always": "Always", "adaptive": "Only for arguments"},
+      "deepModel": "Model for difficult turns",
+      "deepModelHint": "A second model that answers the messages that reason, while the model above keeps answering the rest. This lets a small, fast model handle small talk and a larger one the arguments. Without a choice, the same model answers both.",
+      "deepModelSame": "Same model",
+      "bridge": "Short phrase while thinking",
+      "bridgeHint": "Before a reply that needs thinking, the avatar says a short neutral sentence such as \"Let me think about that for a second\". It says nothing about the question. Needs speech output with streaming. The first time after a server start, the phrases are still being prepared and are skipped.",
+      "reasoningEffort": "Reasoning effort",
+      "reasoningEffortHint": "How much the model thinks before it answers. Higher levels take longer and cost more. \"Provider default\" leaves the level to the provider.",
+      "reasoningEffortOptions": {"default": "Provider default", "low": "Low", "medium": "Medium", "high": "High"},
       "topPHint": "Narrows the pool of words the model may pick from: at 1.0 all of them are allowed, at 0.5 only the most likely ones that together make up 50% of the probability. Leave it at 1.0 unless you have a reason \u2014 it does a similar job to temperature, and turning both down at once makes replies very monotonous.",
       "language": "Language",
       "spokenLanguageOptions": { "de": "German", "en": "English" },
@@ -428,17 +478,23 @@
       "voiceClipHint": "Pick a preset voice or — if voice cloning is set up on this server — a donated voice or one of your own voice clips. Add and test clips under",
       "sttTitle": "Voice input (STT)",
       "sttText": "Enables the microphone button in the public chat. Off by default.",
-      "sttKey": "Server speech recognition",
-      "sttKeyDefault": "Built-in — server default ({{engine}})",
-      "sttServerEngineOption": "Built-in — {{engine}}",
-      "sttServerEngines": {
-        "whisper": "Whisper",
-        "parakeet": "Parakeet"
+      "voiceInputModeTitle": "How students speak",
+      "voiceInputModes": {
+        "push_to_talk": {
+          "title": "Push to talk",
+          "text": "Students click the microphone to start and again to send. Works well in noisy rooms."
+        },
+        "hands_free": {
+          "title": "Hands-free",
+          "text": "Students switch the microphone on once. Each answer is sent by itself when they pause, and the microphone listens again after the avatar has replied. Best in a quiet room: other people talking nearby can be picked up too."
+        }
       },
-      "sttParakeetMissing": "(model not available on the server)",
-      "sttKeyHint": "Without a key, voice messages are transcribed locally on this server — with Whisper or Parakeet (faster, detects the language itself). Add a key of type STT under API keys to use GWDG SAIA instead.",
+      "sttKey": "Server speech recognition",
+      "sttKeyDefault": "Built-in — Parakeet on this server",
+      "sttParakeetMissing": "(model files missing on the server)",
+      "sttKeyHint": "Without a key, voice messages are transcribed locally on this server with Parakeet. Add a key of type STT under API keys to use GWDG SAIA instead.",
       "sttBrowserTitle": "On-device speech recognition (recommended)",
-      "sttBrowserText": "Voice messages are recognized on the visitor's own device with live text while they speak, so recordings never leave it. Each device downloads the model once (about 170 MB) before the chat opens. Devices without WebGPU automatically use the STT key or the server's Whisper instead.",
+      "sttBrowserText": "Voice messages are recognized on the visitor's own device with live text while they speak, so recordings never leave it. Each device downloads the model once (about 170 MB) before the chat opens. Devices without WebGPU automatically use the STT key or the server's Parakeet instead.",
       "streamingTitle": "Streamed replies",
       "streamingText": "The avatar starts speaking after the first sentence instead of waiting for the full reply. Off by default.",
       "localVoicePresets": "Preset voices",
@@ -577,7 +633,8 @@
       "sessions": "Sessions",
       "messages": "Messages",
       "avgDuration": "Avg. duration",
-      "tokenCost": "Token cost"
+      "tokenCost": "Token cost",
+      "deepReplies": "Replies with reasoning"
     },
     "granularity": { "day": "Day", "week": "Week", "month": "Month" },
     "selection": {
@@ -858,7 +915,6 @@
     "stt": "Speech recognition (voice input)",
     "sttDevice": "On this device (Parakeet, WebGPU)",
     "sttServerProject": "Server, as the project is set up",
-    "sttServerWhisper": "Server, Whisper",
     "sttServerParakeet": "Server, Parakeet",
     "llm": "Language model",
     "llmProject": "As the project is set up",
@@ -926,6 +982,13 @@
     "turnsTitle": "Every turn",
     "config": "Configuration",
     "input": "Input",
+    "route": "Reasoning",
+    "routeHint": "How the turn was routed. Deep: the model was asked to reason. Fast: reasoning was switched off, or a budget or timeout fell back to that. Default: nothing was sent.",
+    "routeValue": {"default": "default", "fast": "fast", "deep": "deep"},
+    "routeSetting": "Reasoning route",
+    "routeAuto": "As the project decides",
+    "routeFast": "Force fast",
+    "routeDeep": "Force deep",
     "chunks": "Chunks",
     "contextLosses": "Avatar context losses",
     "errorColumn": "Error",
@@ -938,6 +1001,10 @@
       "sttServerMs": "STT on server",
       "llmFirstTokenMs": "LLM first token",
       "llmTotalMs": "LLM complete",
+      "promptTokens": "Prompt tokens",
+      "cachedTokens": "Cached prompt tokens",
+      "completionTokens": "Reply tokens",
+      "reasoningTokens": "Reasoning tokens",
       "firstChunkTextReadyMs": "First sentence ready",
       "firstChunkTtsMs": "TTS first sentence",
       "ttsTotalMs": "TTS total",
@@ -955,6 +1022,10 @@
       "sttServerMs": "Server speech recognition only: the time the server itself spent transcribing (without the upload).",
       "llmFirstTokenMs": "Server: from receiving the message until the language model's first word (streaming only).",
       "llmTotalMs": "Server: until the language model's whole reply is there.",
+      "promptTokens": "Server: tokens sent to the language model (system prompt, history, knowledge passages, message). Empty if the provider doesn't report usage.",
+      "cachedTokens": "Server: how many of the prompt tokens the provider served from its prompt cache. Higher means a faster, cheaper start; many providers cache only prompts above about 1,000 tokens, and some don't report it.",
+      "completionTokens": "Server: tokens the language model produced, including hidden reasoning where the provider counts it.",
+      "reasoningTokens": "Server: hidden reasoning tokens (billed as output, never spoken). 0 or empty for models that don't reason.",
       "firstChunkTextReadyMs": "Server: until the first sentence is complete and handed to speech output.",
       "firstChunkTtsMs": "How long synthesizing the first sentence took — on the server, or in the browser until its first audio.",
       "ttsTotalMs": "Synthesis time of all sentences added up.",
@@ -984,6 +1055,8 @@
     },
     "speech": {
       "title": "Speech Recognition and Output",
+      "sileroVad": { "description": "Detects when the student starts and stops speaking, so voice messages transcribed on the server are cut at real pauses" },
+      "smartTurn": { "description": "Decides at a pause whether the student has finished speaking, for hands-free voice input. Runs in the browser through @micdrop/smart-turn by Godefroy de Compreignac" },
       "parakeet": {
         "description": "Multilingual speech recognition model that runs on the visitor's device (ternary version of NVIDIA's Parakeet TDT 0.6B v3)",
         "note": "Original model by NVIDIA, ternary version by Moondream, ONNX export by eschmidbauer and mrfakename. Used unchanged; the files are only re-compressed for delivery."
@@ -1014,7 +1087,7 @@
       "title": "Backend Frameworks & Libraries",
       "fastapi": { "description": "Modern, fast web framework for building APIs with Python" },
       "sqlmodel": { "description": "SQL library for Python, based on Pydantic and SQLAlchemy" },
-      "fasterWhisper": { "description": "Fast implementation of OpenAI Whisper for speech recognition" },
+      "pyav": { "description": "Decodes voice messages for speech recognition on the server (FFmpeg bindings for Python)" },
       "pydantic": { "description": "Data validation using Python type annotations" }
     },
     "privacy": {
@@ -1501,9 +1574,13 @@
     }
   },
   "customPage": {
-    "notFoundTitle": "Page not found",
-    "notFoundText": "This page doesn't exist or isn't published.",
-    "backHome": "Back to the home page"
+    "notFoundText": "This page doesn't exist or isn't published."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "This address doesn't exist. The link may be out of date or contain a typo.",
+    "backHome": "Back to the home page",
+    "backToDashboard": "Back to the overview"
   },
   "errors": {
     "PAGE_NOT_FOUND": "Page not found.",
@@ -1612,12 +1689,14 @@
     "BACKGROUND_INVALID_CONTENT": "File is not a valid PNG or JPEG.",
     "BACKGROUND_NOT_FOUND": "Background image not found.",
     "UNKNOWN_API_KEY": "Unknown API key.",
+    "ADAPTIVE_REASONING_UNAVAILABLE": "\"Only for arguments\" isn't available on this server: it needs the knowledge service with a suitable embedding model.",
     "API_KEY_NOT_FOUND": "API key not found.",
     "NO_LLM_MODEL_SELECTED": "No model selected for this project. Add an LLM key first, in the API tab.",
     "LLM_REQUEST_FAILED": "AI request failed.",
     "STT_REQUEST_FAILED": "Speech recognition failed.",
     "VOICE_INPUT_DISABLED": "Voice input isn't enabled for this project.",
     "VOICE_INPUT_UNAVAILABLE": "Voice input is currently unavailable.",
+    "SERVER_STT_MODEL_MISSING": "Server speech recognition isn't set up: the speech model files are missing on the server. Ask your administrator.",
     "UNSUPPORTED_AUDIO_FORMAT": "Unsupported audio format.",
     "AUDIO_FILE_TOO_LARGE": "Audio file is too large (10 MB maximum).",
     "CHAT_UNAVAILABLE": "Chat is currently unavailable.",

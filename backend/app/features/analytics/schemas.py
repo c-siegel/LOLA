@@ -21,6 +21,10 @@ class AnalyticsStatsOut(CamelModel):
     avg_duration_delta_pct: float
     token_cost_eur: float
     token_cost_delta_pct: float
+    # Replies of projects that route between a fast and a deep model, by route (see
+    # features/chat/reasoning_router.py); both 0 when no project does.
+    fast_replies: int = 0
+    deep_replies: int = 0
 
 
 class SessionRowOut(CamelModel):
@@ -72,6 +76,10 @@ class TranscriptMessageOut(ChatHistoryEntry):
     motions: list[TranscriptMotionOut] | None = None
     # Only on assistant messages in which the LLM ticked plan steps; None otherwise.
     checks: list[TranscriptCheckOut] | None = None
+    # Only on assistant messages of projects with reasoning: "fast" or "deep", and the model that
+    # answered.
+    route: str | None = None
+    model: str | None = None
 
 
 class ConversationDetailOut(CamelModel):

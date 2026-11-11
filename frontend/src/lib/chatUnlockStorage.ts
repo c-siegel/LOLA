@@ -11,3 +11,15 @@ export function getUnlockToken(slug: string): string | null {
 export function setUnlockToken(slug: string, token: string): void {
   sessionStorage.setItem(KEY_PREFIX + slug, token);
 }
+
+/** Forgets every unlocked chat in this tab — the student start page does this, because on a shared
+ * iPad's home-screen app the "tab" outlives one student and the next one must type the password. */
+export function clearUnlockTokens(): void {
+  clearSessionKeys(KEY_PREFIX);
+}
+
+export function clearSessionKeys(prefix: string): void {
+  for (const key of Object.keys(sessionStorage)) {
+    if (key.startsWith(prefix)) sessionStorage.removeItem(key);
+  }
+}

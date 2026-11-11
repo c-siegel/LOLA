@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.errors import DomainError
 from app.core.ownership import find_owned
 from app.features.ai.tts.local import VoiceReference, forget_voice
+from app.features.chat.bridge import audio_cache as bridge_audio_cache
 from app.features.media.models import AvatarModel, BackgroundImage, VoiceClip
 from app.features.projects.models import Project
 from app.features.users.models import User
@@ -177,6 +178,7 @@ def delete_voice_clip(session: Session, clip: VoiceClip) -> None:
     session.delete(clip)
     session.commit()
     forget_voice(clip.sha256)
+    bridge_audio_cache.forget_voice_clip(clip.sha256)
 
 
 def voice_reference_for_project(session: Session, project: Project) -> VoiceReference | None:

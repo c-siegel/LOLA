@@ -6,7 +6,7 @@ Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this 
 
 LOLA lets researchers (primarily education researchers; teachers are a secondary audience until the app has been proof-tested and didactically evaluated) build a talking 3D avatar (persona = system prompt + LLM + voice + 3D face) and publish it as a public link. Visitors — usually students, without an account — chat with it by typing or speaking. Afterwards teachers can review the conversations in an analytics dashboard.
 
-- `backend/` — FastAPI + SQLModel + Alembic (SQLite), litellm for LLM/TTS, faster-whisper/Parakeet for STT. Python ≥ 3.11. Details: [backend/README.md](backend/README.md)
+- `backend/` — FastAPI + SQLModel + Alembic (SQLite), litellm for LLM/TTS, Parakeet (ONNX Runtime) for STT. Python ≥ 3.11. Details: [backend/README.md](backend/README.md)
 - `frontend/` — React 18 + TypeScript + Vite, three.js via TalkingHead, react-query, i18next. Details: [frontend/README.md](frontend/README.md)
 - `local-tts/` — optional self-hosted TTS sidecar. `rag/` — optional knowledge service (RAG): parsing, embeddings, search; see [rag/README.md](rag/README.md). `rag-eval/` — optional Ragas quality evaluation of the knowledge base; see [rag-eval/README.md](rag-eval/README.md). 
 - `docker/` — images, Compose, Caddy.
@@ -78,11 +78,12 @@ There is no linter/formatter config. CI (`.github/workflows/tests.yml`) runs `py
 
 **Docs**
 - New env variable → `.env.example` (with a comment saying which deploy path uses it) and the matching README. New feature/provider/route → update the relevant README section.
+- Every change someone using or running LOLA would notice gets an entry under `## [Unreleased]` in `CHANGELOG.md`, in the same pull request (Added / Changed / Removed / Fixed / Security). Say what to do where an upgrade needs action (migrations, env variables, model files). Dependency updates from Renovate need no entry.
 
 **Code style**
 - Code comments are always in English. When you come across a German comment, translate it.
 - Comments explain *why*, not *what*. Match the naming and structure of the surrounding code.
-- Don't add dependencies without a reason; pin a version cap with a comment when a newer major is known to break (see `av<19` in `backend/pyproject.toml`).
+- Don't add dependencies without a reason; pin a version cap with a comment when a newer major is known to break (see `normt2s<0.8` in `backend/pyproject.toml`).
 
 **Never commit** `.env`, `uv.lock`, `*.db`, `backend/uploads/`, `models/` or other generated files.
 
@@ -118,9 +119,8 @@ Project skills live in `.claude/skills/`:
 
 ## Known pitfalls
 
-- `av` (PyAV) is capped below 19: faster-whisper still passes an argument PyAV 19 removed.
 - The 3D avatar (WebGL) and audio often don't work in headless browsers — verify the rest of the page instead of treating that as a bug.
 - The knowledge service's parser subprocess (`rag/app/parsing/worker.py`) runs with `python -I` and must not import `app.config` — it gets no environment and only sees the file's bytes.
-- On-device STT model files come from `scripts/fetch-stt-model.sh` (writes `./models`, ~380 MB, git-ignored). Without them the browser falls back to server-side STT.
+- STT model files come from `scripts/fetch-stt-model.sh` (writes `./models`, ~380 MB, git-ignored; `scripts/dev.py setup` runs it). The browser and the server use the same files; without them server STT answers 503 (there's no fallback engine) and the browser can't transcribe either.
 - On-device TTS model files (Pocket TTS, German) come from `scripts/fetch-tts-model.sh` (~126 MB, git-ignored, CC BY 4.0). Pinned to a community export whose repo may move files — keep the checksums; don't commit the files or bake them into an image without the `NOTICE.md` it writes.
 - The settings module validates `JWT_SECRET` / `API_KEY_ENCRYPTION_SECRET` at import time; the app refuses to start with placeholder values.

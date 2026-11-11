@@ -124,6 +124,8 @@ class KnowledgeStatusOut(CamelModel):
     file_types: list[str] = []
     limits: KnowledgeLimitsOut | None = None
     usage_bytes: int = 0
+    # Whether projects may use adaptive reasoning here (see chat/reasoning_router.py).
+    adaptive_reasoning: bool = False
 
 
 class BibEntryOut(CamelModel):

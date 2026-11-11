@@ -79,6 +79,37 @@ export function CreditsPage() {
             </div>
 
             <div className={styles.creditItem}>
+              <h3>Silero VAD</h3>
+              <p className={styles.author}>{t("credits.byAuthor", { name: "Silero Team" })}</p>
+              <p className={styles.description}>{t("credits.speech.sileroVad.description")}</p>
+              <div className={styles.links}>
+                <a href="https://github.com/snakers4/silero-vad" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "silero-vad" })}
+                </a>
+              </div>
+              <div className={styles.license}>
+                <strong>{t("credits.licenseLabel")}</strong> MIT License
+              </div>
+            </div>
+
+            <div className={styles.creditItem}>
+              <h3>Smart Turn</h3>
+              <p className={styles.author}>{t("credits.byAuthor", { name: "Daily (Pipecat)" })}</p>
+              <p className={styles.description}>{t("credits.speech.smartTurn.description")}</p>
+              <div className={styles.links}>
+                <a href="https://github.com/pipecat-ai/smart-turn" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "smart-turn" })}
+                </a>
+                <a href="https://github.com/Godefroy/micdrop" target="_blank" rel="noopener noreferrer">
+                  @micdrop/smart-turn
+                </a>
+              </div>
+              <div className={styles.license}>
+                <strong>{t("credits.licenseLabel")}</strong> BSD 2-Clause (model), MIT (@micdrop/smart-turn)
+              </div>
+            </div>
+
+            <div className={styles.creditItem}>
               <h3>Pocket TTS</h3>
               <p className={styles.author}>
                 {t("credits.byAuthor", {
@@ -286,16 +317,16 @@ export function CreditsPage() {
             </div>
 
             <div className={styles.creditItem}>
-              <h3>faster-whisper</h3>
-              <p className={styles.author}>Guillaume Klein</p>
-              <p className={styles.description}>{t("credits.backend.fasterWhisper.description")}</p>
+              <h3>PyAV</h3>
+              <p className={styles.author}>PyAV contributors</p>
+              <p className={styles.description}>{t("credits.backend.pyav.description")}</p>
               <div className={styles.links}>
-                <a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener noreferrer">
-                  {t("credits.onGithub", { name: "faster-whisper" })}
+                <a href="https://github.com/PyAV-Org/PyAV" target="_blank" rel="noopener noreferrer">
+                  {t("credits.onGithub", { name: "PyAV" })}
                 </a>
               </div>
               <div className={styles.license}>
-                <strong>{t("credits.licenseLabel")}</strong> MIT License
+                <strong>{t("credits.licenseLabel")}</strong> BSD-3-Clause License
               </div>
             </div>
 

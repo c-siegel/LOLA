@@ -7,9 +7,30 @@
 // server, or a connection that silently hangs).
 const STALL_TIMEOUT_MS = 30_000;
 
+/** Cache API names per model, shared by the workers that load the models and the student start
+ * page that downloads them in advance (see lib/modelPrefetch.ts) — they must match exactly. */
+export const MODEL_CACHES = {
+  stt: "lola-stt-models",
+  tts: "lola-tts-models",
+  vad: "lola-vad-models",
+  turn: "lola-turn-models",
+} as const;
+
 export interface ManifestFile {
   path: string;
   bytes: number;
+}
+
+/** Aborts `abort` once nothing has arrived for STALL_TIMEOUT_MS; call reset() per chunk. */
+function stallGuard(abort: AbortController) {
+  let timer = setTimeout(() => abort.abort(), STALL_TIMEOUT_MS);
+  return {
+    reset() {
+      clearTimeout(timer);
+      timer = setTimeout(() => abort.abort(), STALL_TIMEOUT_MS);
+    },
+    clear: () => clearTimeout(timer),
+  };
 }
 
 /** Downloads one model file into a buffer of its known size, reporting bytes as they arrive.
@@ -24,11 +45,7 @@ export async function loadModelFile(url: string, bytes: number, cache: Cache | n
     }
   }
   const abort = new AbortController();
-  let stallTimer = setTimeout(() => abort.abort(), STALL_TIMEOUT_MS);
-  const resetStallTimer = () => {
-    clearTimeout(stallTimer);
-    stallTimer = setTimeout(() => abort.abort(), STALL_TIMEOUT_MS);
-  };
+  const stall = stallGuard(abort);
   try {
     // no-store: the Cache API below already keeps a copy — letting the HTTP cache keep a second
     // one would double the disk space a model of hundreds of MB takes on the student's device.
@@ -45,7 +62,7 @@ export async function loadModelFile(url: string, bytes: number, cache: Cache | n
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      resetStallTimer();
+      stall.reset();
       if (offset + value.byteLength > bytes) throw new Error(`${url} is larger than the manifest says`);
       buffer.set(value, offset);
       offset += value.byteLength;
@@ -61,7 +78,54 @@ export async function loadModelFile(url: string, bytes: number, cache: Cache | n
     if (abort.signal.aborted) throw new Error(`Download of ${url} stalled for ${STALL_TIMEOUT_MS / 1000} s`);
     throw error;
   } finally {
-    clearTimeout(stallTimer);
+    stall.clear();
+  }
+}
+
+/** Downloads one model file straight into the Cache API without holding it in memory — for the
+ * student start page, which only fetches ahead and leaves loading the model to the chat (an iPad
+ * would kill a tab holding Parakeet's 344 MB encoder twice). A file already stored is skipped;
+ * loadModelFile still checks its size when the chat reads it. */
+export async function prefetchModelFile(
+  url: string,
+  bytes: number,
+  cache: Cache,
+  onBytes: (n: number) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  if (await cache.match(url)) {
+    onBytes(bytes);
+    return;
+  }
+  const abort = new AbortController();
+  const onCancel = () => abort.abort();
+  signal.addEventListener("abort", onCancel);
+  const stall = stallGuard(abort);
+  let received = 0;
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: abort.signal });
+    if (!response.ok || !response.body) throw new Error(`HTTP ${response.status} for ${url}`);
+    const counted = response.body.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          stall.reset();
+          received += chunk.byteLength;
+          if (received > bytes) throw new Error(`${url} is larger than the manifest says`);
+          onBytes(chunk.byteLength);
+          controller.enqueue(chunk);
+        },
+      }),
+    );
+    await cache.put(url, new Response(counted));
+    if (received !== bytes) throw new Error(`${url} is incomplete (${received} of ${bytes} bytes)`);
+  } catch (error) {
+    // Same as in loadModelFile: a stream that ended too early may still have been stored.
+    await cache.delete(url).catch(() => undefined);
+    if (abort.signal.aborted && !signal.aborted) throw new Error(`Download of ${url} stalled for ${STALL_TIMEOUT_MS / 1000} s`);
+    throw error;
+  } finally {
+    stall.clear();
+    signal.removeEventListener("abort", onCancel);
   }
 }
 
@@ -70,6 +134,14 @@ export async function openModelCache(name: string): Promise<Cache | null> {
     return await caches.open(name);
   } catch {
     return null; // e.g. private browsing — still works, just downloads again next visit
+  }
+}
+
+/** Drops files that don't belong under `baseUrl`, i.e. an older model version — unlike
+ * pruneModelCache it keeps the files of the current version a chat stored (e.g. its TTS voice). */
+export async function pruneOtherVersions(cache: Cache, baseUrl: string): Promise<void> {
+  for (const request of await cache.keys()) {
+    if (!request.url.startsWith(baseUrl)) await cache.delete(request);
   }
 }
 

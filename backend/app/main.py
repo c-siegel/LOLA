@@ -27,6 +27,7 @@ from app.api_router import api_router
 from app.core.config import settings
 from app.core.errors import DomainError, domain_error_handler
 from app.core.middleware import add_security_headers
+from app.core.robots import robots_txt
 from app.core.urls import API_PREFIX
 from app.tasks.knowledge_cleanup import knowledge_cleanup_loop, mark_interrupted_evaluation_runs
 from app.tasks.retention import retention_loop, run_retention_purge
@@ -95,6 +96,8 @@ def create_app() -> FastAPI:
     # the Docker healthcheck calls) and next to every other route under the API prefix.
     app.get("/health")(health)
     app.get(f"{API_PREFIX}/health", include_in_schema=False)(health)
+    # At the root, where crawlers look for it; Caddy and the Vite dev server pass it through.
+    app.get("/robots.txt", include_in_schema=False)(robots_txt)
     return app
 
 

@@ -5,8 +5,8 @@ from app.features.ai.llm import get_llm_client
 from app.features.ai.llm.arcana import ArcanaClient
 from app.features.ai.llm.litellm_provider import LiteLLMClient
 from app.features.ai.stt import get_stt_client
+from app.features.ai.stt.parakeet_local import LocalParakeetClient
 from app.features.ai.stt.saia import SaiaClient
-from app.features.ai.stt.whisper_local import LocalWhisperClient
 from app.features.ai.tts import get_tts_client
 from app.features.ai.tts.cartesia import CartesiaClient
 from app.features.ai.tts.google import GoogleCloudTTSClient
@@ -33,8 +33,8 @@ def test_tts_dispatch() -> None:
 
 def test_stt_dispatch() -> None:
     assert isinstance(get_stt_client(_key("gwdg_saia")), SaiaClient)
-    assert isinstance(get_stt_client(None), LocalWhisperClient)
-    assert isinstance(get_stt_client(_key("openai")), LocalWhisperClient)
+    assert isinstance(get_stt_client(None), LocalParakeetClient)
+    assert isinstance(get_stt_client(_key("openai")), LocalParakeetClient)
 
 
 def test_arcana_request_shape_and_reference_stripping(monkeypatch) -> None:

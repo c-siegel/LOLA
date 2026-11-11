@@ -4,6 +4,7 @@ import { DashboardShell } from "./layouts/DashboardShell";
 import { RequireAdmin } from "./components/RequireAdmin";
 import { setNavigate } from "./lib/navigation";
 import { PageFallback } from "./components/PageFallback";
+import { NotFound } from "./components/NotFound";
 import { BASE_PATH } from "@/lib/basePath";
 
 // Every page is its own chunk, so a student opening a chat link downloads the chat page only, not
@@ -15,6 +16,7 @@ const ForgotPasswordPage = lazy(() =>
   import("./pages/ForgotPassword").then((m) => ({ default: m.ForgotPasswordPage })),
 );
 const ResetPasswordPage = lazy(() => import("./pages/ResetPassword").then((m) => ({ default: m.ResetPasswordPage })));
+const NotFoundPage = lazy(() => import("./pages/NotFound").then((m) => ({ default: m.NotFoundPage })));
 const OverviewPage = lazy(() => import("./pages/Dashboard/Overview").then((m) => ({ default: m.OverviewPage })));
 const ConfiguratorPage = lazy(() =>
   import("./pages/Dashboard/Configurator").then((m) => ({ default: m.ConfiguratorPage })),
@@ -46,6 +48,7 @@ const ForcePasswordChangePage = lazy(() =>
   import("./pages/Dashboard/ForcePasswordChange").then((m) => ({ default: m.ForcePasswordChangePage })),
 );
 const PublicChatPage = lazy(() => import("./pages/PublicChat").then((m) => ({ default: m.PublicChatPage })));
+const StartPage = lazy(() => import("./pages/Start").then((m) => ({ default: m.StartPage })));
 const ImprintPage = lazy(() => import("./pages/Imprint").then((m) => ({ default: m.ImprintPage })));
 const PrivacyPage = lazy(() => import("./pages/Privacy").then((m) => ({ default: m.PrivacyPage })));
 const CustomPage = lazy(() => import("./pages/CustomPage").then((m) => ({ default: m.CustomPage })));
@@ -106,8 +109,12 @@ export function App() {
             <Route path="admin/settings" element={<RequireAdmin> <AdminSettingsPage /> </RequireAdmin> } />
             <Route path="admin/pages" element={<RequireAdmin> <AdminPagesPage /> </RequireAdmin> } />
             <Route path="admin/pages/:id" element={<RequireAdmin> <AdminPageEditorPage /> </RequireAdmin> } />
+            {/* Inside the shell, so a mistyped dashboard address keeps the sidebar. */}
+            <Route path="*" element={<NotFound backTo="dashboard" />} />
           </Route>
           <Route path="/c/:projectSlug" element={<PublicChatPage />} />
+          <Route path="/start" element={<StartPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

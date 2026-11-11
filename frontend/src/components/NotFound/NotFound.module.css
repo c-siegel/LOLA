@@ -6,12 +6,21 @@
   color: var(--text-secondary);
 }
 
+.code {
+  margin: 0 0 var(--space-2);
+  color: var(--text-tertiary);
+  font-size: 4.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
 .notFound h1 {
   color: var(--text-primary);
   font-size: 1.75rem;
   margin: 0 0 var(--space-3);
 }
 
-.notFound p {
+.notFound p:not(.code) {
   margin: 0 0 var(--space-6);
 }

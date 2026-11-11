@@ -12,7 +12,9 @@ from sqlmodel import Session
 
 from app.core.deps import get_current_user, get_session
 from app.core.error_codes import ErrorCode
+from app.core.providers import KEY_TYPE_LLM
 from app.core.ownership import get_owned
+from app.features.ai.llm.reasoning import reasoning_support
 from app.features.api_keys import service
 from app.features.api_keys.models import UserApiKey
 from app.features.api_keys.schemas import ApiKeyCreate, ApiKeyOut, ApiKeyTestResult, ApiKeyUpdate
@@ -36,6 +38,7 @@ def _to_out(key: UserApiKey, used_by_projects: int = 0) -> ApiKeyOut:
         model_id=key.model_id,
         arcana_id=key.arcana_id,
         used_by_projects=used_by_projects,
+        reasoning_support=reasoning_support(key.provider, key.model_id or "") if key.key_type == KEY_TYPE_LLM else "none",
     )
 
 

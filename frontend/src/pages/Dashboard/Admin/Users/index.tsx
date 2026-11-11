@@ -6,14 +6,17 @@ import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
 import { Input } from "@/components/Input";
 import { PageHeader } from "@/components/PageHeader";
+import { Toast } from "@/components/Toast";
 import { adminApi, type AdminUser } from "@/api/admin";
 import { errorMessage } from "@/api/client";
+import { useToast } from "@/hooks/useToast";
 import styles from "./Users.module.css";
 
 /** Admin dashboard: list every account, create new ones, and manage role/enabled/password. */
 export function AdminUsersPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const usersQuery = useQuery({ queryKey: ["admin", "users"], queryFn: adminApi.listUsers });
   const users = usersQuery.data ?? [];
 
@@ -34,6 +37,7 @@ export function AdminUsersPage() {
     mutationFn: () => adminApi.createUser(name, email, password, grantAdmin),
     onSuccess: () => {
       invalidateUsers();
+      toast.show(t("admin.users.createdToast", { name: name.trim() }));
       setFormOpen(false);
       setName("");
       setEmail("");
@@ -51,6 +55,7 @@ export function AdminUsersPage() {
   const resetMutation = useMutation({
     mutationFn: () => adminApi.resetPassword(resetTarget!.id, resetPasswordInput),
     onSuccess: () => {
+      toast.show(t("admin.users.passwordResetToast", { name: resetTarget!.name }));
       setResetTarget(null);
       setResetPasswordInput("");
     },
@@ -207,6 +212,7 @@ export function AdminUsersPage() {
           </form>
         </div>
       )}
+      {toast.message && <Toast message={toast.message} onDismiss={toast.dismiss} />}
     </div>
   );
 }
