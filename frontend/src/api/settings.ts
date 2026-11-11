@@ -10,6 +10,10 @@ export interface PublicSiteSettings {
   providerCity: string | null;
   providerCountry: string | null;
   registrationEnabled: boolean;
+  // Where the on-device speech models live, or null when the deployment doesn't offer them — the
+  // student start page downloads them in advance (see lib/modelPrefetch.ts).
+  browserSttModelUrl: string | null;
+  browserTtsModelUrl: string | null;
 }
 
 export const settingsApi = {

@@ -4272,8 +4272,30 @@
         "title": "PublicProjectOut",
         "type": "object"
       },
-      "PublicSiteSettingsOut": {
+      "PublicSettingsOut": {
         "properties": {
+          "browserSttModelUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Browsersttmodelurl"
+          },
+          "browserTtsModelUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Browserttsmodelurl"
+          },
           "contactEmail": {
             "anyOf": [
               {
@@ -4352,9 +4374,11 @@
           "providerStreet",
           "providerCity",
           "providerCountry",
-          "registrationEnabled"
+          "registrationEnabled",
+          "browserSttModelUrl",
+          "browserTtsModelUrl"
         ],
-        "title": "PublicSiteSettingsOut",
+        "title": "PublicSettingsOut",
         "type": "object"
       },
       "PublicTranslationOut": {
@@ -10665,7 +10689,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicSiteSettingsOut"
+                  "$ref": "#/components/schemas/PublicSettingsOut"
                 }
               }
             },

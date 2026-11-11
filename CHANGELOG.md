@@ -9,6 +9,15 @@ are only recorded in the [git tags](https://github.com/c-siegel/LOLA/tags).
 
 ### Added
 
+- **Student start page** at `/start` for shared devices such as class iPads: students type the
+  chat's key (the five letters after `/c/` in its link) and land in that chat; a password, if
+  set, is asked there as before. While the page is open it downloads the on-device speech models
+  (speech recognition, speech output, pause detection — not the avatar), so the chat starts
+  without waiting; an (i) shows per model what is stored and how much space it takes. Saved to
+  the home screen ("Add to Home Screen") it opens as a standalone web app, and a home button in
+  the chat leads back. Each visit forgets the previous student's unlocked chats and entered name.
+  On iPad, links and QR codes always open in Safari, which has its own storage — start students
+  from the home-screen icon instead. No upgrade steps.
 - **Reasoning setting** per project (configurator, technical step): *Model default*, *Off*,
   *Always* or *Only for arguments*, plus an effort level (low, medium, high) where the model takes
   one. Works with OpenAI, Anthropic, Gemini, Ollama, OpenAI-compatible endpoints and GWDG Arcana,

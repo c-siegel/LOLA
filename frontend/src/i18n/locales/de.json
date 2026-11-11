@@ -112,6 +112,7 @@
   "publicChat": {
     "unavailable": "Dieser Chat ist nicht verfügbar.",
     "endChat": "Chat beenden",
+    "backToStart": "Zurück zur Startseite",
     "surveyBeforeTitle": "Umfrage vor dem Chat",
     "continueToChat": "Weiter zum Chat",
     "transcribing": "Transkription läuft",
@@ -166,6 +167,39 @@
       "description": "Bevor es losgeht, gib bitte deinen Namen oder deine ID ein.",
       "nameLabel": "Name oder ID",
       "submit": "Weiter"
+    }
+  },
+  "start": {
+    "title": "Chat starten",
+    "description": "Gib den Schlüssel ein, den du von deiner Lehrkraft bekommen hast.",
+    "keyLabel": "Schlüssel",
+    "keyPlaceholder": "z. B. ABCDE",
+    "submit": "Weiter",
+    "unknownKey": "Zu diesem Schlüssel gibt es keinen Chat. Prüf die Buchstaben und versuch es noch einmal.",
+    "genericError": "Der Chat konnte nicht geöffnet werden. Bitte versuch es noch einmal.",
+    "models": {
+      "summaryLoading": "Sprachmodelle werden auf dieses Gerät geladen … {{percent}} %",
+      "summaryReady": "Die Sprachmodelle sind auf diesem Gerät gespeichert.",
+      "summaryFailed": "Nicht alle Sprachmodelle konnten geladen werden.",
+      "summaryNone": "Dieser Server bietet keine Sprachmodelle für das Gerät an.",
+      "details": "Details zu den Sprachmodellen",
+      "intro": "Damit Spracheingabe und Sprachausgabe im Chat sofort bereit sind, lädt diese Seite die Modelle schon vorher auf das Gerät. Der Avatar wird erst im Chat geladen.",
+      "names": {
+        "stt": "Spracherkennung",
+        "tts": "Sprachausgabe",
+        "vad": "Erkennung von Sprechpausen"
+      },
+      "waiting": "Wartet …",
+      "downloading": "{{loaded}} von {{total}} MB",
+      "ready": "Gespeichert ({{size}} MB)",
+      "unavailable": "Wird nicht angeboten",
+      "unsupported": "Nicht nötig – dieses Gerät nutzt den Server",
+      "error": "Fehler beim Laden",
+      "storageUsage": "Belegter Speicher: {{used}} MB von {{quota}} MB",
+      "storageUsageNoQuota": "Belegter Speicher: {{used}} MB",
+      "persisted": "Der Browser behält die Dateien dauerhaft.",
+      "notPersisted": "Der Browser darf die Dateien bei Speichermangel löschen – sie werden dann neu geladen.",
+      "retry": "Erneut versuchen"
     }
   },
   "profile": {

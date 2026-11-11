@@ -367,7 +367,7 @@ audio) and come back unchanged when it's re-enabled.
 
 | Method & path | Auth | Description |
 |---|---|---|
-| `GET /settings/public` | Public | The public-facing site settings (imprint details, whether self-registration is open) — see `/admin/settings` for the full, admin-only version. |
+| `GET /settings/public` | Public | The public-facing site settings (imprint details, whether self-registration is open) plus the on-device speech model URLs (`browserSttModelUrl`, `browserTtsModelUrl`, null when `BROWSER_STT_ENABLED`/`BROWSER_TTS_ENABLED` is off) for the student start page — see `/admin/settings` for the full, admin-only version. |
 
 ### Editable pages — `app/features/pages/` (prefixes `/pages`, `/admin/pages`)
 

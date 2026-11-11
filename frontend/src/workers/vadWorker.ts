@@ -14,7 +14,7 @@ import * as ort from "onnxruntime-web/webgpu";
 // downloads and caches it only once.
 import ortWasmUrl from "onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url";
 import { FEATURE_SHAPE, SmartTurn, type SmartTurnModel } from "@micdrop/smart-turn";
-import { loadModelFile, openModelCache, pruneModelCache, type ManifestFile } from "@/lib/modelFiles";
+import { MODEL_CACHES, loadModelFile, openModelCache, pruneModelCache, type ManifestFile } from "@/lib/modelFiles";
 
 ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
 // Single-threaded for the same reason as parakeetWorker.ts: no cross-origin isolation (Tally iframe).
@@ -29,8 +29,8 @@ const SPEECH_ON = 0.5;
 const SPEECH_OFF = 0.35;
 
 // Separate caches: each prunes everything in its own cache that isn't its current file.
-const VAD_CACHE = "lola-vad-models";
-const TURN_CACHE = "lola-turn-models";
+const VAD_CACHE = MODEL_CACHES.vad;
+const TURN_CACHE = MODEL_CACHES.turn;
 
 interface Manifest<K extends string> {
   version: string;

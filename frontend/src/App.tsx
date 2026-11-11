@@ -48,6 +48,7 @@ const ForcePasswordChangePage = lazy(() =>
   import("./pages/Dashboard/ForcePasswordChange").then((m) => ({ default: m.ForcePasswordChangePage })),
 );
 const PublicChatPage = lazy(() => import("./pages/PublicChat").then((m) => ({ default: m.PublicChatPage })));
+const StartPage = lazy(() => import("./pages/Start").then((m) => ({ default: m.StartPage })));
 const ImprintPage = lazy(() => import("./pages/Imprint").then((m) => ({ default: m.ImprintPage })));
 const PrivacyPage = lazy(() => import("./pages/Privacy").then((m) => ({ default: m.PrivacyPage })));
 const CustomPage = lazy(() => import("./pages/CustomPage").then((m) => ({ default: m.CustomPage })));
@@ -112,6 +113,7 @@ export function App() {
             <Route path="*" element={<NotFound backTo="dashboard" />} />
           </Route>
           <Route path="/c/:projectSlug" element={<PublicChatPage />} />
+          <Route path="/start" element={<StartPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

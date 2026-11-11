@@ -112,6 +112,7 @@
   "publicChat": {
     "unavailable": "This chat isn't available.",
     "endChat": "End chat",
+    "backToStart": "Back to the start page",
     "surveyBeforeTitle": "Survey before the chat",
     "continueToChat": "Continue to chat",
     "transcribing": "Transcribing …",
@@ -166,6 +167,39 @@
       "description": "Before we start, please enter your name or ID.",
       "nameLabel": "Name or ID",
       "submit": "Continue"
+    }
+  },
+  "start": {
+    "title": "Start a chat",
+    "description": "Enter the key you got from your teacher.",
+    "keyLabel": "Key",
+    "keyPlaceholder": "e.g. ABCDE",
+    "submit": "Continue",
+    "unknownKey": "There's no chat with this key. Check the letters and try again.",
+    "genericError": "The chat couldn't be opened. Please try again.",
+    "models": {
+      "summaryLoading": "Loading speech models onto this device … {{percent}} %",
+      "summaryReady": "The speech models are stored on this device.",
+      "summaryFailed": "Not all speech models could be loaded.",
+      "summaryNone": "This server doesn't offer on-device speech models.",
+      "details": "Speech model details",
+      "intro": "So that voice input and speech output are ready right away in the chat, this page loads the models onto the device in advance. The avatar is only loaded in the chat.",
+      "names": {
+        "stt": "Speech recognition",
+        "tts": "Speech output",
+        "vad": "Pause detection"
+      },
+      "waiting": "Waiting …",
+      "downloading": "{{loaded}} of {{total}} MB",
+      "ready": "Stored ({{size}} MB)",
+      "unavailable": "Not offered",
+      "unsupported": "Not needed – this device uses the server",
+      "error": "Failed to load",
+      "storageUsage": "Storage used: {{used}} MB of {{quota}} MB",
+      "storageUsageNoQuota": "Storage used: {{used}} MB",
+      "persisted": "The browser keeps the files permanently.",
+      "notPersisted": "The browser may delete the files when storage runs low – they're then loaded again.",
+      "retry": "Try again"
     }
   },
   "profile": {

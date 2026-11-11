@@ -199,3 +199,20 @@ def test_browser_stt_is_on_by_default_and_each_side_can_opt_out(client, anon, ke
     client.put(f"/projects/{keyless_tts_project['id']}", json={"sttBrowserEnabled": True})
     monkeypatch.setattr(settings, "browser_stt_enabled", False)
     assert anon.get(f"/public/{slug}").json()["browserSttModelUrl"] is None
+
+
+def test_public_settings_name_the_on_device_models(anon, monkeypatch):
+    # The student start page downloads these before any chat is chosen, so they follow the
+    # deployment switches only (and carry the sub-path like every other URL handed out).
+    monkeypatch.setattr(settings, "base_path", "/lola")
+    monkeypatch.setattr(settings, "browser_stt_enabled", True)
+    monkeypatch.setattr(settings, "browser_tts_enabled", True)
+    public = anon.get("/settings/public").json()
+    assert public["browserSttModelUrl"] == "/lola" + settings.browser_stt_model_url
+    assert public["browserTtsModelUrl"] == "/lola" + settings.browser_tts_model_url
+
+    monkeypatch.setattr(settings, "browser_stt_enabled", False)
+    monkeypatch.setattr(settings, "browser_tts_enabled", False)
+    public = anon.get("/settings/public").json()
+    assert public["browserSttModelUrl"] is None
+    assert public["browserTtsModelUrl"] is None

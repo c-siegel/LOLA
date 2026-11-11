@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Mic, MessageCircle, Play, Send, Square, LogOut, X } from "lucide-react";
+import { Home, Loader2, Mic, MessageCircle, Play, Send, Square, LogOut, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
@@ -23,6 +23,7 @@ import type { ChatMessage } from "@/types/chat";
 import { BRIDGE_DELAY_MS } from "@/lib/bridgePhrase";
 import type { ChatLayout } from "@/types/project";
 import { NameGate, PasswordGate, gatePassed, isLocked } from "./Gate";
+import type { FromStartState } from "@/pages/Start";
 import { ModelInfoButton } from "./ModelInfoButton";
 import { useVoiceInput } from "./useVoiceInput";
 import styles from "./PublicChat.module.css";
@@ -118,6 +119,9 @@ function SttLoadingScreen({ progress, onStart }: { progress: LoadProgress | null
 export function PublicChatPage() {
   const { t } = useTranslation();
   const { projectSlug } = useParams<{ projectSlug: string }>();
+  // Opened from the student start page: a home-screen web app has no back button, so the header
+  // offers the way back (which also forgets this student's unlock and name, see pages/Start).
+  const fromStart = (useLocation().state as FromStartState | null)?.fromStart === true;
   const slug = projectSlug!;
 
   const tutorQuery = useQuery({
@@ -815,6 +819,17 @@ export function PublicChatPage() {
           <h1>{tutor.title}</h1>
         </div>
         <div className={styles.headerActions}>
+          {fromStart && (
+            <Link
+              to="/start"
+              replace
+              className={styles.infoButton}
+              aria-label={t("publicChat.backToStart")}
+              title={t("publicChat.backToStart")}
+            >
+              <Home size={24} />
+            </Link>
+          )}
           <LanguageSwitcher compact />
           {stage === "chat" && (
             <button

@@ -112,9 +112,9 @@ def browser_stt_model_url_for(project: Project) -> str | None:
     (project.stt_browser_enabled, on by default), or voice input is off for the project. The
     model is multilingual, so it doesn't depend on spoken_language.
     """
-    if not (settings.browser_stt_enabled and project.stt_enabled and project.stt_browser_enabled):
+    if not (project.stt_enabled and project.stt_browser_enabled):
         return None
-    return site_url(settings.browser_stt_model_url)
+    return deployment_browser_stt_model_url()
 
 
 def browser_tts_model_url_for(project: Project) -> str | None:
@@ -125,11 +125,23 @@ def browser_tts_model_url_for(project: Project) -> str | None:
     in (project.tts_browser_enabled), speech output is off, or the project speaks another language
     than the model (Settings.browser_tts_language).
     """
-    if not (settings.browser_tts_enabled and project.tts_enabled and project.tts_browser_enabled):
+    if not (project.tts_enabled and project.tts_browser_enabled):
         return None
     if project.spoken_language != settings.browser_tts_language:
         return None
-    return site_url(settings.browser_tts_model_url)
+    return deployment_browser_tts_model_url()
+
+
+def deployment_browser_stt_model_url() -> str | None:
+    """Base URL of the on-device transcription model if this deployment offers it at all,
+    independent of any project — what the student start page downloads in advance."""
+    return site_url(settings.browser_stt_model_url) if settings.browser_stt_enabled else None
+
+
+def deployment_browser_tts_model_url() -> str | None:
+    """Base URL of the on-device speech output model if this deployment offers it at all,
+    independent of any project — like deployment_browser_stt_model_url."""
+    return site_url(settings.browser_tts_model_url) if settings.browser_tts_enabled else None
 
 
 def effective_api_base(key: UserApiKey) -> str | None:

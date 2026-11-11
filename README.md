@@ -29,6 +29,7 @@
 
 - **Persona:** describe the behaviour in plain language (system prompt); pick one of two bundled 3D faces (Julia, David) or upload your own, plus a background and a voice.
 - **Talk by typing or speaking:** speech is transcribed on the visitor's device (server fallback), the avatar answers aloud with lip-sync. Per project, students either click to talk or speak hands-free: each answer is sent by itself when they pause.
+- **Start page for class iPads:** `/start`, saved to the home screen, lets students open a chat by its five-letter key and downloads the speech models in advance, so the first student doesn't wait. On iPad, links and QR codes open in Safari instead of the home-screen app.
 - **Body language:** the AI adds gestures (nod, wave, thumbs up, …) from a curated list. [Details](docs/avatar-gestures-plan.md#gestures)
 - **Conversation plan:** steps the avatar works through and ticks off, with a progress card for students. [Details](docs/avatar-gestures-plan.md#conversation-plan)
 - **Pronunciation word list:** per-language rules for how terms, units and abbreviations are spoken ("13,9 m/s" → "13,9 Meter pro Sekunde"), with a physics pack, CSV import/export and a test box.
