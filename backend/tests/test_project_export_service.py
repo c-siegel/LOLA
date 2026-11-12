@@ -157,3 +157,12 @@ def test_parse_rejects_malformed_or_incomplete_input() -> None:
             raise AssertionError(f"expected ProjectImportError for input: {bad_input!r}")
         except ProjectImportError:
             pass
+
+
+def test_a_file_exported_before_reasoning_mode_still_imports() -> None:
+    from app.features.projects.export import parse_project_yaml
+
+    old = "lola_export: 2\nproject:\n  title: Alt\n  thinking_mode: 'on'\n"
+    assert parse_project_yaml(old).reasoning_mode == "always"
+    off = "lola_export: 2\nproject:\n  title: Alt\n  thinking_mode: 'off'\n"
+    assert parse_project_yaml(off).reasoning_mode == "off"

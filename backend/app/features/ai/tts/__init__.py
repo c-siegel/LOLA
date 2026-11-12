@@ -4,7 +4,7 @@ Text-to-Speech (TTS) Synthesis
 Turns text into spoken audio using the API key configured for a project. Most providers go
 through litellm (litellm_provider.py); Cartesia and Google Cloud TTS have their own direct HTTP
 integrations because litellm doesn't support them. With no key configured, synthesis falls back
-to the optional local-TTS sidecar (local.py) — the TTS counterpart to the local Whisper fallback
+to the optional local-TTS sidecar (local.py) — the TTS counterpart to the local Parakeet model
 for STT.
 
 How to use:

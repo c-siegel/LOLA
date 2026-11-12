@@ -28,7 +28,8 @@
 ## Features
 
 - **Persona:** describe the behaviour in plain language (system prompt); pick one of two bundled 3D faces (Julia, David) or upload your own, plus a background and a voice.
-- **Talk by typing or speaking:** speech is transcribed on the visitor's device (server fallback), the avatar answers aloud with lip-sync.
+- **Talk by typing or speaking:** speech is transcribed on the visitor's device (server fallback), the avatar answers aloud with lip-sync. Per project, students either click to talk or speak hands-free: each answer is sent by itself when they pause.
+- **Start page for class iPads:** `/start`, saved to the home screen, lets students open a chat by its five-letter key and downloads the speech models in advance, so the first student doesn't wait. On iPad, links and QR codes open in Safari instead of the home-screen app.
 - **Body language:** the AI adds gestures (nod, wave, thumbs up, …) from a curated list. [Details](docs/avatar-gestures-plan.md#gestures)
 - **Conversation plan:** steps the avatar works through and ticks off, with a progress card for students. [Details](docs/avatar-gestures-plan.md#conversation-plan)
 - **Pronunciation word list:** per-language rules for how terms, units and abbreviations are spoken ("13,9 m/s" → "13,9 Meter pro Sekunde"), with a physics pack, CSV import/export and a test box.
@@ -91,7 +92,7 @@ More: [backend/README.md](backend/README.md), [frontend/README.md](frontend/READ
 
 **First admin account:** set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` and run `python -m app.cli.bootstrap_admin` from `backend/` (idempotent; `scripts/dev.py` and Docker run it on every start), or promote an existing account in the database. Admins manage accounts, site settings and the public pages (imprint, privacy policy, landing page, accessibility statement).
 
-**On-device speech models** (optional): run `scripts/fetch-stt-model.sh` (~380 MB) so voice input is transcribed in the browser; without it the server transcribes. Details and browser requirements: [docs/on-device-speech.md](docs/on-device-speech.md).
+**Speech recognition model** (needed for voice input): `python scripts/dev.py setup` downloads it, or run `scripts/fetch-stt-model.sh` yourself (~380 MB). Browsers use it to transcribe on the device, and the backend uses the same files for devices without WebGPU. Details and browser requirements: [docs/on-device-speech.md](docs/on-device-speech.md).
 
 ### Docker (production)
 
@@ -144,7 +145,7 @@ Each project picks its own LLM and, optionally, a TTS voice. Users connect them 
 | Cartesia, Google Cloud TTS | TTS |
 | GWDG Arcana | LLM (with its own knowledge base) |
 
-Speech-to-text needs no key. Details, the Thinking setting and custom endpoints: [docs/ai-providers.md](docs/ai-providers.md).
+Speech-to-text needs no key. Details, the Reasoning setting and custom endpoints: [docs/ai-providers.md](docs/ai-providers.md).
 
 ## Using LOLA
 
@@ -179,7 +180,7 @@ Speech-to-text needs no key. Details, the Thinking setting and custom endpoints:
 |---|---|
 | Backend | FastAPI, SQLite via SQLModel/SQLAlchemy, Alembic migrations, JWT + bcrypt |
 | LLM / TTS | [litellm](https://github.com/BerriAI/litellm) |
-| Speech-to-text | [Parakeet Redux](https://huggingface.co/moondream/parakeet-redux) on the device ([onnxruntime-web](https://onnxruntime.ai/) + WebGPU); [faster-whisper](https://github.com/SYSTRAN/faster-whisper) on the server as fallback |
+| Speech-to-text | [Parakeet Redux](https://huggingface.co/moondream/parakeet-redux) on the device ([onnxruntime-web](https://onnxruntime.ai/) + WebGPU), the same model on the server ([ONNX Runtime](https://onnxruntime.ai/)) as fallback |
 | Text-to-speech normalisation | [normt2s](https://github.com/c-siegel/normt2s) |
 | Local TTS (optional) | Kyutai [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) sidecar; also in the browser for the latency test |
 | Frontend | React 18, TypeScript, Vite, TanStack Query |

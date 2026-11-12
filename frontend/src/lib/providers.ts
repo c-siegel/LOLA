@@ -63,8 +63,8 @@ export function useBrowserTtsStatus() {
   });
 }
 
-/** The deployment's default server STT engine and whether Parakeet's model files are present —
- * drives the Configurator's server-engine choice (see Step2Technical.tsx). */
+/** Whether the server's Parakeet model files are present, i.e. whether the server can transcribe
+ * without a cloud STT key — the Configurator and the Latency Lab warn when it can't. */
 export function useServerSttStatus() {
   return useQuery({
     queryKey: ["server-stt-status"],

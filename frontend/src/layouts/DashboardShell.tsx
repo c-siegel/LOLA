@@ -28,6 +28,8 @@ import { Scrim } from "@/components/Drawer";
 import { Wordmark } from "@/components/Wordmark";
 import { Avatar } from "@/components/Avatar";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { Toast } from "@/components/Toast";
+import { useToast } from "@/hooks/useToast";
 import { authApi } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -129,6 +131,12 @@ interface NavGroup {
 }
 
 // Layout for 1c–1h — sidebar (desktop) or hamburger + overlay drawer (<1024px) + content area
+/** Navigation state that shows a confirmation once the next dashboard page has opened, for an
+ * action whose own page is left behind (e.g. the forced password change). */
+export interface FlashState {
+  flash: string;
+}
+
 export function DashboardShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -156,6 +164,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       navigate(FORCE_PASSWORD_CHANGE_PATH, { replace: true });
     }
   }, [user, location.pathname, navigate]);
+
+  // Shown once, then removed from the history entry, so going back or reloading doesn't repeat it.
+  const toast = useToast();
+  const flash = (location.state as FlashState | null)?.flash;
+  useEffect(() => {
+    if (!flash) return;
+    toast.show(flash);
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flash]);
 
   // Close the mobile drawer on every route change (e.g. after tapping a nav item).
   useEffect(() => {
@@ -284,6 +302,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       {sidebar}
 
       <main className={styles.content}>{children}</main>
+      {toast.message && <Toast message={toast.message} onDismiss={toast.dismiss} />}
     </div>
   );
 }

@@ -27,6 +27,16 @@ class PublicSiteSettingsOut(CamelModel):
     registration_enabled: bool
 
 
+class PublicSettingsOut(PublicSiteSettingsOut):
+    """GET /settings/public: the public site settings plus where the on-device speech models live,
+    so the student start page can download them before a chat is chosen. Not part of
+    SiteSettingsOut — these come from the deployment's config, not from the admin-editable row."""
+
+    # None when the deployment doesn't offer the model (see features/api_keys/resolve.py).
+    browser_stt_model_url: str | None
+    browser_tts_model_url: str | None
+
+
 class SiteSettingsOut(PublicSiteSettingsOut):
     """Everything an admin sees — the public fields plus operational settings."""
 

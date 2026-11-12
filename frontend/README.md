@@ -22,7 +22,8 @@ Overview: [root README](../README.md). Code conventions: [AGENTS.md](../AGENTS.m
   session — not just the initial auth check — so an auth cookie expiring mid-edit (e.g. in the
   Configurator) sends the user back to login instead of showing a generic error forever.
 - **three.js** + **[@met4citizen/talkinghead](https://github.com/met4citizen/TalkingHead)** — 3D
-  avatar rendering and lip-sync.
+  avatar rendering and lip-sync. `three` stays within the version range TalkingHead declares;
+  otherwise npm installs a second copy and the bundle ships both (see `renovate.json`).
 - **react-markdown** — renders chat messages that may contain Markdown.
 
 ## Folder map
@@ -39,7 +40,7 @@ Overview: [root README](../README.md). Code conventions: [AGENTS.md](../AGENTS.m
 | `src/styles/` | Global styles, plus `dashboard.module.css` with patterns the dashboard pages share through CSS Modules `composes` (e.g. the content card) |
 | `src/types/` | Shared TypeScript types |
 | `src/vendor/` | Third-party code copied in rather than installed: `motion-engine/` (the avatar's gestures, see its `ATTRIBUTION.md`) |
-| `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), on-device speech output for the public chat and the latency test — Pocket TTS (`pocketWorker.ts`, used through `src/lib/pocketTts.ts`; the generation itself is `src/lib/pocketTtsCore.ts`, the model comes from `scripts/fetch-tts-model.sh`) and the microphone capture AudioWorklet |
+| `src/workers/` | Code that runs off the main thread: on-device speech recognition (`parakeetWorker.ts`, used through `src/lib/parakeetStt.ts`), on-device speech output for the public chat and the latency test — Pocket TTS (`pocketWorker.ts`, used through `src/lib/pocketTts.ts`; the generation itself is `src/lib/pocketTtsCore.ts`, the model comes from `scripts/fetch-tts-model.sh`), speech pause and end-of-turn detection — Silero VAD and Smart Turn (`vadWorker.ts`, used through `src/lib/vad.ts`; the models come from `scripts/fetch-stt-model.sh`) — and the microphone capture AudioWorklet |
 
 ## Pages
 
@@ -58,8 +59,10 @@ Overview: [root README](../README.md). Code conventions: [AGENTS.md](../AGENTS.m
 | `/dashboard/admin`, `/dashboard/admin/settings` | `Dashboard/Admin` | Admin-only: manage other users, site-wide settings (e.g. registration on/off) |
 | `/dashboard/admin/pages`, `/dashboard/admin/pages/:id` | `Dashboard/Admin/Pages` | Admin-only: edit the landing page texts, imprint and privacy policy per language, create pages such as an accessibility statement, and see who changed what when |
 | `/c/:projectSlug` | `PublicChat` | The public chat page visitors use — no login required. Shows a loading screen until the on-device speech recognition model is ready (or has failed, in which case voice input uses the server). Projects with on-device speech output load Pocket TTS in the background and speak replies on the device once it's ready (messages then go out with `speakOnDevice`); until then, the server speaks |
+| `/start` | `Start` | Student start page for shared devices (class iPads): enter a chat's key (its share slug), then the chat opens with a home button back here. Downloads the on-device speech models into the Cache API in advance (`lib/modelPrefetch.ts`; download only — the chat's workers load them), with an (i) showing per-model status and storage. Links `public/start.webmanifest` only on this page, so "Add to Home Screen" installs it as a standalone web app. Each visit clears the previous student's unlock tokens and visitor names |
 | `/impressum`, `/datenschutz`, `/credits` | `Imprint`, `Privacy`, `Credits` | Legal/attribution pages (German URLs, matching German legal terminology). Imprint and privacy show an admin's Markdown when there is one (visitor's language, then English), otherwise the built-in template — see `lib/pages.ts` |
 | `/p/:slug` | `CustomPage` | Pages an admin created, e.g. an accessibility statement; published ones can be linked in the site footer |
+| `*` | `NotFound` | Any other address: "Page not found" (`components/NotFound`, also used for unknown custom pages and, inside the shell, unknown `/dashboard/…` addresses). Adds a `noindex` robots meta tag, since the SPA answers every address with 200 |
 
 ## Debugging
 

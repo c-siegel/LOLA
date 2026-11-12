@@ -110,6 +110,8 @@ class PublicProjectOut(CamelModel):
     streaming_enabled: bool = False
     # Avatar and/or chat, see features/projects/models.py::Project.chat_layout.
     chat_layout: str = "avatar_chat"
+    # Push-to-talk or hands-free, see features/projects/models.py::Project.voice_input_mode.
+    voice_input_mode: str = "push_to_talk"
     # Whether the page loads the MotionEngine for the gestures in replies (see
     # features/projects/models.py::Project.motion_enabled).
     motion_enabled: bool = False
@@ -177,6 +179,11 @@ class ChatMessageIn(CamelModel):
     # the stream's "spoken" per chunk). Ignored unless the project offers on-device speech output
     # (see features/api_keys/resolve.py::browser_tts_model_url_for).
     speak_on_device: bool = False
+    # Set by the frontend when it repeats a turn through the plain endpoint after the streamed one
+    # failed: that attempt already spent a reasoning reply (and may have waited out its timeout),
+    # so the repeat is answered without reasoning. A visitor can only make their own reply cheaper
+    # with it.
+    retry_after_failure: bool = False
 
     # Belt and braces alongside the frontend's own guard (sendMessage's trim-check in
     # pages/PublicChat/index.tsx) — a blank message has no legitimate use here, so nothing should
@@ -211,7 +218,7 @@ class ChatMessageOut(CamelModel):
 
 class TranscriptionOut(CamelModel):
     text: str
-    # Wall-clock duration of the whisper call, for the client-side latency log (see
+    # Wall-clock duration of the STT call, for the client-side latency log (see
     # pages/PublicChat/index.tsx) — left None by callers that don't measure it (e.g. the
     # configurator preview's transcribe route).
     stt_ms: float | None = None
@@ -228,11 +235,14 @@ class LatencyTestMessageIn(ChatMessageIn):
     tts_mode: Literal["project", "local", "none"] = "project"
     # False: the whole reply is generated and synthesized first, like the plain /messages route.
     streaming: bool = True
+    # "auto": the project's reasoning mode and rules decide; "fast"/"deep" force the route to compare
+    # them on the same message.
+    route: Literal["auto", "fast", "deep"] = "auto"
 
 
 class LatencyTranscriptionOut(CamelModel):
     text: str
     # Server-side transcription time only, without upload — the page measures the round trip.
     stt_ms: float
-    # What actually transcribed: "whisper", "parakeet", or the STT key's provider.
+    # What actually transcribed: "parakeet" (the local model) or the STT key's provider.
     engine: str

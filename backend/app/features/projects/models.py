@@ -68,10 +68,19 @@ class Project(SQLModel, table=True):
     # 1.0 = no nucleus filtering, which is what every provider defaults to.
     top_p: float = 1.0
     # Whether the model reasons ("thinks") before it answers: "default" leaves the model's own
-    # behaviour alone, "on"/"off" are sent to providers that can switch it (see
-    # features/ai/llm/history.py::thinking_extra_body). Mainly for comparing latency with and
-    # without reasoning on the same model.
-    thinking_mode: str = "default"
+    # behaviour alone, "off" switches it off and "always" on, for models that can be switched (see
+    # features/ai/llm/reasoning.py). "adaptive" reasons only for turns that look like an argument
+    # (chat/escalation_rules.py), see docs/adaptive-reasoning-plan.md.
+    reasoning_mode: str = "default"
+    # "low"/"medium"/"high" for models that take a level; None = the provider's own default.
+    reasoning_effort: str | None = None
+    # A second LLM key for the turns that reason (mode "always"/"adaptive"); None = the same key as
+    # llm_api_key_id. Lets a small fast model answer the easy turns and a bigger one the hard ones.
+    deep_llm_api_key_id: str | None = Field(default=None, foreign_key="userapikey.id", index=True)
+    # Denormalized like llm_model, written by projects/service.py::sync_llm_model.
+    deep_llm_model: str | None = None
+    # Speak a short neutral phrase while a reasoning turn is still thinking (chat/bridge.py).
+    bridge_enabled: bool = True
     published: bool = False
     share_slug: str | None = Field(default=None, unique=True, index=True)
     save_conversations: bool = False
@@ -103,18 +112,14 @@ class Project(SQLModel, table=True):
     spoken_language: str = "de"
     # Reference to a key of type "stt" (mirrors tts_api_key_id/llm_api_key_id) — selects a
     # "bring your own key" (BYOK) STT provider (currently GWDG SAIA). None (the default) keeps
-    # transcribing locally through the instance-wide Whisper server instead, see
+    # transcribing locally with the server's Parakeet model instead, see
     # features/ai/stt/__init__.py::transcribe_audio.
     stt_api_key_id: str | None = Field(default=None, foreign_key="userapikey.id", index=True)
-    # Which local engine transcribes on the server when no stt_api_key_id is set: "whisper" or
-    # "parakeet" (see features/ai/stt/__init__.py::get_stt_client). None (the default) follows
-    # the deployment's Settings.stt_engine.
-    stt_server_engine: str | None = None
     # Only unlocks the microphone button in the public chat — stt_api_key_id (above) decides which
     # engine actually transcribes.
     stt_enabled: bool = True
     # Whether this project transcribes on the visitor's device (WebGPU) before falling back to
-    # stt_api_key_id/local server Whisper — only takes effect when the deployment also has it
+    # stt_api_key_id/local server Parakeet — only takes effect when the deployment also has it
     # enabled (see Settings.browser_stt_enabled), see
     # features/api_keys/resolve.py::browser_stt_model_url_for. On by default; False opts out.
     stt_browser_enabled: bool = True
@@ -129,6 +134,11 @@ class Project(SQLModel, table=True):
     # chat), "avatar_chat_collapsed" (chat starts collapsed but can be expanded), "avatar_only"
     # (voice only, no chat column) or "chat_only" (no 3D avatar is loaded at all).
     chat_layout: str = "avatar_chat"
+    # How voice input is started and ended in the public chat (see schemas.py::VoiceInputMode):
+    # "push_to_talk" (the student clicks the mic button to start and again to stop) or
+    # "hands_free" (one click turns listening on; each turn ends by itself at a pause, see
+    # frontend workers/vadWorker.ts). Only matters with stt_enabled.
+    voice_input_mode: str = "push_to_talk"
     # Body language from the vendored MotionEngine (frontend/src/vendor/motion-engine): the LLM is
     # told it may mark gestures as "::name::" in its reply (see features/chat/motion.py), which
     # are stripped before TTS and played by the avatar. Has no effect with chat_layout

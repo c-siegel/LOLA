@@ -23,11 +23,12 @@ from app.core.cookies import get_or_set_visitor_id
 from app.core.deps import get_published_project, get_session
 from app.core.error_codes import ErrorCode
 from app.core.rate_limit import (
+    deep_turn_budget,
     enforce_chat_unlock_rate_limit,
     enforce_public_chat_rate_limit,
     enforce_public_transcribe_rate_limit,
 )
-from app.features.ai.stt import transcribe_audio
+from app.features.ai.stt import SttModelMissing, transcribe_audio
 from app.features.api_keys.resolve import browser_stt_model_url_for, browser_tts_model_url_for, resolve_stt_key
 from app.features.chat.audio_upload import read_audio_upload
 from app.features.chat.checklist import checklist_for, replay
@@ -42,7 +43,7 @@ from app.features.chat.schemas import (
     PublicProjectOut,
     TranscriptionOut,
 )
-from app.features.chat.streaming import sse_event
+from app.features.chat.streaming import sse_stream
 from app.features.chat.unlock import assert_unlocked, is_unlocked, issue_unlock_token, verify_chat_password
 from app.features.chat.visitor_log import log_access
 from app.features.chat.visitor_name import assert_visitor_name_provided, clean_visitor_name
@@ -53,8 +54,8 @@ router = APIRouter(prefix="/public", tags=["public-chat"])
 
 logger = logging.getLogger(__name__)
 
-# faster-whisper's initial_prompt only needs to carry recent context across a pause-segmented
-# recording (see features/ai/stt) — capped to the trailing text, both because that's what
+# initial_prompt (used by a cloud STT provider, see features/ai/stt) only needs to carry recent
+# context across a pause-segmented recording — capped to the trailing text, both because that's what
 # actually helps decoding and to bound how much a client can make one transcription request process.
 _MAX_INITIAL_PROMPT_CHARS = 500
 
@@ -102,6 +103,7 @@ def load_tutor(
         browser_tts_voice=project.tts_voice if browser_tts_model_url_for(project) else None,
         streaming_enabled=project.streaming_enabled,
         chat_layout=project.chat_layout,
+        voice_input_mode=project.voice_input_mode,
         motion_enabled=project.motion_enabled,
         # Combined here like the other flags: without gestures there is nothing to play.
         thinking_motions_enabled=project.thinking_motions_enabled and project.motion_enabled,
@@ -168,7 +170,16 @@ def _start_turn(
     enforce_public_chat_rate_limit(request, visitor_id)
     history = [{"role": h.role, "content": h.content} for h in data.history]
     done = frozenset(replay(h.checks for h in data.history))
-    return ChatTurn(data.message, history, visitor_id, visitor_name, received_at, done)
+    return ChatTurn(
+        data.message,
+        history,
+        visitor_id,
+        visitor_name,
+        received_at,
+        done,
+        deep_turn_budget(request, visitor_id, project.id),
+        data.retry_after_failure,
+    )
 
 
 def _chat_context(session: Session, project: Project, data: ChatMessageIn) -> ChatContext:
@@ -242,7 +253,7 @@ def send_message_stream(
     session.close()
 
     streaming = StreamingResponse(
-        (sse_event(event, payload) for event, payload in stream_turn(context, turn)),
+        sse_stream(stream_turn(context, turn)),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -286,13 +297,10 @@ def transcribe(
     stt_key = resolve_stt_key(session, project)
     stt_start = time.perf_counter()
     try:
-        text = transcribe_audio(
-            content,
-            project.spoken_language,
-            initial_prompt,
-            api_key_record=stt_key,
-            engine=project.stt_server_engine,
-        )
+        text = transcribe_audio(content, project.spoken_language, initial_prompt, api_key_record=stt_key)
+    except SttModelMissing as exc:
+        # Already logged once by the STT client; no traceback per voice message.
+        raise HTTPException(status_code=503, detail=ErrorCode.VOICE_INPUT_UNAVAILABLE) from exc
     except Exception as exc:
         # Generic message for visitors (no technical detail), consistent with send_message.
         logger.exception("Transcription failed (project_id=%s)", project.id)

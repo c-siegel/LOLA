@@ -75,6 +75,13 @@ def resolve_llm_key(session: Session, project: Project) -> UserApiKey | None:
     return None
 
 
+def resolve_deep_llm_key(session: Session, project: Project) -> UserApiKey | None:
+    """The second LLM key for reasoning turns, or None (then the main key answers those too)."""
+    if project.deep_llm_api_key_id:
+        return get_owned_key_of_type(session, project.user_id, project.deep_llm_api_key_id, KEY_TYPE_LLM)
+    return None
+
+
 def resolve_tts_key(session: Session, project: Project) -> UserApiKey | None:
     """Find the TTS key configured for this project (the TTS counterpart to resolve_llm_key).
 
@@ -89,7 +96,7 @@ def resolve_stt_key(session: Session, project: Project) -> UserApiKey | None:
     """Find the STT key configured for this project (the STT counterpart to resolve_tts_key).
 
     None (no key configured, or a stale/foreign one) means the caller should fall back to the
-    instance-wide local Whisper engine (see features/ai/stt) — unlike LLM/TTS, having no
+    server's local Parakeet model (see features/ai/stt) — unlike LLM/TTS, having no
     STT key is a normal, fully working state, not a missing configuration.
     """
     if project.stt_api_key_id:
@@ -103,11 +110,11 @@ def browser_stt_model_url_for(project: Project) -> str | None:
 
     None if the deployment turned it off (Settings.browser_stt_enabled), the project opted out
     (project.stt_browser_enabled, on by default), or voice input is off for the project. The
-    model is multilingual, so unlike server Whisper it doesn't depend on spoken_language.
+    model is multilingual, so it doesn't depend on spoken_language.
     """
-    if not (settings.browser_stt_enabled and project.stt_enabled and project.stt_browser_enabled):
+    if not (project.stt_enabled and project.stt_browser_enabled):
         return None
-    return site_url(settings.browser_stt_model_url)
+    return deployment_browser_stt_model_url()
 
 
 def browser_tts_model_url_for(project: Project) -> str | None:
@@ -118,11 +125,23 @@ def browser_tts_model_url_for(project: Project) -> str | None:
     in (project.tts_browser_enabled), speech output is off, or the project speaks another language
     than the model (Settings.browser_tts_language).
     """
-    if not (settings.browser_tts_enabled and project.tts_enabled and project.tts_browser_enabled):
+    if not (project.tts_enabled and project.tts_browser_enabled):
         return None
     if project.spoken_language != settings.browser_tts_language:
         return None
-    return site_url(settings.browser_tts_model_url)
+    return deployment_browser_tts_model_url()
+
+
+def deployment_browser_stt_model_url() -> str | None:
+    """Base URL of the on-device transcription model if this deployment offers it at all,
+    independent of any project — what the student start page downloads in advance."""
+    return site_url(settings.browser_stt_model_url) if settings.browser_stt_enabled else None
+
+
+def deployment_browser_tts_model_url() -> str | None:
+    """Base URL of the on-device speech output model if this deployment offers it at all,
+    independent of any project — like deployment_browser_stt_model_url."""
+    return site_url(settings.browser_tts_model_url) if settings.browser_tts_enabled else None
 
 
 def effective_api_base(key: UserApiKey) -> str | None:

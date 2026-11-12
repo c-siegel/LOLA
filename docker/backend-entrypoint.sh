@@ -16,14 +16,15 @@ if [ "$(id -g lola)" != "$PGID" ]; then
   groupmod -o -g "$PGID" lola
 fi
 
-# Not created automatically by the app — without this step, avatar/profile picture uploads and the
-# first Whisper model download would fail on first use.
+# Not created automatically by the app — without this step, avatar/profile picture and voice clip
+# uploads would fail on first use.
 mkdir -p "${AVATAR_UPLOAD_DIR:-uploads/avatars}" "${PROFILE_PICTURE_UPLOAD_DIR:-uploads/profile-pictures}" \
   "${AVATAR_THUMBNAIL_UPLOAD_DIR:-uploads/avatar-thumbnails}" "${BACKGROUND_UPLOAD_DIR:-uploads/backgrounds}" \
-  "${STT_MODEL_CACHE_DIR:-whisper-cache}" "${VOICE_CLIP_UPLOAD_DIR:-uploads/voice-clips}"
-# The on-device speech recognition model's folder, bind-mounted by the web and stt-model services
-# (see docker-compose.yml). Created here so the chown below covers it: if Docker created it first,
-# while starting one of those services, it would belong to root and stt-model couldn't write to it.
+  "${VOICE_CLIP_UPLOAD_DIR:-uploads/voice-clips}"
+# The speech recognition model's folder, bind-mounted by the web and stt-model services and read by
+# this backend (see docker-compose.yml). Created here so the chown below covers it: if Docker
+# created it first, while starting one of those services, it would belong to root and stt-model
+# couldn't write to it.
 mkdir -p /data/models
 # Same for the optional knowledge (RAG) and evaluation services, which run without root and can't
 # fix ownership themselves (see docker/rag.Dockerfile). Harmless when they aren't used.

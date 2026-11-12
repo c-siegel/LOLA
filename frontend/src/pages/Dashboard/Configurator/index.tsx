@@ -36,6 +36,7 @@ function toDraft(project: Project): ConfiguratorDraft {
     builtinAvatar: project.builtinAvatar,
     avatarBackgroundId: project.avatarBackgroundId,
     chatLayout: project.chatLayout,
+    voiceInputMode: project.voiceInputMode,
     motionEnabled: project.motionEnabled,
     thinkingMotionsEnabled: project.thinkingMotionsEnabled,
     gradeLevel: project.gradeLevel ?? "",
@@ -46,7 +47,10 @@ function toDraft(project: Project): ConfiguratorDraft {
     llmApiKeyId: project.llmApiKeyId,
     temperature: project.temperature,
     topP: project.topP,
-    thinkingMode: project.thinkingMode,
+    reasoningMode: project.reasoningMode,
+    reasoningEffort: project.reasoningEffort,
+    deepLlmApiKeyId: project.deepLlmApiKeyId,
+    bridgeEnabled: project.bridgeEnabled,
     saveConversations: project.saveConversations,
     requireVisitorName: project.requireVisitorName,
     surveyBeforeUrl: project.surveyBeforeUrl ?? "",
@@ -59,7 +63,6 @@ function toDraft(project: Project): ConfiguratorDraft {
     ttsVoice: project.ttsVoice ?? "",
     ttsVoiceClipId: project.ttsVoiceClipId,
     sttApiKeyId: project.sttApiKeyId,
-    sttServerEngine: project.sttServerEngine,
     sttEnabled: project.sttEnabled,
     sttBrowserEnabled: project.sttBrowserEnabled,
     ttsBrowserEnabled: project.ttsBrowserEnabled,
@@ -84,6 +87,7 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.builtinAvatar !== project.builtinAvatar ||
     draft.avatarBackgroundId !== project.avatarBackgroundId ||
     draft.chatLayout !== project.chatLayout ||
+    draft.voiceInputMode !== project.voiceInputMode ||
     draft.motionEnabled !== project.motionEnabled ||
     draft.thinkingMotionsEnabled !== project.thinkingMotionsEnabled ||
     (draft.gradeLevel || null) !== project.gradeLevel ||
@@ -92,7 +96,10 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.llmApiKeyId !== project.llmApiKeyId ||
     draft.temperature !== project.temperature ||
     draft.topP !== project.topP ||
-    draft.thinkingMode !== project.thinkingMode ||
+    draft.reasoningMode !== project.reasoningMode ||
+    draft.reasoningEffort !== project.reasoningEffort ||
+    draft.deepLlmApiKeyId !== project.deepLlmApiKeyId ||
+    draft.bridgeEnabled !== project.bridgeEnabled ||
     draft.saveConversations !== project.saveConversations ||
     draft.requireVisitorName !== project.requireVisitorName ||
     draft.surveyBeforeUrl !== (project.surveyBeforeUrl ?? "") ||
@@ -105,7 +112,6 @@ function isDirty(draft: ConfiguratorDraft, project: Project): boolean {
     draft.ttsVoice !== (project.ttsVoice ?? "") ||
     draft.ttsVoiceClipId !== project.ttsVoiceClipId ||
     draft.sttApiKeyId !== project.sttApiKeyId ||
-    draft.sttServerEngine !== project.sttServerEngine ||
     draft.sttEnabled !== project.sttEnabled ||
     draft.sttBrowserEnabled !== project.sttBrowserEnabled ||
     draft.ttsBrowserEnabled !== project.ttsBrowserEnabled ||
@@ -155,6 +161,7 @@ export function ConfiguratorPage() {
         builtinAvatar: data.builtinAvatar,
         avatarBackgroundId: data.avatarBackgroundId,
         chatLayout: data.chatLayout,
+        voiceInputMode: data.voiceInputMode,
         motionEnabled: data.motionEnabled,
         thinkingMotionsEnabled: data.thinkingMotionsEnabled,
         gradeLevel: data.gradeLevel || null,
@@ -163,7 +170,10 @@ export function ConfiguratorPage() {
         llmApiKeyId: data.llmApiKeyId,
         temperature: data.temperature,
         topP: data.topP,
-        thinkingMode: data.thinkingMode,
+        reasoningMode: data.reasoningMode,
+        reasoningEffort: data.reasoningEffort,
+        deepLlmApiKeyId: data.deepLlmApiKeyId,
+        bridgeEnabled: data.bridgeEnabled,
         saveConversations: data.saveConversations,
         requireVisitorName: data.requireVisitorName,
         surveyBeforeUrl: data.surveyBeforeUrl,
@@ -176,7 +186,6 @@ export function ConfiguratorPage() {
         ttsVoice: data.ttsVoice || null,
         ttsVoiceClipId: data.ttsVoiceClipId,
         sttApiKeyId: data.sttApiKeyId,
-        sttServerEngine: data.sttServerEngine,
         sttEnabled: data.sttEnabled,
         sttBrowserEnabled: data.sttBrowserEnabled,
         ttsBrowserEnabled: data.ttsBrowserEnabled,

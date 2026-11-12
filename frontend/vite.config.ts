@@ -108,6 +108,11 @@ export default defineConfig(({ command }) => ({
         target: "http://localhost:8000",
         changeOrigin: true,
       },
+      // Built by the backend because its paths carry BASE_PATH (see backend/app/core/robots.py).
+      "/robots.txt": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
     },
   },
 }));

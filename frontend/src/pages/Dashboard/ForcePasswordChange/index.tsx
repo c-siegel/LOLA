@@ -6,6 +6,8 @@ import { Button } from "@/components/Button";
 import { Callout } from "@/components/Callout";
 import { Input } from "@/components/Input";
 import { profileApi } from "@/api/profile";
+import type { FlashState } from "@/layouts/DashboardShell";
+import type { User } from "@/types/user";
 import styles from "./ForcePasswordChange.module.css";
 
 const MIN_PASSWORD_LENGTH = 10;
@@ -26,10 +28,12 @@ export function ForcePasswordChangePage() {
   const mutation = useMutation({
     mutationFn: () => profileApi.changePassword(current, next),
     onSuccess: () => {
-      // The backend clears must_change_password on success — refetch so the dashboard guard
-      // (which reads this same query) lets the user through.
+      // The backend clears must_change_password on success. Clear it in the cache too before
+      // navigating: with only a refetch, the dashboard guard (which reads this same query) still
+      // saw the old flag and sent the user straight back to this form.
+      queryClient.setQueryData<User>(["auth", "me"], (user) => user && { ...user, mustChangePassword: false });
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      navigate("/dashboard");
+      navigate("/dashboard", { state: { flash: t("forcePasswordChange.successToast") } satisfies FlashState });
     },
     onError: () => setError(t("profile.passwordChangeError")),
   });

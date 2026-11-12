@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { HelpCircle } from "lucide-react";
 import styles from "./PublicChat.module.css";
 
-/** The "?" in the chat header: a speech bubble naming the AI model behind the tutor. */
-export function ModelInfoButton({ llmModel }: { llmModel: string | null }) {
+/** The "?" in the chat header: a speech bubble naming the AI model behind the tutor and saying
+ * whether the conversation is saved. */
+export function ModelInfoButton({ llmModel, privacyNotice }: { llmModel: string | null; privacyNotice: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLSpanElement>(null);
@@ -33,7 +34,7 @@ export function ModelInfoButton({ llmModel }: { llmModel: string | null }) {
       <button
         type="button"
         className={styles.infoButton}
-        aria-label={t("publicChat.whichModel")}
+        aria-label={t("publicChat.chatInfo")}
         aria-expanded={open}
         aria-controls={bubbleId}
         onClick={() => setOpen((value) => !value)}
@@ -41,7 +42,10 @@ export function ModelInfoButton({ llmModel }: { llmModel: string | null }) {
         <HelpCircle size={24} />
       </button>
       <span className={styles.infoTipBubble} id={bubbleId}>
-        {llmModel ? t("publicChat.modelTooltip", { model: llmModel }) : t("publicChat.modelTooltipUnknown")}
+        <span className={styles.infoTipLine}>
+          {llmModel ? t("publicChat.modelTooltip", { model: llmModel }) : t("publicChat.modelTooltipUnknown")}
+        </span>
+        <span className={styles.infoTipLine}>{privacyNotice}</span>
       </span>
     </span>
   );

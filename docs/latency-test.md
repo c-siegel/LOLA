@@ -21,7 +21,7 @@ until you export them (CSV or JSON, with the device in every row).
 
 | Setting | Options |
 |---|---|
-| Speech recognition | On this device (Parakeet via WebGPU — load it first under "Device"), or on the server: as the project is set up, Whisper, or Parakeet |
+| Speech recognition | On this device (Parakeet via WebGPU — load it first under "Device"), or on the server: as the project is set up, or with the server's Parakeet model (skipping the project's STT key) |
 | Language model | As the project is set up, or any of your other LLM keys |
 | Streaming | On: the avatar starts after the first sentence. Off: after the whole reply |
 | Speech output | As the project is set up, the local TTS server (Pocket TTS), Pocket TTS in this browser, or none |
@@ -32,6 +32,14 @@ server — fetch it first with `scripts/fetch-tts-model.sh` — and speaks with 
 "alba". German only, no voice cloning; it runs on the CPU (WASM, one thread). This is an experiment
 to see whether in-browser speech output is fast enough on a device — the public chat doesn't use
 it.
+
+## Token counts and the prompt cache
+
+Every turn also records what the language model reports about its call: **prompt tokens**, how many of them came from the provider's **prompt cache**, **reply tokens** and hidden **reasoning tokens**. Together with "LLM first token" this shows whether a slow start is the model thinking or a cold cache. A column stays empty when the provider doesn't report it (cached and reasoning counts vary a lot between providers; many cache only prompts above about 1,000 tokens). The counts are numbers only, no message text, and only the dashboard's latency test sees them — the public chat's replies don't carry them.
+
+## Reasoning route
+
+The **Reasoning** column shows how a turn was routed: *deep* (the model was asked to reason), *fast* (reasoning was switched off, or the turn fell back to that because the reasoning budget was used up or the reasoning call failed or timed out after 60 s), or *default* (nothing was sent). The route is shown here only; the public chat doesn't report it. Under "Reasoning route" in the settings you can force *fast* or *deep* on every message, to compare the two on the same script; the configuration label of the results then says which. A project with a bridge phrase speaks it first on a deep turn: "First audio" is then the bridge, and "LLM first token" is the real wait for the answer.
 
 ## Speech recognition only
 

@@ -36,6 +36,7 @@ How to use:
 import threading
 import time
 from collections import defaultdict
+from collections.abc import Callable
 
 from fastapi import HTTPException, Request
 
@@ -46,6 +47,8 @@ from app.core.error_codes import ErrorCode
 # touched while holding _lock (see _enforce).
 _hits: dict[str, list[float]] = defaultdict(list)
 _lock = threading.Lock()
+# The window each key was last checked with, so the sweep can judge a key by its own window.
+_windows: dict[str, int] = {}
 
 # _enforce only ever trims a KEY's own timestamp list, never removes the key itself — a visitor
 # or IP never seen again (very much the norm: visitor_id is a cookie that resets on every clear)
@@ -55,6 +58,8 @@ _lock = threading.Lock()
 # separate background task.
 _SWEEP_THRESHOLD = 5000
 
+_DEEP_PROJECT_WINDOW_SECONDS = 24 * 3600
+
 
 def _max_configured_window_seconds() -> int:
     """The largest rate-limit window currently in effect, across every limiter below."""
@@ -62,17 +67,24 @@ def _max_configured_window_seconds() -> int:
 
 
 def _sweep_stale_keys() -> None:
-    """Drop every key whose newest hit is older than the largest window in use.
+    """Drop every key whose newest hit is older than that key's own window.
 
-    Safe by construction: such a key is necessarily also stale under its OWN (smaller-or-equal)
-    window, so this can never forget a rate limit that's still actually in effect — a key that
-    matters again simply gets recreated fresh on its next hit, same as any other new key.
+    Safe by construction: such a key has nothing left inside its window, so this can never forget
+    a rate limit that's still actually in effect — a key that matters again simply gets recreated
+    fresh on its next hit. Per key, not by the largest window overall: one long window (the
+    24-hour project budget) must not make every short-lived visitor key linger for a day, which
+    anyone could use to grow this dict by sending requests with random visitor cookies.
     """
     now = time.monotonic()
-    cutoff = _max_configured_window_seconds()
-    stale_keys = [key for key, timestamps in _hits.items() if not timestamps or now - max(timestamps) > cutoff]
+    fallback = _max_configured_window_seconds()
+    stale_keys = [
+        key
+        for key, timestamps in _hits.items()
+        if not timestamps or now - max(timestamps) > _windows.get(key, fallback)
+    ]
     for key in stale_keys:
         del _hits[key]
+        _windows.pop(key, None)
 
 # Public chat and voice-transcription limits are Settings fields (app/core/config.py,
 # CHAT_*/TRANSCRIBE_* env vars) instead of constants here, so a deployment can size them to its
@@ -101,6 +113,19 @@ def _client_ip(request: Request) -> str:
 
 def _enforce(key: str, *, max_requests: int, window_seconds: int, message: str) -> None:
     """Raise HTTP 429 if `key` already hit `max_requests` within the last `window_seconds`."""
+    if not _hit(key, max_requests=max_requests, window_seconds=window_seconds):
+        raise HTTPException(status_code=429, detail=message)
+
+
+def _hit(key: str, *, max_requests: int, window_seconds: int) -> bool:
+    """Record a hit for `key` and return True, or return False (recording nothing) if it already
+    hit `max_requests` within the last `window_seconds`."""
+    return _hit_all([(key, max_requests, window_seconds)])
+
+
+def _hit_all(checks: list[tuple[str, int, int]]) -> bool:
+    """Record a hit on every (key, max_requests, window_seconds) and return True, or return False
+    and record nothing at all if any of them is already full."""
     # Every sync route runs in FastAPI's worker thread pool, so many threads call this at once.
     # The lock makes the sweep (which iterates _hits — another thread inserting mid-iteration
     # would raise "dictionary changed size during iteration") and the check-then-append below
@@ -110,11 +135,17 @@ def _enforce(key: str, *, max_requests: int, window_seconds: int, message: str) 
         if len(_hits) > _SWEEP_THRESHOLD:
             _sweep_stale_keys()
         now = time.monotonic()
-        recent = [t for t in _hits[key] if now - t < window_seconds]
-        if len(recent) >= max_requests:
-            raise HTTPException(status_code=429, detail=message)
-        recent.append(now)
-        _hits[key] = recent
+        updated = {}
+        for key, max_requests, window_seconds in checks:
+            recent = [t for t in _hits[key] if now - t < window_seconds]
+            if len(recent) >= max_requests:
+                return False
+            updated[key] = recent
+        for (key, _, window_seconds), recent in zip(checks, updated.values(), strict=True):
+            recent.append(now)
+            _hits[key] = recent
+            _windows[key] = window_seconds
+        return True
 
 
 def enforce_public_chat_rate_limit(request: Request, visitor_id: str) -> None:
@@ -139,10 +170,36 @@ def enforce_public_chat_rate_limit(request: Request, visitor_id: str) -> None:
     )
 
 
+def deep_turn_budget(request: Request, visitor_id: str, project_id: str) -> Callable[[], bool]:
+    """A callable that spends one reasoning reply from the visitor's, the IP's and the project's
+    budgets and says whether all three had room. Called only when a turn would actually reason.
+
+    Per project too, because the visitor cookie is the caller's to reset and an IP is cheap to
+    change: the daily project budget is the one limit that bounds what the teacher can be billed.
+    Nothing is spent unless all three have room.
+    """
+    # Read now: the turn may run after the request object is gone.
+    ip = _client_ip(request)
+
+    def spend() -> bool:
+        window = settings.deep_window_seconds
+        # All or nothing: a turn refused by the project's budget must not also use up the shared
+        # per-IP budget a class needs for its other projects.
+        return _hit_all(
+            [
+                (f"deep-visitor:{visitor_id}", settings.deep_max_per_visitor, window),
+                (f"deep-ip:{ip}", settings.deep_max_per_ip, window),
+                (f"deep-project:{project_id}", settings.deep_max_per_project_per_day, _DEEP_PROJECT_WINDOW_SECONDS),
+            ]
+        )
+
+    return spend
+
+
 def enforce_public_transcribe_rate_limit(request: Request, visitor_id: str) -> None:
     """Limit how often voice recordings can be submitted for transcription, per visitor and per IP."""
     # Same two-dimension reasoning and check order as the chat limit above — transcription is more expensive
-    # per call (Whisper runs in-process), hence enforced on its own settings.
+    # per call (the STT model runs in-process), hence enforced on its own settings.
     message = ErrorCode.RATE_LIMIT_TRANSCRIBE
     _enforce(
         f"transcribe-visitor:{visitor_id}",
