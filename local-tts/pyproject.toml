@@ -11,7 +11,7 @@ dependencies = [
     # CUDA libraries this CPU-only service never uses).
     # Capped below 4: app/synthesis.py rewrites pocket-tts' own configs and reads its
     # `has_voice_cloning` flag, neither of which is a stable public API.
-    "pocket-tts>=3.3.0,<4",
+    "pocket-tts>=4.0.1,<5",
     "soundfile>=0.12.1",
 ]
 
