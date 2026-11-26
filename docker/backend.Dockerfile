@@ -1,7 +1,7 @@
 # Build context is the repo root (see .github/workflows/docker-publish.yml, "context:" — this isn't
 # built via docker-compose.yml, that only pulls prebuilt images), so COPY can reach both backend/
 # and this Dockerfile itself.
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 # libpq/gcc etc. are deliberately not installed here: cryptography, bcrypt and the rest of
 # backend/pyproject.toml's dependencies ship prebuilt wheels for python:3.12-slim (manylinux,
