@@ -16,7 +16,7 @@ dependencies = [
     # all three already come in through fastembed, listed here so that doesn't stay implicit.
     "onnxruntime>=1.17,<2",
     "tokenizers>=0.15,<1",
-    "huggingface_hub>=0.20,<2",
+    "huggingface_hub>=2.5,<3",
     # Pre-1.0: the vec0 virtual-table syntax used in app/store.py (partition keys, "k = ?") may
     # still change in a minor release.
     "sqlite-vec>=0.1.9,<0.2",
